@@ -1,0 +1,18 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: mtracker
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${L_MT_MYSQL_URL}
+    username: ${L_MT_MYSQL_USERNAME}
+    password: ${L_MT_MYSQL_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: none
+
+springdoc:
+  swagger-ui:
+    path: /swagger

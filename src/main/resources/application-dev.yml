@@ -1,0 +1,21 @@
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    url: ${MT_MYSQL_URL}
+    username: ${MT_MYSQL_USERNAME}
+    password: ${MT_MYSQL_PASSWORD}
+    jpa:
+      hibernate:
+        ddl-auto: none
+
+logging:
+  level:
+    org:
+      springframework: INFO
+
+management:
+  endpoint:
+    health:
+      show-details: never
