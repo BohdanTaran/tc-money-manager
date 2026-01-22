@@ -30,7 +30,6 @@
 		<java.version>21</java.version>
 		<org.mapstruct.version>1.6.3</org.mapstruct.version>
 		<swagger.version>3.0.1</swagger.version>
-		<assured.version>5.5.6</assured.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -111,11 +110,6 @@
 			<groupId>org.testcontainers</groupId>
 			<artifactId>testcontainers-mysql</artifactId>
 			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>io.rest-assured</groupId>
-			<artifactId>rest-assured</artifactId>
-			<version>${assured.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.mapstruct</groupId>
