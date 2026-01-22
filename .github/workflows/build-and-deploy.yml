@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - feat-add-workflow-for-githubactions
+      - feat/add-workflow-for-githubactions
       - main
   pull_request:
     branches:
