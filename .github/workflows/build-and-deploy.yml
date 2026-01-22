@@ -3,7 +3,6 @@ name: Build and Deploy to AWS
 on:
   push:
     branches:
-      - feat/add-workflow-for-githubactions
       - main
   pull_request:
     branches:
