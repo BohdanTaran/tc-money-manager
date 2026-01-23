@@ -72,7 +72,7 @@ jobs:
     if: github.event_name == 'push'
     needs: build
     runs-on: ubuntu-latest
-    name: build docker image
+    name: deploy
     steps:
       - name: checkout
         uses: actions/checkout@v6
