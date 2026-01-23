@@ -69,6 +69,7 @@ jobs:
         run: mvn clean package
 
   build-docker-and-push-to-ecr:
+    if: github.event_name == 'push'
     needs: build
     runs-on: ubuntu-latest
     name: build docker image
