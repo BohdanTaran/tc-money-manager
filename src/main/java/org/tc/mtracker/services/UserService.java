@@ -14,6 +14,10 @@ public class UserService {
         return userRepository.save(userEntity);
     }
 
+    public UserEntity findByEmail(String email) {
+        return userRepository.findByEmail(email).orElseThrow();
+    }
+
     public boolean isExistsByEmail(String email) {
         return userRepository.findByEmail(email).isPresent();
     }
