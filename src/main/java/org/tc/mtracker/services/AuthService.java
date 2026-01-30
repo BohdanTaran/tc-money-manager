@@ -9,6 +9,7 @@ import org.tc.mtracker.dto.JwtResponseDTO;
 import org.tc.mtracker.dto.UserSignUpRequestDTO;
 import org.tc.mtracker.dto.UserSignedUpResponseDTO;
 import org.tc.mtracker.entity.UserEntity;
+import org.tc.mtracker.exceptions.UserIsAlreadyActivatedException;
 import org.tc.mtracker.exceptions.UserWithThisEmailAlreadyExistsException;
 import org.tc.mtracker.security.CustomUserDetails;
 
@@ -48,7 +49,7 @@ public class AuthService {
         String email = jwtService.extractUsername(token);
         UserEntity user = userService.findByEmail(email);
         if (user.isActivated()) {
-            throw new RuntimeException("User is already activated");
+            throw new UserIsAlreadyActivatedException("User with email " + email + " is already activated");
         }
         user.setActivated(true);
         userService.save(user);

@@ -23,7 +23,7 @@ public class CustomUserDetails implements UserDetails {
         this.email = user.getEmail();
         this.password = user.getPassword();
         this.fullName = user.getFullName();
-        this.isActivated = user.getIsActivated();
+        this.isActivated = user.isActivated();
     }
 
     @Override
