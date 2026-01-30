@@ -1,10 +1,7 @@
 package org.tc.mtracker.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -13,6 +10,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "users")
 @Getter
+@Setter
 @NoArgsConstructor(force = true)
 @AllArgsConstructor
 @Builder
@@ -23,18 +21,20 @@ public class UserEntity {
     private Long id;
 
     @Column(nullable = false)
-    private final String fullName;
+    private String fullName;
 
     @Column(nullable = false)
-    private final String password;
+    private String password;
 
     @Column(unique = true, nullable = false)
-    private final String email;
+    private String email;
 
-    private final String avatarUrl;
+    private String avatarUrl;
+
+    private String currencyCode;
 
     @Column(nullable = false)
-    private final Boolean isActivated;
+    private Boolean isActivated;
 
     @CreationTimestamp
     @Column(nullable = false)
