@@ -36,7 +36,7 @@ public class AuthService {
         UserEntity save = userService.save(userEntity);
         emailService.sendVerificationEmail(userEntity);
 
-        return new UserSignedUpResponseDTO(save.getId(), save.getFullName(), save.getEmail(), save.getCurrencyCode(), save.getIsActivated());
+        return new UserSignedUpResponseDTO(save.getId(), save.getFullName(), save.getEmail(), save.getCurrencyCode(), save.isActivated());
     }
 
     public JwtResponseDTO verifyToken(String token) {
@@ -47,21 +47,15 @@ public class AuthService {
 
         String email = jwtService.extractUsername(token);
         UserEntity user = userService.findByEmail(email);
-        if (user.getIsActivated()) {
+        if (user.isActivated()) {
             throw new RuntimeException("User is already activated");
         }
-        user.setIsActivated(true);
+        user.setActivated(true);
         userService.save(user);
 
         CustomUserDetails userDetails = new CustomUserDetails(user);
         String accessToken = jwtService.generateToken(userDetails);
 
         return new JwtResponseDTO(accessToken);
-    }
-
-    private void activateUserAccount(String email) {
-        UserEntity user = userService.findByEmail(email);
-        user.setIsActivated(true);
-        userService.save(user);
     }
 }

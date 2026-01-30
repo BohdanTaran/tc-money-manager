@@ -34,7 +34,7 @@ public class UserEntity {
     private String currencyCode;
 
     @Column(nullable = false)
-    private Boolean isActivated;
+    private boolean isActivated;
 
     @CreationTimestamp
     @Column(nullable = false)
