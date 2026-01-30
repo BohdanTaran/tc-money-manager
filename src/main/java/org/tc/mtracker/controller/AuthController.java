@@ -6,8 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.tc.mtracker.dto.JwtResponseDTO;
 import org.tc.mtracker.dto.UserSignUpRequestDTO;
-import org.tc.mtracker.dto.UserSignedUpResponseDTO;
-import org.tc.mtracker.services.AuthService;
+import org.tc.mtracker.dto.UserSignUpResponseDTO;
 import org.tc.mtracker.service.AuthService;
 
 @RestController
@@ -18,9 +17,9 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/sign-up")
-    public ResponseEntity<UserSignedUpResponseDTO> signUp(@Valid @RequestBody UserSignUpRequestDTO userSignUpRequestDTO) {
-        UserSignedUpResponseDTO userSignedUpResponseDTO = authService.signUp(userSignUpRequestDTO);
-        return ResponseEntity.ok().body(userSignedUpResponseDTO);
+    public ResponseEntity<UserSignUpResponseDTO> signUp(@Valid @RequestBody UserSignUpRequestDTO userSignUpRequestDTO) {
+        UserSignUpResponseDTO userSignUpResponseDTO = authService.signUp(userSignUpRequestDTO);
+        return ResponseEntity.ok().body(userSignUpResponseDTO);
     }
 
     @GetMapping("/verify")

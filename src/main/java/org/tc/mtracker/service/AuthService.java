@@ -7,7 +7,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.tc.mtracker.dto.JwtResponseDTO;
 import org.tc.mtracker.dto.UserSignUpRequestDTO;
-import org.tc.mtracker.dto.UserSignedUpResponseDTO;
 import org.tc.mtracker.entity.UserEntity;
 import org.tc.mtracker.security.CustomUserDetails;
 
@@ -20,9 +19,9 @@ public class AuthService {
     private final EmailService emailService;
 
     @Transactional
-    public UserSignedUpResponseDTO signUp(UserSignUpRequestDTO dto) {
+    public UserSignUpResponseDTO signUp(UserSignUpRequestDTO dto) {
         if (userService.isExistsByEmail(dto.email())) {
-            throw new UserWithThisEmailAlreadyExistsException("User with this email already exists");
+            throw new UserAlreadyExistsException("User with this email already exists");
         }
         UserEntity userEntity = UserEntity.builder()
                 .email(dto.email())

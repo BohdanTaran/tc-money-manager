@@ -1,6 +1,6 @@
 package org.tc.mtracker.dto;
 
-public record UserSignedUpResponseDTO(
+public record UserSignUpResponseDTO(
         Long id,
         String fullName,
         String email,
