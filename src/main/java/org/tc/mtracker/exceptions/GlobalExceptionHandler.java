@@ -15,8 +15,8 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    @ExceptionHandler(UserWithThisEmailAlreadyExistsException.class)
-    public ProblemDetail handleUserWithThisEmailAlreadyExistsException(UserWithThisEmailAlreadyExistsException ex) {
+    @ExceptionHandler(UserAlreadyExistsException.class)
+    public ProblemDetail handleUserWithThisEmailAlreadyExistsException(UserAlreadyExistsException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
     }
 
