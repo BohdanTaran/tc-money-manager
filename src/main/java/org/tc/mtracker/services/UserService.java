@@ -14,7 +14,7 @@ public class UserService {
         return userRepository.save(userEntity);
     }
 
-    boolean isExistsByEmail(String email) {
+    public boolean isExistsByEmail(String email) {
         return userRepository.findByEmail(email).isPresent();
     }
 }
