@@ -24,3 +24,7 @@ logging:
     org:
       springframework:
         security: TRACE
+security:
+  jwt:
+    secret-key: ${L_MT_JWT_SECRET_KEY}
+    expiration-time: ${L_MT_JWT_EXPIRATION_TIME}
