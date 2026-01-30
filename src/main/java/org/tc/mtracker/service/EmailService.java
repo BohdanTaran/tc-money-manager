@@ -5,7 +5,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
-import org.tc.mtracker.entity.UserEntity;
+import org.tc.mtracker.entity.User;
 import org.tc.mtracker.security.CustomUserDetails;
 
 import java.util.Map;
@@ -27,7 +27,7 @@ public class EmailService {
         javaMailSender.send(message);
     }
 
-    public void sendVerificationEmail(UserEntity user) {
+    public void sendVerificationEmail(User user) {
         String token = generateVerificationToken(user);
         String verificationLink = String.format("%s/api/v1/auth/verify?token=%s", frontendUrl, token);
 
@@ -36,10 +36,10 @@ public class EmailService {
                 "Please verify your email by clicking this link: " + verificationLink);
     }
 
-    public String generateVerificationToken(UserEntity userEntity) {
+    public String generateVerificationToken(User user) {
         return jwtService.generateToken(
                 Map.of("purpose", "email_verification"),
-                new CustomUserDetails(userEntity)
+                new CustomUserDetails(user)
         );
     }
 }

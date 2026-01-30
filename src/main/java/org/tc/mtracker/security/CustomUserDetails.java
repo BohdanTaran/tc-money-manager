@@ -4,7 +4,7 @@ import lombok.Getter;
 import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.tc.mtracker.entity.UserEntity;
+import org.tc.mtracker.entity.User;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -18,7 +18,7 @@ public class CustomUserDetails implements UserDetails {
     private final String fullName;
     private final boolean isActivated;
 
-    public CustomUserDetails(UserEntity user) {
+    public CustomUserDetails(User user) {
         this.id = user.getId();
         this.email = user.getEmail();
         this.password = user.getPassword();

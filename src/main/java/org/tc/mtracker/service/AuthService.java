@@ -7,7 +7,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.tc.mtracker.dto.JwtResponseDTO;
 import org.tc.mtracker.dto.UserSignUpRequestDTO;
-import org.tc.mtracker.entity.UserEntity;
+import org.tc.mtracker.dto.UserSignUpResponseDTO;
+import org.tc.mtracker.entity.User;
+import org.tc.mtracker.exceptions.UserAlreadyActivatedException;
+import org.tc.mtracker.exceptions.UserAlreadyExistsException;
 import org.tc.mtracker.security.CustomUserDetails;
 
 @Service
@@ -23,7 +26,7 @@ public class AuthService {
         if (userService.isExistsByEmail(dto.email())) {
             throw new UserAlreadyExistsException("User with this email already exists");
         }
-        UserEntity userEntity = UserEntity.builder()
+        User user = User.builder()
                 .email(dto.email())
                 .fullName(dto.fullName())
                 .password(passwordEncoder.encode(dto.password()))
@@ -31,10 +34,10 @@ public class AuthService {
                 .isActivated(false)
                 .build();
 
-        UserEntity save = userService.save(userEntity);
-        emailService.sendVerificationEmail(userEntity);
+        User save = userService.save(user);
+        emailService.sendVerificationEmail(user);
 
-        return new UserSignedUpResponseDTO(save.getId(), save.getFullName(), save.getEmail(), save.getCurrencyCode(), save.isActivated());
+        return new UserSignUpResponseDTO(save.getId(), save.getFullName(), save.getEmail(), save.getCurrencyCode(), save.isActivated());
     }
 
     public JwtResponseDTO verifyToken(String token) {
@@ -44,7 +47,7 @@ public class AuthService {
         }
 
         String email = jwtService.extractUsername(token);
-        UserEntity user = userService.findByEmail(email);
+        User user = userService.findByEmail(email);
         if (user.isActivated()) {
             throw new UserAlreadyActivatedException("User with email " + email + " is already activated");
         }
