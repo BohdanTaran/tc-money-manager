@@ -1,4 +1,4 @@
-package org.tc.mtracker.services;
+package org.tc.mtracker.service;
 
 import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;

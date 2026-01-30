@@ -8,6 +8,7 @@ import org.tc.mtracker.dto.JwtResponseDTO;
 import org.tc.mtracker.dto.UserSignUpRequestDTO;
 import org.tc.mtracker.dto.UserSignedUpResponseDTO;
 import org.tc.mtracker.services.AuthService;
+import org.tc.mtracker.service.AuthService;
 
 @RestController
 @RequestMapping(value = "/api/v1/auth")
