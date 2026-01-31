@@ -10,17 +10,19 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.tc.mtracker.auth.dto.AuthRequestDTO;
 import org.tc.mtracker.auth.dto.AuthResponseDTO;
+import org.tc.mtracker.auth.dto.LoginRequestDto;
 import org.tc.mtracker.security.JwtResponseDTO;
 
 @RestController
 @RequestMapping(value = "/api/v1/auth")
 @RequiredArgsConstructor
-@Tag(name = "Auth", description = "Authentication and email verification endpoints")
+@Tag(name = "Authentication", description = "Authentication and email verification endpoints")
 public class AuthController {
 
     private final AuthService authService;
@@ -61,6 +63,64 @@ public class AuthController {
             @Valid @RequestBody AuthRequestDTO authRequestDTO) {
         AuthResponseDTO authResponseDTO = authService.signUp(authRequestDTO);
         return ResponseEntity.ok().body(authResponseDTO);
+    }
+
+    @Operation(
+            summary = "Login user",
+            description = "Logins user and returns an access token."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "User logged successfully",
+                    content = {@Content(mediaType = "application/json",
+                            schema = @Schema(implementation = JwtResponseDTO.class))
+                    }
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Authentication failed",
+                    content = {@Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ProblemDetail.class))
+                    }
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Fields were filled incorrectly",
+                    content = {@Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ProblemDetail.class))
+                    }
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "Access Denied",
+                    content = {@Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ProblemDetail.class))
+                    }
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Internal Server Error",
+                    content = {@Content(mediaType = "application/json",
+                            schema = @Schema(implementation = ProblemDetail.class))
+                    }
+            ),
+    })
+    @PostMapping("/login")
+    public ResponseEntity<JwtResponseDTO> login(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "User login details",
+                    required = true,
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = LoginRequestDto.class))
+            )
+            @Valid @RequestBody LoginRequestDto loginRequestDto
+    ) {
+        JwtResponseDTO jwt = authService.login(loginRequestDto);
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(jwt);
     }
 
     @Operation(

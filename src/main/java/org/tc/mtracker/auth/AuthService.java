@@ -2,22 +2,31 @@ package org.tc.mtracker.auth;
 
 import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.tc.mtracker.auth.dto.AuthRequestDTO;
 import org.tc.mtracker.auth.dto.AuthResponseDTO;
+import org.tc.mtracker.auth.dto.LoginRequestDto;
 import org.tc.mtracker.security.CustomUserDetails;
 import org.tc.mtracker.security.JwtResponseDTO;
 import org.tc.mtracker.security.JwtService;
 import org.tc.mtracker.user.User;
+import org.tc.mtracker.user.UserRepository;
 import org.tc.mtracker.user.UserService;
 import org.tc.mtracker.utils.exceptions.UserAlreadyActivatedException;
 import org.tc.mtracker.utils.exceptions.UserAlreadyExistsException;
 
+import java.util.Optional;
+
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AuthService {
+
+    private final UserRepository userRepository;
     private final UserService userService;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
@@ -40,6 +49,23 @@ public class AuthService {
         emailService.sendVerificationEmail(user);
 
         return new AuthResponseDTO(save.getId(), save.getFullName(), save.getEmail(), save.getCurrencyCode(), save.isActivated());
+    }
+
+    public JwtResponseDTO login(LoginRequestDto dto) {
+        Optional<User> user = userRepository.findByEmail(dto.email());
+        if (!user.isPresent()) {
+            throw new BadCredentialsException("User with email " + dto.email() + " does not exist.");
+        }
+
+        if (!passwordEncoder.matches(dto.password(), user.get().getPassword())) {
+            throw new BadCredentialsException("Invalid credentials. Password does not match!");
+        }
+
+        CustomUserDetails userDetails = new CustomUserDetails(user.get());
+        String accessToken = jwtService.generateToken(userDetails);
+
+        log.info("User with email {} is authenticated successfully.", user.get().getEmail());
+        return new JwtResponseDTO(accessToken);
     }
 
     public JwtResponseDTO verifyToken(String token) {
