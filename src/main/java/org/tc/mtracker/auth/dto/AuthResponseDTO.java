@@ -1,9 +1,9 @@
-package org.tc.mtracker.dto;
+package org.tc.mtracker.auth.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "User sign up response")
-public record UserSignUpResponseDTO(
+public record AuthResponseDTO(
         @Schema(description = "User's id", example = "123123")
         Long id,
 

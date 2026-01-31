@@ -1,4 +1,4 @@
-package org.tc.mtracker.entity;
+package org.tc.mtracker.user;
 
 import jakarta.persistence.*;
 import lombok.*;

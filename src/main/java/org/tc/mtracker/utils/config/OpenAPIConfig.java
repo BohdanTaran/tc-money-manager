@@ -1,4 +1,4 @@
-package org.tc.mtracker.config;
+package org.tc.mtracker.utils.config;
 
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;

@@ -1,12 +1,13 @@
-package org.tc.mtracker.service;
+package org.tc.mtracker.auth;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
-import org.tc.mtracker.entity.User;
 import org.tc.mtracker.security.CustomUserDetails;
+import org.tc.mtracker.security.JwtService;
+import org.tc.mtracker.user.User;
 
 import java.util.Map;
 

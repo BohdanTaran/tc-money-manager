@@ -1,4 +1,4 @@
-package org.tc.mtracker.dto;
+package org.tc.mtracker.security;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 

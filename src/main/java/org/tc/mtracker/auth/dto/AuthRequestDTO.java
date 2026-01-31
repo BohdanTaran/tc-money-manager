@@ -1,4 +1,4 @@
-package org.tc.mtracker.dto;
+package org.tc.mtracker.auth.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
@@ -7,7 +7,7 @@ import jakarta.validation.constraints.Pattern;
 import org.hibernate.validator.constraints.Length;
 
 @Schema(description = "User sign up request")
-public record UserSignUpRequestDTO(
+public record AuthRequestDTO(
         @Schema(description = "User's email address", example = "example@mail.com")
         @NotBlank @Email String email,
 

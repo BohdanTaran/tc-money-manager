@@ -1,4 +1,4 @@
-package org.tc.mtracker.exceptions;
+package org.tc.mtracker.utils.exceptions;
 
 import io.jsonwebtoken.JwtException;
 import org.springframework.dao.DataIntegrityViolationException;

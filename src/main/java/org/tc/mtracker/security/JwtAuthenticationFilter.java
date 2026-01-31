@@ -1,4 +1,4 @@
-package org.tc.mtracker.config.filters;
+package org.tc.mtracker.security;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -15,7 +15,6 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.HandlerExceptionResolver;
-import org.tc.mtracker.service.JwtService;
 
 import java.io.IOException;
 

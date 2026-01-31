@@ -1,4 +1,4 @@
-package org.tc.mtracker.service;
+package org.tc.mtracker.security;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;

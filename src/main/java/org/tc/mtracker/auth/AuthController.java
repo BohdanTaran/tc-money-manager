@@ -1,4 +1,4 @@
-package org.tc.mtracker.controller;
+package org.tc.mtracker.auth;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -13,10 +13,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.tc.mtracker.dto.JwtResponseDTO;
-import org.tc.mtracker.dto.UserSignUpRequestDTO;
-import org.tc.mtracker.dto.UserSignUpResponseDTO;
-import org.tc.mtracker.service.AuthService;
+import org.tc.mtracker.auth.dto.AuthRequestDTO;
+import org.tc.mtracker.auth.dto.AuthResponseDTO;
+import org.tc.mtracker.security.JwtResponseDTO;
 
 @RestController
 @RequestMapping(value = "/api/v1/auth")
@@ -33,7 +32,7 @@ public class AuthController {
                     responseCode = "201",
                     description = "User created successfully",
                     content = {@Content(mediaType = "application/json",
-                            schema = @Schema(implementation = UserSignUpResponseDTO.class))
+                            schema = @Schema(implementation = AuthResponseDTO.class))
                     }
             ),
             @ApiResponse(
@@ -52,16 +51,16 @@ public class AuthController {
             )
     })
     @PostMapping("/sign-up")
-    public ResponseEntity<UserSignUpResponseDTO> signUp(
+    public ResponseEntity<AuthResponseDTO> signUp(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "User sign up details",
                     required = true,
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = UserSignUpRequestDTO.class))
+                            schema = @Schema(implementation = AuthRequestDTO.class))
             )
-            @Valid @RequestBody UserSignUpRequestDTO userSignUpRequestDTO) {
-        UserSignUpResponseDTO userSignUpResponseDTO = authService.signUp(userSignUpRequestDTO);
-        return ResponseEntity.ok().body(userSignUpResponseDTO);
+            @Valid @RequestBody AuthRequestDTO authRequestDTO) {
+        AuthResponseDTO authResponseDTO = authService.signUp(authRequestDTO);
+        return ResponseEntity.ok().body(authResponseDTO);
     }
 
     @Operation(

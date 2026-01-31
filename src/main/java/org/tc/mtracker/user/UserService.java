@@ -1,9 +1,7 @@
-package org.tc.mtracker.service;
+package org.tc.mtracker.user;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.tc.mtracker.entity.User;
-import org.tc.mtracker.repository.UserRepository;
 
 @Service
 @RequiredArgsConstructor

@@ -1,4 +1,4 @@
-package org.tc.mtracker.exceptions;
+package org.tc.mtracker.utils.exceptions;
 
 public class UserAlreadyExistsException extends RuntimeException {
     public UserAlreadyExistsException(String message) {

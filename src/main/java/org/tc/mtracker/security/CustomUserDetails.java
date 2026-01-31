@@ -4,7 +4,7 @@ import lombok.Getter;
 import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.tc.mtracker.entity.User;
+import org.tc.mtracker.user.User;
 
 import java.util.Collection;
 import java.util.Collections;

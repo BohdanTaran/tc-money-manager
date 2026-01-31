@@ -1,17 +1,19 @@
-package org.tc.mtracker.service;
+package org.tc.mtracker.auth;
 
 import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.tc.mtracker.dto.JwtResponseDTO;
-import org.tc.mtracker.dto.UserSignUpRequestDTO;
-import org.tc.mtracker.dto.UserSignUpResponseDTO;
-import org.tc.mtracker.entity.User;
-import org.tc.mtracker.exceptions.UserAlreadyActivatedException;
-import org.tc.mtracker.exceptions.UserAlreadyExistsException;
+import org.tc.mtracker.auth.dto.AuthRequestDTO;
+import org.tc.mtracker.auth.dto.AuthResponseDTO;
 import org.tc.mtracker.security.CustomUserDetails;
+import org.tc.mtracker.security.JwtResponseDTO;
+import org.tc.mtracker.security.JwtService;
+import org.tc.mtracker.user.User;
+import org.tc.mtracker.user.UserService;
+import org.tc.mtracker.utils.exceptions.UserAlreadyActivatedException;
+import org.tc.mtracker.utils.exceptions.UserAlreadyExistsException;
 
 @Service
 @RequiredArgsConstructor
@@ -22,7 +24,7 @@ public class AuthService {
     private final EmailService emailService;
 
     @Transactional
-    public UserSignUpResponseDTO signUp(UserSignUpRequestDTO dto) {
+    public AuthResponseDTO signUp(AuthRequestDTO dto) {
         if (userService.isExistsByEmail(dto.email())) {
             throw new UserAlreadyExistsException("User with this email already exists");
         }
@@ -37,7 +39,7 @@ public class AuthService {
         User save = userService.save(user);
         emailService.sendVerificationEmail(user);
 
-        return new UserSignUpResponseDTO(save.getId(), save.getFullName(), save.getEmail(), save.getCurrencyCode(), save.isActivated());
+        return new AuthResponseDTO(save.getId(), save.getFullName(), save.getEmail(), save.getCurrencyCode(), save.isActivated());
     }
 
     public JwtResponseDTO verifyToken(String token) {
