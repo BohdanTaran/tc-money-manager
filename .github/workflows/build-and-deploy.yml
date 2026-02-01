@@ -30,6 +30,9 @@ jobs:
   test:
     needs: compile
     runs-on: ubuntu-latest
+    env:
+      L_MT_JWT_SECRET_KEY: ${{ secrets.L_MT_JWT_SECRET_KEY }}
+      L_MT_JWT_EXPIRATION_TIME: ${{ secrets.L_MT_JWT_EXPIRATION_TIME }}
     name: Test project
     steps:
       - name: checkout
