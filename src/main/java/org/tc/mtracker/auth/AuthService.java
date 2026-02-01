@@ -19,8 +19,6 @@ import org.tc.mtracker.user.UserService;
 import org.tc.mtracker.utils.exceptions.UserAlreadyActivatedException;
 import org.tc.mtracker.utils.exceptions.UserAlreadyExistsException;
 
-import java.util.Optional;
-
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -52,19 +50,18 @@ public class AuthService {
     }
 
     public JwtResponseDTO login(LoginRequestDto dto) {
-        Optional<User> user = userRepository.findByEmail(dto.email());
-        if (!user.isPresent()) {
-            throw new BadCredentialsException("User with email " + dto.email() + " does not exist.");
-        }
+        User user = userRepository.findByEmail(dto.email()).orElseThrow(
+                () -> new BadCredentialsException("User with email " + dto.email() + " does not exist.")
+        );
 
-        if (!passwordEncoder.matches(dto.password(), user.get().getPassword())) {
+        if (!passwordEncoder.matches(dto.password(), user.getPassword())) {
             throw new BadCredentialsException("Invalid credentials. Password does not match!");
         }
 
-        CustomUserDetails userDetails = new CustomUserDetails(user.get());
+        CustomUserDetails userDetails = new CustomUserDetails(user);
         String accessToken = jwtService.generateToken(userDetails);
 
-        log.info("User with email {} is authenticated successfully.", user.get().getEmail());
+        log.info("User with id {} is authenticated successfully.", user.getId());
         return new JwtResponseDTO(accessToken);
     }
 
