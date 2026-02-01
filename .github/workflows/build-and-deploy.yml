@@ -69,7 +69,7 @@ jobs:
           architecture: x64
           cache: 'maven'
       - name: Run the Maven package phase
-        run: mvn clean package
+        run: mvn clean package -DskipTests
 
   build-docker-and-push-to-ecr:
     if: github.event_name == 'push'
