@@ -65,6 +65,14 @@ public class AuthService {
         return new JwtResponseDTO(accessToken);
     }
 
+    public void sendTokenToResetPassword(String email) {
+        User user = userRepository.findByEmail(email).orElseThrow(
+                () -> new BadCredentialsException("User with email " + email + " does not exist.")
+        );
+
+        emailService.sendResetPassword(user);
+    }
+
     public JwtResponseDTO verifyToken(String token) {
         String purpose = jwtService.extractClaim(token, claims -> claims.get("purpose", String.class));
         if (!"email_verification".equals(purpose)) {

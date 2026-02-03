@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import org.tc.mtracker.auth.dto.AuthRequestDTO;
 import org.tc.mtracker.auth.dto.AuthResponseDTO;
 import org.tc.mtracker.auth.dto.LoginRequestDto;
+import org.tc.mtracker.auth.dto.ResetPasswordDTO;
 import org.tc.mtracker.security.JwtResponseDTO;
 
 @RestController
@@ -121,6 +123,24 @@ public class AuthController {
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(jwt);
+    }
+
+    @PostMapping("/getTokenToResetPassword")
+    public ResponseEntity<String> sendResetPasswordToken(
+            @RequestParam("email") @Email String email
+    ) {
+        authService.sendTokenToResetPassword(email);
+        return ResponseEntity
+                .ok()
+                .body("Your link to reset password was sent!");
+    }
+
+    @GetMapping("/reset-password/confirm")
+    public ResponseEntity<JwtResponseDTO> resetPassword(
+            @Valid @RequestBody ResetPasswordDTO resetPasswordDTO
+    ) {
+
+        return null;
     }
 
     @Operation(

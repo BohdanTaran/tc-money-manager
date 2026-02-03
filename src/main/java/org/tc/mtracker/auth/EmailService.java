@@ -37,6 +37,15 @@ public class EmailService {
                 "Please verify your email by clicking this link: " + verificationLink);
     }
 
+    public void sendResetPassword(User user) {
+        String token = generateVerificationToken(user);
+        String verificationLink = String.format("%s/api/v1/auth/verify?token=%s", frontendUrl, token);
+
+        sendEmail(user.getEmail(),
+                "Reset Password",
+                "Please click on this link within 24 hours to reset your password: " + verificationLink);
+    }
+
     public String generateVerificationToken(User user) {
         return jwtService.generateToken(
                 Map.of("purpose", "email_verification"),
