@@ -13,51 +13,62 @@ import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignReques
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.time.Duration;
 
 @Service
 @RequiredArgsConstructor
 public class S3Service {
 
+    private static final Duration PRESIGNED_URL_TTL = Duration.ofMinutes(60);
+
     private final S3Client s3Client;
     private final S3Presigner s3Presigner;
-
-    @Value("${aws.bucket-name}")
+    @Value("${aws.s3.bucket-name}")
     private String bucketName;
 
-    public void saveFile(String imageName, MultipartFile file) {
+
+    public void saveFile(String objectKey, MultipartFile file) {
+        PutObjectRequest putObjectRequest = buildPutObjectRequest(objectKey, file);
+
         try {
-            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
-                    .bucket(bucketName)
-                    .key(imageName)
-                    .contentType(file.getContentType())
-                    .build();
-
-            s3Client.putObject(putObjectRequest,
-                    RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
-
+            s3Client.putObject(
+                    putObjectRequest,
+                    RequestBody.fromInputStream(file.getInputStream(), file.getSize())
+            );
         } catch (IOException e) {
-            throw new IllegalArgumentException(e);
+            throw new UncheckedIOException("Failed to upload file to S3. key=" + objectKey, e);
         }
     }
 
-    public String generatePresignedUrl(String imageName) {
-        if (imageName == null || imageName.isEmpty()) {
+    public String generatePresignedUrl(String objectKey) {
+        if (objectKey == null || objectKey.isBlank()) {
             return null;
         }
 
-        GetObjectRequest getObjectRequest = GetObjectRequest.builder()
-                .bucket(bucketName)
-                .key(imageName)
-                .build();
+        GetObjectRequest getObjectRequest = buildGetObjectRequest(objectKey);
 
         GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
-                .signatureDuration(Duration.ofMinutes(60))
+                .signatureDuration(PRESIGNED_URL_TTL)
                 .getObjectRequest(getObjectRequest)
                 .build();
 
         PresignedGetObjectRequest presignedRequest = s3Presigner.presignGetObject(presignRequest);
-
         return presignedRequest.url().toString();
+    }
+
+    private PutObjectRequest buildPutObjectRequest(String objectKey, MultipartFile file) {
+        return PutObjectRequest.builder()
+                .bucket(bucketName)
+                .key(objectKey)
+                .contentType(file.getContentType())
+                .build();
+    }
+
+    private GetObjectRequest buildGetObjectRequest(String objectKey) {
+        return GetObjectRequest.builder()
+                .bucket(bucketName)
+                .key(objectKey)
+                .build();
     }
 }
