@@ -45,4 +45,5 @@ aws:
   region: eu-central-1
   access-key-id: ${L_MT_AWS_ACCESS_KEY_ID}
   secret-access-key: ${L_MT_AWS_SECRET_KEY}
-  bucket-name: ${L_MT_AWS_S3_BUCKET_NAME}
+  s3:
+    bucket-name: ${L_MT_AWS_S3_BUCKET_NAME}

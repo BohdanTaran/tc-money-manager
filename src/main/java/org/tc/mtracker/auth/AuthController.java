@@ -60,23 +60,27 @@ public class AuthController {
     @PostMapping(value = "/sign-up", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<AuthResponseDTO> signUp(
             @Parameter(
-                    name = "Avatar",
-                    required = false,
-                    content = @Content(
-                            schema = @Schema(type = "string", format = "binary"))
-            )
-            @ValidImage
-            @RequestPart(name = "avatar", required = false) MultipartFile avatar,
-
-            @Parameter(
                     name = "User dto",
                     required = true,
                     content = @Content(
-                            mediaType = "application/json",
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = AuthRequestDTO.class))
             )
             @Valid
-            @RequestPart(name = "dto") AuthRequestDTO authRequestDTO
+            @RequestPart(name = "dto") AuthRequestDTO authRequestDTO,
+
+            @Parameter(
+                    name = "Avatar",
+                    required = false,
+                    content = {
+                            @Content(mediaType = "image/jpeg", schema = @Schema(type = "string", format = "binary")),
+                            @Content(mediaType = "image/png", schema = @Schema(type = "string", format = "binary")),
+                            @Content(mediaType = "image/webp", schema = @Schema(type = "string", format = "binary"))
+                    }
+            )
+            @ValidImage
+            @RequestPart(name = "avatar", required = false) MultipartFile avatar
+
     ) {
         AuthResponseDTO authResponseDTO = authService.signUp(authRequestDTO, avatar);
         return ResponseEntity.status(HttpStatus.CREATED).body(authResponseDTO);
