@@ -88,7 +88,7 @@ public class AuthService {
                 .fullName(dto.fullName())
                 .password(passwordEncoder.encode(dto.password()))
                 .currencyCode(dto.currencyCode())
-                .avatarUrl(imageKey)
+                .avatarId(imageKey)
                 .isActivated(false)
                 .build();
     }
