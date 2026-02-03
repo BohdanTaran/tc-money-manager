@@ -4,29 +4,39 @@ import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.Arrays;
-import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 public class ImageValidator implements ConstraintValidator<ValidImage, MultipartFile> {
-    private final List<String> allowedExtensions = Arrays.asList("png", "jpg", "jpeg");
-    private final List<String> allowedMimeTypes = Arrays.asList("image/png", "image/jpg", "image/jpeg");
+
+    private static final Set<String> ALLOWED_EXTENSIONS = Set.of("png", "jpg", "jpeg");
+    private static final Set<String> ALLOWED_MIME_TYPES = Set.of("image/png", "image/jpg", "image/jpeg");
 
     @Override
-    public boolean isValid(MultipartFile multipartFile, ConstraintValidatorContext constraintValidatorContext) {
-        if (multipartFile == null || multipartFile.isEmpty() || multipartFile.getContentType() == null) {
+    public boolean isValid(MultipartFile file, ConstraintValidatorContext context) {
+        if (file == null || file.isEmpty() || file.getContentType() == null) {
             return true;
         }
-        String contentType = multipartFile.getContentType();
 
-        if (!allowedMimeTypes.contains(contentType)) return false;
-        String originalFilename = multipartFile.getOriginalFilename();
+        String contentType = file.getContentType();
+        if (!ALLOWED_MIME_TYPES.contains(contentType)) {
+            return false;
+        }
 
-        if (originalFilename == null) return false;
+        String extension = extractExtension(file.getOriginalFilename());
+        return extension != null && ALLOWED_EXTENSIONS.contains(extension);
+    }
 
-        String extension = originalFilename
-                .substring(originalFilename.lastIndexOf(".") + 1);
+    private static String extractExtension(String originalFilename) {
+        if (originalFilename == null) {
+            return null;
+        }
 
-        return allowedExtensions.contains(extension);
+        int lastDotIndex = originalFilename.lastIndexOf('.');
+        if (lastDotIndex < 0 || lastDotIndex == originalFilename.length() - 1) {
+            return null;
+        }
+
+        return originalFilename.substring(lastDotIndex + 1).toLowerCase(Locale.ROOT);
     }
 }
-
