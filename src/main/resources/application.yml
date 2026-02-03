@@ -40,3 +40,9 @@ security:
   jwt:
     secret-key: ${L_MT_JWT_SECRET_KEY}
     expiration-time: ${L_MT_JWT_EXPIRATION_TIME}
+
+aws:
+  region: eu-central-1
+  access-key-id: ${L_MT_AWS_ACCESS_KEY_ID}
+  secret-access-key: ${L_MT_AWS_SECRET_KEY}
+  bucket-name: ${L_MT_AWS_S3_BUCKET_NAME}
