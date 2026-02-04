@@ -1,4 +1,4 @@
-package org.tc.mtracker.image;
+package org.tc.mtracker.utils;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
