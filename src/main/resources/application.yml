@@ -4,14 +4,17 @@ server:
 spring:
   application:
     name: mtracker
+
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: ${L_MT_MYSQL_URL}
     username: ${L_MT_MYSQL_USERNAME}
     password: ${L_MT_MYSQL_PASSWORD}
+
   jpa:
     hibernate:
       ddl-auto: none
+
   mail:
     host: smtp.gmail.com
     port: 587
@@ -24,6 +27,11 @@ spring:
           starttls:
             enable: true
 
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
+
 springdoc:
   swagger-ui:
     path: /swagger
@@ -33,10 +41,16 @@ springdoc:
 logging:
   level:
     org:
-      springframework:
-        security: TRACE
+      springframework: INFO
 
 security:
   jwt:
     secret-key: ${L_MT_JWT_SECRET_KEY}
     expiration-time: ${L_MT_JWT_EXPIRATION_TIME}
+
+aws:
+  region: ${L_MT_AWS_REGION}
+  access-key-id: ${L_MT_AWS_ACCESS_KEY_ID}
+  secret-access-key: ${L_MT_AWS_SECRET_KEY}
+  s3:
+    bucket-name: ${L_MT_AWS_S3_BUCKET_NAME}

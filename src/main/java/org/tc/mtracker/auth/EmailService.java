@@ -1,6 +1,7 @@
 package org.tc.mtracker.auth;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -11,16 +12,35 @@ import org.tc.mtracker.user.User;
 
 import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class EmailService {
+
+    private static final String PURPOSE_CLAIM_KEY = "purpose";
+    private static final String EMAIL_VERIFICATION_PURPOSE = "email_verification";
+    private static final String EMAIL_VERIFICATION_SUBJECT = "Email Verification";
+    private static final String VERIFICATION_PATH_AND_QUERY = "/api/v1/auth/verify?token=%s";
+
     private final JwtService jwtService;
     private final JavaMailSender javaMailSender;
 
     @Value("${app.frontend-url:http://localhost:8080}")
     private String frontendUrl;
 
-    public void sendEmail(String to, String subject, String content) {
+    public void sendVerificationEmail(User user) {
+        String token = generateVerificationToken(user);
+        String verificationLink = buildVerificationLink(token);
+
+        sendPlainTextEmail(
+                user.getEmail(),
+                EMAIL_VERIFICATION_SUBJECT,
+                "Please verify your email by clicking this link: " + verificationLink
+        );
+        log.info("Verification email sent to user with id {}", user.getId());
+    }
+
+    private void sendPlainTextEmail(String to, String subject, String content) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(to);
         message.setSubject(subject);
@@ -28,13 +48,8 @@ public class EmailService {
         javaMailSender.send(message);
     }
 
-    public void sendVerificationEmail(User user) {
-        String token = generateVerificationToken(user);
-        String verificationLink = String.format("%s/api/v1/auth/verify?token=%s", frontendUrl, token);
-
-        sendEmail(user.getEmail(),
-                "Email Verification",
-                "Please verify your email by clicking this link: " + verificationLink);
+    private String buildVerificationLink(String token) {
+        return frontendUrl + String.format(VERIFICATION_PATH_AND_QUERY, token);
     }
     /**
      * Generates an email with link
@@ -44,14 +59,14 @@ public class EmailService {
     public void sendResetPassword(User user, String resetToken) {
         String verificationLink = String.format("%s/api/v1/auth/verify?resetToken=%s", frontendUrl, resetToken);
 
-        sendEmail(user.getEmail(),
+        sendPlainTextEmail(user.getEmail(),
                 "Reset Password",
                 "Please click on this link within 24 hours to reset your password: " + verificationLink);
     }
 
-    public String generateVerificationToken(User user) {
+    private String generateVerificationToken(User user) {
         return jwtService.generateToken(
-                Map.of("purpose", "email_verification"),
+                Map.of(PURPOSE_CLAIM_KEY, EMAIL_VERIFICATION_PURPOSE),
                 new CustomUserDetails(user)
         );
     }

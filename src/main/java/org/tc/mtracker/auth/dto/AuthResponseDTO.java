@@ -16,6 +16,9 @@ public record AuthResponseDTO(
         @Schema(description = "User's main currency code", example = "USD")
         String currencyCode,
 
+        @Schema(description = "User's avatar url", example = "https://example.com/avatar.jpg")
+        String avatarUrl,
+
         @Schema(description = "User's activation status", example = "false")
         boolean isActivated
 ) {

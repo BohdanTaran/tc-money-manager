@@ -33,6 +33,11 @@ jobs:
     env:
       L_MT_JWT_SECRET_KEY: ${{ secrets.L_MT_JWT_SECRET_KEY }}
       L_MT_JWT_EXPIRATION_TIME: ${{ secrets.L_MT_JWT_EXPIRATION_TIME }}
+      L_MT_AWS_ACCESS_KEY_ID: ${{ secrets.L_MT_AWS_ACCESS_KEY_ID }}
+      L_MT_AWS_SECRET_KEY: ${{ secrets.L_MT_AWS_SECRET_KEY }}
+      L_MT_AWS_S3_BUCKET_NAME: ${{ secrets.L_MT_AWS_S3_BUCKET_NAME }}
+      L_MT_AWS_REGION: ${{ secrets.L_MT_AWS_REGION }}
+
     name: Test project
     steps:
       - name: checkout
@@ -98,5 +103,7 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
 
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+                       -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest

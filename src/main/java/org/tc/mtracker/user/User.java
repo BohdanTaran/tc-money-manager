@@ -29,7 +29,7 @@ public class User {
     @Column(unique = true, nullable = false)
     private String email;
 
-    private String avatarUrl;
+    private String avatarId;
 
     private String currencyCode;
 

@@ -3,54 +3,65 @@ package org.tc.mtracker.auth;
 import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.tc.mtracker.auth.dto.AuthRequestDTO;
-import org.tc.mtracker.auth.dto.AuthResponseDTO;
-import org.tc.mtracker.auth.dto.LoginRequestDto;
-import org.tc.mtracker.auth.dto.ResetPasswordDTO;
+import org.springframework.web.multipart.MultipartFile;
+import org.tc.mtracker.auth.dto.*;
 import org.tc.mtracker.security.CustomUserDetails;
 import org.tc.mtracker.security.JwtResponseDTO;
 import org.tc.mtracker.security.JwtService;
 import org.tc.mtracker.user.User;
 import org.tc.mtracker.user.UserRepository;
 import org.tc.mtracker.user.UserService;
+import org.tc.mtracker.utils.S3Service;
 import org.tc.mtracker.utils.exceptions.UserAlreadyActivatedException;
 import org.tc.mtracker.utils.exceptions.UserAlreadyExistsException;
 import org.tc.mtracker.utils.exceptions.UserResetPasswordException;
 
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class AuthService {
 
+    private static final String EMAIL_VERIFICATION_PURPOSE = "email_verification";
+
     private final UserRepository userRepository;
     private final UserService userService;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final S3Service imageService;
+
+    private final AuthMapper authMapper;
 
     @Transactional
-    public AuthResponseDTO signUp(AuthRequestDTO dto) {
+    public AuthResponseDTO signUp(AuthRequestDTO dto, MultipartFile avatar) {
         if (userService.isExistsByEmail(dto.email())) {
             throw new UserAlreadyExistsException("User with this email already exists");
         }
+
+        String imageKey = UUID.randomUUID().toString();
+        String avatarUrl = uploadAvatar(imageKey, avatar);
+
         User user = User.builder()
                 .email(dto.email())
                 .fullName(dto.fullName())
                 .password(passwordEncoder.encode(dto.password()))
                 .currencyCode(dto.currencyCode())
+                .avatarId(imageKey)
                 .isActivated(false)
                 .build();
+        User savedUser = userService.save(user);
 
-        User save = userService.save(user);
         emailService.sendVerificationEmail(user);
-
-        return new AuthResponseDTO(save.getId(), save.getFullName(), save.getEmail(), save.getCurrencyCode(), save.isActivated());
+        log.info("User with id {} is registered successfully.", savedUser.getId());
+        return authMapper.toAuthResponseDTO(savedUser, avatarUrl);
     }
 
     public JwtResponseDTO login(LoginRequestDto dto) {
@@ -62,8 +73,7 @@ public class AuthService {
             throw new BadCredentialsException("Invalid credentials. Password does not match!");
         }
 
-        CustomUserDetails userDetails = new CustomUserDetails(user);
-        String accessToken = jwtService.generateToken(userDetails);
+        String accessToken = jwtService.generateToken(new CustomUserDetails(user));
 
         log.info("User with id {} is authenticated successfully.", user.getId());
         return new JwtResponseDTO(accessToken);
@@ -115,21 +125,33 @@ public class AuthService {
 
     public JwtResponseDTO verifyToken(String token) {
         String purpose = jwtService.extractClaim(token, claims -> claims.get("purpose", String.class));
-        if (!"email_verification".equals(purpose)) {
+        if (!EMAIL_VERIFICATION_PURPOSE.equals(purpose)) {
             throw new JwtException("Invalid token type for verification");
         }
 
         String email = jwtService.extractUsername(token);
         User user = userService.findByEmail(email);
+
         if (user.isActivated()) {
             throw new UserAlreadyActivatedException("User with email " + email + " is already activated");
         }
+
         user.setActivated(true);
         userService.save(user);
 
-        CustomUserDetails userDetails = new CustomUserDetails(user);
-        String accessToken = jwtService.generateToken(userDetails);
-
+        String accessToken = jwtService.generateToken(new CustomUserDetails(user));
+        log.info("User with id {} is verified successfully.", user.getId());
         return new JwtResponseDTO(accessToken);
     }
+
+    private @Nullable String uploadAvatar(String imageKey, MultipartFile avatar) {
+        if (avatar == null || avatar.isEmpty()) {
+            return null;
+        }
+
+        imageService.saveFile(imageKey, avatar);
+        return imageService.generatePresignedUrl(imageKey);
+    }
 }
+
+

@@ -2,13 +2,43 @@ spring:
   config:
     activate:
       on-profile: dev
+
   datasource:
     url: ${MT_MYSQL_URL}
     username: ${MT_MYSQL_USERNAME}
     password: ${MT_MYSQL_PASSWORD}
+
     jpa:
       hibernate:
         ddl-auto: none
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MT_MAIL_USERNAME}
+    password: ${MT_MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+security:
+  jwt:
+    secret-key: ${MT_JWT_SECRET_KEY}
+    expiration-time: ${MT_JWT_EXPIRATION_TIME}
+
+aws:
+  region: ${MT_AWS_REGION}
+  access-key-id: ${MT_AWS_ACCESS_KEY_ID}
+  secret-access-key: ${MT_AWS_SECRET_KEY}
+  s3:
+    bucket-name: ${MT_AWS_S3_BUCKET_NAME}
 
 logging:
   level:

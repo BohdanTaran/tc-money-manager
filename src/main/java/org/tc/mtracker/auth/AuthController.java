@@ -12,19 +12,24 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.tc.mtracker.auth.dto.AuthRequestDTO;
 import org.tc.mtracker.auth.dto.AuthResponseDTO;
 import org.tc.mtracker.auth.dto.LoginRequestDto;
 import org.tc.mtracker.auth.dto.ResetPasswordDTO;
 import org.tc.mtracker.security.JwtResponseDTO;
+import org.tc.mtracker.user.image.ValidImage;
 
 @RestController
 @RequestMapping(value = "/api/v1/auth")
 @RequiredArgsConstructor
 @Tag(name = "Authentication", description = "Authentication and email verification endpoints")
+@Validated
 public class AuthController {
 
     private final AuthService authService;
@@ -54,17 +59,33 @@ public class AuthController {
                     }
             )
     })
-    @PostMapping("/sign-up")
+    @PostMapping(value = "/sign-up", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<AuthResponseDTO> signUp(
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(
-                    description = "User sign up details",
+            @Parameter(
+                    name = "User dto",
                     required = true,
-                    content = @Content(mediaType = "application/json",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = AuthRequestDTO.class))
             )
-            @Valid @RequestBody AuthRequestDTO authRequestDTO) {
-        AuthResponseDTO authResponseDTO = authService.signUp(authRequestDTO);
-        return ResponseEntity.ok().body(authResponseDTO);
+            @Valid
+            @RequestPart(name = "dto") AuthRequestDTO authRequestDTO,
+
+            @Parameter(
+                    name = "Avatar",
+                    required = false,
+                    content = {
+                            @Content(mediaType = "image/jpeg", schema = @Schema(type = "string", format = "binary")),
+                            @Content(mediaType = "image/png", schema = @Schema(type = "string", format = "binary")),
+                            @Content(mediaType = "image/webp", schema = @Schema(type = "string", format = "binary"))
+                    }
+            )
+            @ValidImage
+            @RequestPart(name = "avatar", required = false) MultipartFile avatar
+
+    ) {
+        AuthResponseDTO authResponseDTO = authService.signUp(authRequestDTO, avatar);
+        return ResponseEntity.status(HttpStatus.CREATED).body(authResponseDTO);
     }
 
     @Operation(
