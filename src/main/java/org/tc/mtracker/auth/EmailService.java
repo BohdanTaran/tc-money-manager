@@ -1,6 +1,7 @@
 package org.tc.mtracker.auth;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -11,6 +12,7 @@ import org.tc.mtracker.user.User;
 
 import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class EmailService {
@@ -35,6 +37,7 @@ public class EmailService {
                 EMAIL_VERIFICATION_SUBJECT,
                 "Please verify your email by clicking this link: " + verificationLink
         );
+        log.info("Verification email sent to user with id {}", user.getId());
     }
 
     private void sendPlainTextEmail(String to, String subject, String content) {

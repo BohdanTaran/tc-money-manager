@@ -51,7 +51,7 @@ public class AuthService {
         User savedUser = userService.save(user);
 
         emailService.sendVerificationEmail(user);
-
+        log.info("User with id {} is registered successfully.", savedUser.getId());
         return toAuthResponse(savedUser, avatarUrl);
     }
 
@@ -79,6 +79,7 @@ public class AuthService {
         userService.save(user);
 
         String accessToken = issueAccessToken(user);
+        log.info("User with id {} is verified successfully.", user.getId());
         return new JwtResponseDTO(accessToken);
     }
 
