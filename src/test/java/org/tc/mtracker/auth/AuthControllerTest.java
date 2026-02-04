@@ -4,7 +4,6 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,7 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.tc.mtracker.auth.dto.AuthRequestDTO;
 import org.tc.mtracker.auth.dto.LoginRequestDto;
 import org.tc.mtracker.auth.dto.ResetPasswordDTO;
-import org.tc.mtracker.image.S3Service;
+import org.tc.mtracker.utils.S3Service;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -65,9 +64,6 @@ class AuthControllerTest {
     @Autowired
     private Environment env;
 
-
-    @Nested
-    class SignUpTests {
         @Test
         void shouldReturn201AndAuthResponseDtoIfUserIsSignedUpSuccessfullyWithoutAvatar() {
             MultipartBodyBuilder multipartBodyBuilder = new MultipartBodyBuilder();
@@ -193,10 +189,7 @@ class AuthControllerTest {
 
             verifyNoInteractions(s3Service, emailService);
         }
-    }
 
-    @Nested
-    class LoginTests {
         @Test
         @Sql("/datasets/test_users.sql")
         void shouldReturnAccessTokenIfUserIsLoggedSuccessfully() {
@@ -241,7 +234,6 @@ class AuthControllerTest {
                     .expectBody()
                     .jsonPath("$.detail").isEqualTo("User with email nonexistent@gmail.com does not exist.");
         }
-    }
 
     @Test
     @Sql("/datasets/test_users.sql")
