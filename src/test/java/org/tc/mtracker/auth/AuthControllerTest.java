@@ -1,6 +1,10 @@
 package org.tc.mtracker.auth;
 
 import org.junit.jupiter.api.Nested;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,18 +15,24 @@ import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.core.env.Environment;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.client.RestTestClient;
 import org.springframework.web.multipart.MultipartFile;
 import org.tc.mtracker.auth.dto.AuthRequestDTO;
 import org.tc.mtracker.auth.dto.LoginRequestDto;
 import org.tc.mtracker.image.S3Service;
+import org.tc.mtracker.auth.dto.ResetPasswordDTO;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+
+import java.util.Date;
+import java.util.Map;
 
 @AutoConfigureRestTestClient
 @SpringBootTest(
@@ -52,6 +62,10 @@ class AuthControllerTest {
 
     @Autowired
     private RestTestClient restTestClient;
+
+    @Autowired
+    private Environment env;
+
 
     @Nested
     class SignUpTests {
@@ -228,5 +242,120 @@ class AuthControllerTest {
                     .expectBody()
                     .jsonPath("$.detail").isEqualTo("User with email nonexistent@gmail.com does not exist.");
         }
+    }
+
+    @Test
+    @Sql("/datasets/test_users.sql")
+    void shouldSendResetTokenSuccessfully() {
+        restTestClient
+                .post()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/auth/getTokenToResetPassword")
+                        .queryParam("email", "test@gmail.com")
+                        .build())
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class).isEqualTo("Your link to reset password was sent!");
+    }
+
+    @Test
+    @Sql("/datasets/test_users.sql")
+    void shouldReturn401WhenRequestingResetForNonExistentEmail() {
+        restTestClient
+                .post()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/auth/getTokenToResetPassword")
+                        .queryParam("email", "nonexistent@gmail.com")
+                        .build())
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    @Sql("/datasets/test_users.sql")
+    void shouldResetPasswordSuccessfullyWithValidToken() {
+        String validToken = generateTestToken("test@gmail.com", "password_reset", 60000);
+
+        ResetPasswordDTO resetDto = new ResetPasswordDTO("newPassword123", "newPassword123");
+
+        restTestClient
+                .post()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/auth/reset-password/confirm")
+                        .queryParam("token", validToken)
+                        .build())
+                .body(resetDto)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.accessToken").isNotEmpty();
+    }
+
+    @Test
+    @Sql("/datasets/test_users.sql")
+    void shouldReturn400WhenPasswordsDoNotMatch() {
+        String validToken = generateTestToken("test@gmail.com", "password_reset", 60000);
+        ResetPasswordDTO mismatchDto = new ResetPasswordDTO("newPassword123", "differentPassword");
+
+        restTestClient
+                .post()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/auth/reset-password/confirm")
+                        .queryParam("token", validToken)
+                        .build())
+                .body(mismatchDto)
+                .exchange()
+                .expectStatus().isBadRequest();
+    }
+
+    @Test
+    @Sql("/datasets/test_users.sql")
+    void shouldReturn401WhenTokenIsExpired() {
+        String expiredToken = generateTestToken("test@gmail.com", "password_reset", -3600000);
+        ResetPasswordDTO resetDto = new ResetPasswordDTO("newPassword123", "newPassword123");
+
+        restTestClient
+                .post()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/auth/reset-password/confirm")
+                        .queryParam("token", expiredToken)
+                        .build())
+                .body(resetDto)
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    @Sql("/datasets/test_users.sql")
+    void shouldReturn401WhenTokenPurposeIsWrong() {
+        String wrongPurposeToken = generateTestToken("test@gmail.com", "email_verification", 60000);
+        ResetPasswordDTO resetDto = new ResetPasswordDTO("newPassword123", "newPassword123");
+
+        restTestClient
+                .post()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/auth/reset-password/confirm")
+                        .queryParam("token", wrongPurposeToken)
+                        .build())
+                .body(resetDto)
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    /**
+     * Helper to generate JWTs that match the Test configuration
+     */
+    private String generateTestToken(String email, String purpose, long expirationOffsetMs) {
+        String secretKey = env.getProperty("security.jwt.secret-key");
+
+        byte[] keyBytes = Decoders.BASE64.decode(secretKey);
+
+        return Jwts.builder()
+                .setClaims(Map.of("purpose", purpose))
+                .setSubject(email)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + expirationOffsetMs))
+                .signWith(Keys.hmacShaKeyFor(keyBytes), SignatureAlgorithm.HS256)
+                .compact();
     }
 }
