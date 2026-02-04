@@ -22,8 +22,8 @@ import org.tc.mtracker.auth.dto.AuthRequestDTO;
 import org.tc.mtracker.auth.dto.AuthResponseDTO;
 import org.tc.mtracker.auth.dto.LoginRequestDto;
 import org.tc.mtracker.auth.dto.ResetPasswordDTO;
-import org.tc.mtracker.image.ValidImage;
 import org.tc.mtracker.security.JwtResponseDTO;
+import org.tc.mtracker.user.image.ValidImage;
 
 @RestController
 @RequestMapping(value = "/api/v1/auth")
