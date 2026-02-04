@@ -202,7 +202,6 @@ class AuthControllerTest {
                 .setSubject(email)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expirationOffsetMs))
-                // 2. Use the decoded bytes to create the signing key
                 .signWith(Keys.hmacShaKeyFor(keyBytes), SignatureAlgorithm.HS256)
                 .compact();
     }
