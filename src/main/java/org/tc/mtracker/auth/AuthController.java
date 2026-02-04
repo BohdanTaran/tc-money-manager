@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import org.tc.mtracker.auth.dto.AuthRequestDTO;
 import org.tc.mtracker.auth.dto.AuthResponseDTO;
 import org.tc.mtracker.auth.dto.LoginRequestDto;
+import org.tc.mtracker.auth.dto.ResetPasswordDTO;
 import org.tc.mtracker.security.JwtResponseDTO;
 
 @RestController
@@ -117,10 +119,84 @@ public class AuthController {
             @Valid @RequestBody LoginRequestDto loginRequestDto
     ) {
         JwtResponseDTO jwt = authService.login(loginRequestDto);
-
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(jwt);
+    }
+    /**
+     * Sends to user's email a link with token to be able to reset user's password
+     * @param email requested email for resetting password
+     * @return Http status code and message
+     */
+    @Operation(
+            summary = "Send reset password email",
+            description = "Generates a reset link and sends it to the user's email."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Reset link sent successfully",
+                    content = @Content(
+                            mediaType = "text/plain",
+                            schema = @Schema(type = "string", example = "Your link to reset password was sent!")
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "User with requested email does not exist",
+                    content = @Content(
+                            schema = @Schema(implementation = ProblemDetail.class)
+                    )
+            )
+    })
+    @PostMapping("/getTokenToResetPassword")
+    public ResponseEntity<String> sendResetPasswordToken(
+            @RequestParam("email") @Email String email
+    ) {
+        authService.sendTokenToResetPassword(email);
+        return ResponseEntity.ok("Your link to reset password was sent!");
+    }
+    /**
+     * Resets user's password
+     * @param token token from email link
+     * @param resetPasswordDTO new user's password and confirm password
+     * @return access token to login in good case
+     */
+    @Operation(
+            summary = "Reset password using token",
+            description = "Updates the user password if the token is valid."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Password updated successfully",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = JwtResponseDTO.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid request (Passwords do not match or validation failed)",
+                    content = @Content(
+                            schema = @Schema(implementation = ProblemDetail.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Token expired or invalid purpose",
+                    content = @Content(
+                            schema = @Schema(implementation = ProblemDetail.class)
+                    )
+            )
+    })
+    @PostMapping("/reset-password/confirm")
+    public ResponseEntity<JwtResponseDTO> resetPassword(
+            @RequestParam("token") String token,
+            @Valid @RequestBody ResetPasswordDTO resetPasswordDTO
+    ) {
+        JwtResponseDTO response = authService.resetPassword(token, resetPasswordDTO);
+        return ResponseEntity.ok(response);
     }
 
     @Operation(
