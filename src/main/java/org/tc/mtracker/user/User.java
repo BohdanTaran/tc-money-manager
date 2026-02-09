@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(force = true)
 @AllArgsConstructor
 @Builder
+@ToString
 public class User {
 
     @Id
