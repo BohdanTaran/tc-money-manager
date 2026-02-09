@@ -71,6 +71,24 @@ class UserControllerTest {
 
     @Test
     @Sql("/datasets/test_users.sql")
+    void shouldReturn400WhenFullNameIsEmpty() {
+        String email = "test@gmail.com";
+        String newFullname = "";
+        String token = testHelpers.generateTestToken(email, "access_token", 3600000);
+        UpdateUserProfileDTO updateDto = new UpdateUserProfileDTO(newFullname);
+
+        restTestClient
+                .put()
+                .uri("/api/v1/users/me")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(updateDto)
+                .exchange()
+                .expectStatus().isBadRequest();
+    }
+
+    @Test
+    @Sql("/datasets/test_users.sql")
     void shouldReturn400WhenFullNameIsTooShort() {
         String token = testHelpers.generateTestToken("test@gmail.com", "access_token", 3600000);
         UpdateUserProfileDTO updateDto = new UpdateUserProfileDTO("");
