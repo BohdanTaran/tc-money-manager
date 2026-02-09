@@ -51,14 +51,8 @@ public class UserController {
             @RequestBody @Valid UpdateUserProfileDTO dto,
             @Parameter(hidden = true) Authentication auth
     ) {
-        var isUpdated = userService.updateProfile(dto, auth);
-
-        if (isUpdated) {
-            return ResponseEntity.ok()
-                    .body("User updated successfully!");
-        } else {
-            return ResponseEntity.badRequest()
-                    .body("User was not updated. Please try again later!");
-        }
+        userService.updateProfile(dto, auth);
+        return ResponseEntity.ok()
+                .body("User updated successfully!");
     }
 }

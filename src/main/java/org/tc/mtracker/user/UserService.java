@@ -25,21 +25,15 @@ public class UserService {
         return userRepository.findByEmail(email).isPresent();
     }
 
-    public boolean updateProfile(UpdateUserProfileDTO dto, Authentication auth) {
-        User user = null;
-        try {
-             user = userRepository.findByEmail(auth.getName()).orElseThrow(
-                    () -> new UserNotFoundException("User was not found!")
-            );
+    public void updateProfile(UpdateUserProfileDTO dto, Authentication auth) {
+        User user = userRepository.findByEmail(auth.getName()).orElseThrow(
+                () -> new UserNotFoundException("User was not found!")
+        );
 
-            user.setFullName(dto.fullName());
+        user.setFullName(dto.fullName());
 
-            userRepository.save(user);
-        } catch (Exception e) {
-            return false;
-        }
+        userRepository.save(user);
 
         log.info("User with id {} is updated successfully!", user.getId());
-        return true;
     }
 }
