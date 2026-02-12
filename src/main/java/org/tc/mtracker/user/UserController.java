@@ -17,7 +17,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.tc.mtracker.user.dto.ResponseUserAvatarUrlDTO;
+import org.tc.mtracker.user.dto.ResponseUserProfileDTO;
 import org.tc.mtracker.user.dto.UpdateUserProfileDTO;
 import org.tc.mtracker.user.image.ValidImage;
 
@@ -48,35 +48,6 @@ public class UserController {
                     content = {@Content(mediaType = "application/json",
                             schema = @Schema(implementation = ProblemDetail.class))
                     }
-            )
-    })
-    @PutMapping("/me")
-    public ResponseEntity<String> updateMe(
-            @RequestBody @Valid UpdateUserProfileDTO dto,
-            @Parameter(hidden = true) Authentication auth
-    ) {
-        userService.updateProfile(dto, auth);
-        return ResponseEntity.ok()
-                .body("User updated successfully!");
-    }
-
-    @Operation(summary = "Upload user's avatar")
-    @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Avatar uploaded successfully",
-                    content = @Content(
-                            mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = ResponseUserAvatarUrlDTO.class)
-                    )
-            ),
-            @ApiResponse(
-                    responseCode = "400",
-                    description = "Invalid avatar format",
-                    content = @Content(
-                            mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = ProblemDetail.class)
-                    )
             ),
             @ApiResponse(
                     responseCode = "404",
@@ -87,21 +58,29 @@ public class UserController {
                     )
             )
     })
-    @PutMapping(value = "/me/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ResponseUserAvatarUrlDTO> uploadAvatar(
+    @PutMapping(value = "/me", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ResponseUserProfileDTO> updateMe(
             @Parameter(
-                    name = "Avatar",
-                    required = true,
+                    name = "User profile update DTO",
+                    required = false,
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE)
+            )
+            @Valid
+            @RequestPart(name = "dto", required = false) UpdateUserProfileDTO dto,
+            @Parameter(
+                    name = "avatar",
+                    required = false,
                     content = {
-                            @Content(mediaType = "image/jpeg", schema = @Schema(type = "string", format = "binary")),
-                            @Content(mediaType = "image/png", schema = @Schema(type = "string", format = "binary")),
-                            @Content(mediaType = "image/webp", schema = @Schema(type = "string", format = "binary"))
+                            @Content(mediaType = MediaType.IMAGE_JPEG_VALUE, schema = @Schema(type = "string", format = "binary")),
+                            @Content(mediaType = MediaType.IMAGE_PNG_VALUE, schema = @Schema(type = "string", format = "binary")),
                     }
             )
             @ValidImage
-            @RequestParam("avatar") MultipartFile avatar,
-            @Parameter(hidden = true) Authentication auth) {
-        String url = userService.uploadAvatar(avatar, auth);
-        return ResponseEntity.ok().body(new ResponseUserAvatarUrlDTO(url));
+            @RequestParam(name = "avatar", required = false) MultipartFile avatar,
+            @Parameter(hidden = true) Authentication auth
+    ) {
+        ResponseUserProfileDTO responseUserProfileDTO = userService.updateProfile(dto, avatar, auth);
+        return ResponseEntity.ok()
+                .body(responseUserProfileDTO);
     }
 }
