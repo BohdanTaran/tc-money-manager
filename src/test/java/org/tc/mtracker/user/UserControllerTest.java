@@ -64,15 +64,18 @@ class UserControllerTest {
         String token = testHelpers.generateTestToken(email, "access_token", 3600000);
         UpdateUserProfileDTO updateDto = new UpdateUserProfileDTO(newFullname);
 
+        MultipartBodyBuilder multipartBodyBuilder = new MultipartBodyBuilder();
+        multipartBodyBuilder.part("dto", updateDto, MediaType.APPLICATION_JSON);
+
         restTestClient
                 .put()
                 .uri("/api/v1/users/me")
                 .header("Authorization", "Bearer " + token)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(updateDto)
+                .body(multipartBodyBuilder.build())
                 .exchange()
                 .expectStatus().isOk()
-                .expectBody(String.class).isEqualTo("User updated successfully!");
+                .expectBody()
+                .jsonPath("$.fullName").isEqualTo(newFullname);
 
         User updatedUser = userRepository.findByEmail(email).orElseThrow();
 
@@ -87,12 +90,14 @@ class UserControllerTest {
         String token = testHelpers.generateTestToken(email, "access_token", 3600000);
         UpdateUserProfileDTO updateDto = new UpdateUserProfileDTO(newFullname);
 
+        MultipartBodyBuilder multipartBodyBuilder = new MultipartBodyBuilder();
+        multipartBodyBuilder.part("dto", updateDto, MediaType.APPLICATION_JSON);
+
         restTestClient
                 .put()
                 .uri("/api/v1/users/me")
                 .header("Authorization", "Bearer " + token)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(updateDto)
+                .body(multipartBodyBuilder.build())
                 .exchange()
                 .expectStatus().isBadRequest();
     }
@@ -103,12 +108,14 @@ class UserControllerTest {
         String token = testHelpers.generateTestToken("test@gmail.com", "access_token", 3600000);
         UpdateUserProfileDTO updateDto = new UpdateUserProfileDTO("");
 
+        MultipartBodyBuilder multipartBodyBuilder = new MultipartBodyBuilder();
+        multipartBodyBuilder.part("dto", updateDto, MediaType.APPLICATION_JSON);
+
         restTestClient
                 .put()
                 .uri("/api/v1/users/me")
                 .header("Authorization", "Bearer " + token)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(updateDto)
+                .body(multipartBodyBuilder.build())
                 .exchange()
                 .expectStatus().isBadRequest();
     }
@@ -119,12 +126,14 @@ class UserControllerTest {
         String token = testHelpers.generateTestToken("test@gmail.com", "access_token", 3600000);
         UpdateUserProfileDTO updateDto = new UpdateUserProfileDTO("a".repeat(129));
 
+        MultipartBodyBuilder multipartBodyBuilder = new MultipartBodyBuilder();
+        multipartBodyBuilder.part("dto", updateDto, MediaType.APPLICATION_JSON);
+
         restTestClient
                 .put()
                 .uri("/api/v1/users/me")
                 .header("Authorization", "Bearer " + token)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(updateDto)
+                .body(multipartBodyBuilder.build())
                 .exchange()
                 .expectStatus().isBadRequest();
     }
@@ -147,7 +156,7 @@ class UserControllerTest {
 
         restTestClient
                 .put()
-                .uri("/api/v1/users/me/avatar")
+                .uri("/api/v1/users/me")
                 .header("Authorization", "Bearer " + token)
                 .contentType(MediaType.MULTIPART_FORM_DATA)
                 .body(multipartBodyBuilder.build())
@@ -177,7 +186,7 @@ class UserControllerTest {
 
         restTestClient
                 .put()
-                .uri("/api/v1/users/me/avatar")
+                .uri("/api/v1/users/me")
                 .header("Authorization", "Bearer " + token)
                 .body(multipartBodyBuilder.build())
                 .exchange()
