@@ -3,7 +3,6 @@ package org.tc.mtracker.user;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -37,17 +36,16 @@ public class UserController {
                     responseCode = "200",
                     description = "User's data updated successfully",
                     content = @Content(
-                            mediaType = "text/plain",
-                            schema = @Schema(implementation = String.class),
-                            examples = @ExampleObject(value = "User updated successfully!")
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ResponseUserProfileDTO.class)
                     )
             ),
             @ApiResponse(
                     responseCode = "400",
                     description = "Bad request",
-                    content = {@Content(mediaType = "application/json",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ProblemDetail.class))
-                    }
             ),
             @ApiResponse(
                     responseCode = "404",
