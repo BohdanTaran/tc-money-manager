@@ -37,34 +37,35 @@ public class UserService {
         User user = userRepository.findByEmail(auth.getName()).orElseThrow(
                 () -> new UserNotFoundException("User was not found!")
         );
-        String presignedAvatarUrl;
+
         if (avatar != null) {
-            presignedAvatarUrl = uploadAvatar(avatar, user);
-        } else {
-            presignedAvatarUrl = s3Service.generatePresignedUrl(user.getAvatarId());
+            uploadAvatar(avatar, user);
         }
+
         if (dto != null && dto.fullName() != null) {
             user.setFullName(dto.fullName());
         }
 
         userRepository.save(user);
 
-        ResponseUserProfileDTO responseUserProfileDTO = new ResponseUserProfileDTO(user.getFullName(), presignedAvatarUrl);
-
+        String presignedAvatarUrl = generateAvatarUrl(user);
         log.info("User with id {} is updated successfully!", user.getId());
-        return responseUserProfileDTO;
+
+        return new ResponseUserProfileDTO(user.getFullName(), presignedAvatarUrl);
     }
 
-    public String uploadAvatar(MultipartFile avatar, User user) {
+    private String generateAvatarUrl(User user) {
+        return user.getAvatarId() != null ? s3Service.generatePresignedUrl(user.getAvatarId()) : null;
+    }
+
+    private void uploadAvatar(MultipartFile avatar, User user) {
         String avatarId = user.getAvatarId();
         if (avatarId == null) {
             avatarId = UUID.randomUUID().toString();
             user.setAvatarId(avatarId);
         }
         s3Service.saveFile(avatarId, avatar);
-
         log.info("Avatar with id {} is uploaded successfully!", avatarId);
-        return s3Service.generatePresignedUrl(avatarId);
     }
 
 }
