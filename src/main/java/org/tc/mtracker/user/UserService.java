@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.tc.mtracker.user.dto.ResponseUserProfileDTO;
 import org.tc.mtracker.user.dto.UpdateUserProfileDTO;
+import org.tc.mtracker.user.dto.UserMapper;
 import org.tc.mtracker.utils.S3Service;
 import org.tc.mtracker.utils.exceptions.UserNotFoundException;
 
@@ -17,6 +18,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class UserService {
+    private final UserMapper userMapper;
     private final UserRepository userRepository;
     private final S3Service s3Service;
 
@@ -42,9 +44,7 @@ public class UserService {
             uploadAvatar(avatar, user);
         }
 
-        if (dto != null && dto.fullName() != null) {
-            user.setFullName(dto.fullName());
-        }
+        userMapper.updateEntityFromDto(dto, user);
 
         userRepository.save(user);
 
