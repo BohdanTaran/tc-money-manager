@@ -1,22 +1,27 @@
 package org.tc.mtracker.user;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.MediaType;
+import org.springframework.http.client.MultipartBodyBuilder;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.client.RestTestClient;
+import org.springframework.web.multipart.MultipartFile;
 import org.tc.mtracker.user.dto.UpdateUserProfileDTO;
+import org.tc.mtracker.utils.S3Service;
+import org.tc.mtracker.utils.TestHelpers;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
-import org.springframework.http.MediaType;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import org.tc.mtracker.utils.TestHelpers;
-
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 @AutoConfigureRestTestClient
 @SpringBootTest(
@@ -27,7 +32,7 @@ import static org.junit.jupiter.api.Assertions.*;
                 "aws.region=us-central-1",
                 "aws.s3.bucket-name=test-bucket",
                 "aws.access-key-id=test-key-id",
-                "aws.secret-access-key=test-secret"
+                "aws.secret-access-key=test-secret",
         }
 )
 @Testcontainers
@@ -46,6 +51,11 @@ class UserControllerTest {
     @Autowired
     private TestHelpers testHelpers;
 
+    @MockitoBean
+    private S3Service s3Service;
+    @Autowired
+    private UserService userService;
+
     @Test
     @Sql("/datasets/test_users.sql")
     void shouldUpdateUsersFullnameSuccessfully() {
@@ -54,15 +64,18 @@ class UserControllerTest {
         String token = testHelpers.generateTestToken(email, "access_token", 3600000);
         UpdateUserProfileDTO updateDto = new UpdateUserProfileDTO(newFullname);
 
+        MultipartBodyBuilder multipartBodyBuilder = new MultipartBodyBuilder();
+        multipartBodyBuilder.part("dto", updateDto, MediaType.APPLICATION_JSON);
+
         restTestClient
                 .put()
                 .uri("/api/v1/users/me")
                 .header("Authorization", "Bearer " + token)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(updateDto)
+                .body(multipartBodyBuilder.build())
                 .exchange()
                 .expectStatus().isOk()
-                .expectBody(String.class).isEqualTo("User updated successfully!");
+                .expectBody()
+                .jsonPath("$.fullName").isEqualTo(newFullname);
 
         User updatedUser = userRepository.findByEmail(email).orElseThrow();
 
@@ -77,12 +90,14 @@ class UserControllerTest {
         String token = testHelpers.generateTestToken(email, "access_token", 3600000);
         UpdateUserProfileDTO updateDto = new UpdateUserProfileDTO(newFullname);
 
+        MultipartBodyBuilder multipartBodyBuilder = new MultipartBodyBuilder();
+        multipartBodyBuilder.part("dto", updateDto, MediaType.APPLICATION_JSON);
+
         restTestClient
                 .put()
                 .uri("/api/v1/users/me")
                 .header("Authorization", "Bearer " + token)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(updateDto)
+                .body(multipartBodyBuilder.build())
                 .exchange()
                 .expectStatus().isBadRequest();
     }
@@ -93,12 +108,14 @@ class UserControllerTest {
         String token = testHelpers.generateTestToken("test@gmail.com", "access_token", 3600000);
         UpdateUserProfileDTO updateDto = new UpdateUserProfileDTO("");
 
+        MultipartBodyBuilder multipartBodyBuilder = new MultipartBodyBuilder();
+        multipartBodyBuilder.part("dto", updateDto, MediaType.APPLICATION_JSON);
+
         restTestClient
                 .put()
                 .uri("/api/v1/users/me")
                 .header("Authorization", "Bearer " + token)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(updateDto)
+                .body(multipartBodyBuilder.build())
                 .exchange()
                 .expectStatus().isBadRequest();
     }
@@ -109,15 +126,73 @@ class UserControllerTest {
         String token = testHelpers.generateTestToken("test@gmail.com", "access_token", 3600000);
         UpdateUserProfileDTO updateDto = new UpdateUserProfileDTO("a".repeat(129));
 
+        MultipartBodyBuilder multipartBodyBuilder = new MultipartBodyBuilder();
+        multipartBodyBuilder.part("dto", updateDto, MediaType.APPLICATION_JSON);
+
         restTestClient
                 .put()
                 .uri("/api/v1/users/me")
                 .header("Authorization", "Bearer " + token)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(updateDto)
+                .body(multipartBodyBuilder.build())
                 .exchange()
                 .expectStatus().isBadRequest();
     }
 
+    @Test
+    @Sql("/datasets/test_users.sql")
+    void shouldReturn200WhenUserAvatarIsSuccessfullyUpdated() {
+        MultipartBodyBuilder multipartBodyBuilder = new MultipartBodyBuilder();
+        when(s3Service.generatePresignedUrl(Mockito.anyString())).thenReturn("https://example.com/test-avatar.jpg");
 
+        String token = testHelpers.generateTestToken("test@gmail.com", "access_token", 3600000);
+        byte[] avatarBytes = "test-avatar.jpg".getBytes();
+        ByteArrayResource avatarResource = new ByteArrayResource(avatarBytes) {
+            @Override
+            public String getFilename() {
+                return "test-avatar.jpg";
+            }
+        };
+        multipartBodyBuilder.part("avatar", avatarResource, MediaType.IMAGE_JPEG);
+
+        restTestClient
+                .put()
+                .uri("/api/v1/users/me")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.MULTIPART_FORM_DATA)
+                .body(multipartBodyBuilder.build())
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.avatarUrl").isEqualTo("https://example.com/test-avatar.jpg");
+
+        verify(s3Service).generatePresignedUrl(Mockito.anyString());
+        verify(s3Service).saveFile(Mockito.anyString(), Mockito.any(MultipartFile.class));
+    }
+
+    @Test
+    @Sql("/datasets/test_users.sql")
+    void shouldReturn400WhenUserAvatarIsNotAnImageFile() {
+        MultipartBodyBuilder multipartBodyBuilder = new MultipartBodyBuilder();
+
+        String token = testHelpers.generateTestToken("test@gmail.com", "access_token", 3600000);
+        byte[] avatarBytes = "not-an-image".getBytes();
+        ByteArrayResource avatarResource = new ByteArrayResource(avatarBytes) {
+            @Override
+            public String getFilename() {
+                return "avatar.txt";
+            }
+        };
+        multipartBodyBuilder.part("avatar", avatarResource, MediaType.TEXT_PLAIN);
+
+        restTestClient
+                .put()
+                .uri("/api/v1/users/me")
+                .header("Authorization", "Bearer " + token)
+                .body(multipartBodyBuilder.build())
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody();
+
+        verifyNoInteractions(s3Service);
+    }
 }

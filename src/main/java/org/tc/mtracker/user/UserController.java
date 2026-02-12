@@ -10,12 +10,16 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.tc.mtracker.user.dto.ResponseUserProfileDTO;
 import org.tc.mtracker.user.dto.UpdateUserProfileDTO;
+import org.tc.mtracker.user.image.ValidImage;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -44,15 +48,39 @@ public class UserController {
                     content = {@Content(mediaType = "application/json",
                             schema = @Schema(implementation = ProblemDetail.class))
                     }
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "User not found",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ProblemDetail.class)
+                    )
             )
     })
-    @PutMapping("/me")
-    public ResponseEntity<String> updateMe(
-            @RequestBody @Valid UpdateUserProfileDTO dto,
+    @PutMapping(value = "/me", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ResponseUserProfileDTO> updateMe(
+            @Parameter(
+                    name = "User profile update DTO",
+                    required = false,
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE)
+            )
+            @Valid
+            @RequestPart(name = "dto", required = false) UpdateUserProfileDTO dto,
+            @Parameter(
+                    name = "avatar",
+                    required = false,
+                    content = {
+                            @Content(mediaType = MediaType.IMAGE_JPEG_VALUE, schema = @Schema(type = "string", format = "binary")),
+                            @Content(mediaType = MediaType.IMAGE_PNG_VALUE, schema = @Schema(type = "string", format = "binary")),
+                    }
+            )
+            @ValidImage
+            @RequestParam(name = "avatar", required = false) MultipartFile avatar,
             @Parameter(hidden = true) Authentication auth
     ) {
-        userService.updateProfile(dto, auth);
+        ResponseUserProfileDTO responseUserProfileDTO = userService.updateProfile(dto, avatar, auth);
         return ResponseEntity.ok()
-                .body("User updated successfully!");
+                .body(responseUserProfileDTO);
     }
 }
