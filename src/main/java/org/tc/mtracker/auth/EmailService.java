@@ -20,7 +20,6 @@ public class EmailService {
     private static final String PURPOSE_CLAIM_KEY = "purpose";
     private static final String EMAIL_VERIFICATION_PURPOSE = "email_verification";
     private static final String EMAIL_VERIFICATION_SUBJECT = "Email Verification";
-    private static final String VERIFICATION_PATH_AND_QUERY = "/api/v1/auth/verify?token=%s";
 
     private final JwtService jwtService;
     private final JavaMailSender javaMailSender;
@@ -30,7 +29,7 @@ public class EmailService {
 
     public void sendVerificationEmail(User user) {
         String token = generateVerificationToken(user);
-        String verificationLink = buildVerificationLink(token);
+        String verificationLink = String.format("%s/verify?token=%s", frontendUrl, token);
 
         sendPlainTextEmail(
                 user.getEmail(),
@@ -48,16 +47,13 @@ public class EmailService {
         javaMailSender.send(message);
     }
 
-    private String buildVerificationLink(String token) {
-        return frontendUrl + String.format(VERIFICATION_PATH_AND_QUERY, token);
-    }
     /**
      * Generates an email with link
      * @param user requested user
      * @param resetToken generated token
      */
     public void sendResetPassword(User user, String resetToken) {
-        String verificationLink = String.format("%s/api/v1/auth/verify?resetToken=%s", frontendUrl, resetToken);
+        String verificationLink = String.format("%s/reset-password?resetToken=%s", frontendUrl, resetToken);
 
         sendPlainTextEmail(user.getEmail(),
                 "Reset Password",
