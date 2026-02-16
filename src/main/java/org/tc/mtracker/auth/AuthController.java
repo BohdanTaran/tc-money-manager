@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -18,10 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.tc.mtracker.auth.dto.AuthRequestDTO;
-import org.tc.mtracker.auth.dto.AuthResponseDTO;
-import org.tc.mtracker.auth.dto.LoginRequestDto;
-import org.tc.mtracker.auth.dto.ResetPasswordDTO;
+import org.tc.mtracker.auth.dto.*;
 import org.tc.mtracker.security.JwtResponseDTO;
 import org.tc.mtracker.user.image.ValidImage;
 
@@ -262,5 +260,39 @@ public class AuthController {
             @RequestParam String token) {
         JwtResponseDTO jwt = authService.verifyToken(token);
         return ResponseEntity.ok().body(jwt);
+    }
+
+    /**
+     * Refresh authentication token using refresh token
+     */
+    @Operation(
+            summary = "Refresh token",
+            description = "Generates a new access token using a valid refresh token"
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Token successfully refreshed",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    name = "Token refreshed",
+                                    value = "{ \"accessToken\": \"new-jwt-access-token\", \"refreshToken\": \"new-jwt-refresh-token\" }"
+                            ))),
+            @ApiResponse(responseCode = "401", description = "Invalid or expired refresh token")
+    })
+    @PostMapping("/refresh")
+    public ResponseEntity<JwtResponseDTO> refreshToken(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Refresh token payload",
+                    required = true,
+                    content = @Content(
+                            schema = @Schema(implementation = RefreshTokenRequest.class),
+                            examples = @ExampleObject(
+                                    name = "Sample refresh request",
+                                    value = "{ \"refreshToken\": \"jwt-refresh-token\" }"
+                            )
+                    )
+            )
+            @Valid @RequestBody RefreshTokenRequest request) {
+        JwtResponseDTO jwt = authService.refreshToken(request);
+        return ResponseEntity.ok(jwt);
     }
 }
