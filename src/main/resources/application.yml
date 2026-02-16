@@ -54,3 +54,6 @@ aws:
   secret-access-key: ${L_MT_AWS_SECRET_KEY}
   s3:
     bucket-name: ${L_MT_AWS_S3_BUCKET_NAME}
+
+app:
+  frontend-url: https://project-finance-sigma.vercel.app
