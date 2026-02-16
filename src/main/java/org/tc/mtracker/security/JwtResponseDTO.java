@@ -6,6 +6,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public record JwtResponseDTO(
 
         @Schema(description = "JWT token", example = "eyJhbGciOiJIUzI1NiJ9.ey...", format = "JWT")
-        String accessToken
+        String accessToken,
+
+        @Schema(description = "JWT refresh token", example = "eyJhbGciOiJIUzI1NiJ9.ey...", format = "JWT")
+        String refreshToken
 ) {
 }

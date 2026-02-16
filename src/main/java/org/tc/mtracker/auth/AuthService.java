@@ -37,6 +37,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final S3Service imageService;
+    private final RefreshTokenService refreshTokenService;
 
     private final AuthMapper authMapper;
 
@@ -74,9 +75,10 @@ public class AuthService {
         }
 
         String accessToken = jwtService.generateToken(new CustomUserDetails(user));
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
 
         log.info("User with id {} is authenticated successfully.", user.getId());
-        return new JwtResponseDTO(accessToken);
+        return new JwtResponseDTO(accessToken, refreshToken.getToken());
     }
     /**
      * Searches user by requested email and sends a link if it exists.
@@ -118,9 +120,10 @@ public class AuthService {
 
         CustomUserDetails userDetails = new CustomUserDetails(user);
         String accessToken = jwtService.generateToken(userDetails);
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
 
         log.info("Password successfully changed for user with id: {}", user.getId());
-        return new JwtResponseDTO(accessToken);
+        return new JwtResponseDTO(accessToken, refreshToken.getToken());
     }
 
     public JwtResponseDTO verifyToken(String token) {
@@ -140,9 +143,23 @@ public class AuthService {
         userService.save(user);
 
         String accessToken = jwtService.generateToken(new CustomUserDetails(user));
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
+
         log.info("User with id {} is verified successfully.", user.getId());
-        return new JwtResponseDTO(accessToken);
+        return new JwtResponseDTO(accessToken, refreshToken.getToken());
     }
+
+    public JwtResponseDTO refreshToken(RefreshTokenRequest request) {
+        return refreshTokenService.findByToken(request.refreshToken())
+                .map(refreshTokenService::verifyExpiration)
+                .map(RefreshToken::getUser)
+                .map(user -> {
+                    String accessToken = jwtService.generateToken(new CustomUserDetails(user));
+                    return new JwtResponseDTO(accessToken, request.refreshToken());
+                })
+                .orElseThrow(() -> new RuntimeException("Refresh token is not in database"));
+    }
+
 
     private @Nullable String uploadAvatar(String imageKey, MultipartFile avatar) {
         if (avatar == null || avatar.isEmpty()) {

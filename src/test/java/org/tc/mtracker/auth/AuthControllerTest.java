@@ -20,7 +20,9 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 import org.springframework.web.multipart.MultipartFile;
 import org.tc.mtracker.auth.dto.AuthRequestDTO;
 import org.tc.mtracker.auth.dto.LoginRequestDto;
+import org.tc.mtracker.auth.dto.RefreshTokenRequest;
 import org.tc.mtracker.auth.dto.ResetPasswordDTO;
+import org.tc.mtracker.security.JwtResponseDTO;
 import org.tc.mtracker.utils.S3Service;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -29,6 +31,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import java.util.Date;
 import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -37,12 +40,12 @@ import static org.mockito.Mockito.*;
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {
                 "security.jwt.secret-key=aZbYcXdWeVfUgThSiRjQkPlOmNnMmLlKkJjIiHhGgFfEeDdCcBbAaZyXxWwVvUuTtSsRrQqPpOoNnMmLlKkJjIiHhGgFfEeDdCcBbAaZyXxWwVvUuTtSsRrQqPpOoNnMmLlKkJjIiHhGgFfEeDdCcBbAaZyXxWwVvUuTtSsRrQqPpOoNnMmLlKkJjIiHhGgFfEeDdCcBbAaZyXxWwVvUuTtSsRrQqPpOoNnMmLlKkJjIiHhGgFfEeDdCcBbAaZyXxWwVvUuTtSsRr",
-                "security.jwt.expiration-time=3600000",
+                "security.jwt.expiration-time=900",
+                "security.jwt.test-expiration=60",
                 "aws.region=us-central-1",
                 "aws.bucket-name=test-bucket",
                 "aws.access-key-id=test-key-id",
                 "aws.secret-access-key=test-secret"
-
         }
 )
 @Testcontainers
@@ -348,5 +351,55 @@ class AuthControllerTest {
                 .setExpiration(new Date(System.currentTimeMillis() + expirationOffsetMs))
                 .signWith(Keys.hmacShaKeyFor(keyBytes), SignatureAlgorithm.HS256)
                 .compact();
+    }
+
+    @Test
+    @Sql("/datasets/test_users.sql")
+    void shouldRefreshAccessTokenSuccessfully() throws InterruptedException {
+        LoginRequestDto loginDto = new LoginRequestDto("test@gmail.com", "12345678");
+
+        JwtResponseDTO loginResponse = restTestClient
+                .post()
+                .uri("/api/v1/auth/login")
+                .body(loginDto)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(JwtResponseDTO.class)
+                .returnResult()
+                .getResponseBody();
+
+        assertThat(loginResponse).isNotNull();
+        String refreshToken = loginResponse.refreshToken();
+
+        // Wait 1 second to ensure the JWT 'iat' claim changes
+        Thread.sleep(1000);
+
+        RefreshTokenRequest refreshRequest = new RefreshTokenRequest(refreshToken);
+
+        restTestClient
+                .post()
+                .uri("/api/v1/auth/refresh")
+                .body(refreshRequest)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.accessToken").isNotEmpty()
+                .jsonPath("$.accessToken").value(newAccessToken -> {
+                    assertThat(newAccessToken).isNotNull();
+                    assertThat(newAccessToken).isNotEqualTo(loginResponse.accessToken());
+                })
+                .jsonPath("$.refreshToken").isEqualTo(refreshToken);
+    }
+
+    @Test
+    void shouldReturn401WhenRefreshTokenIsInvalid() {
+        RefreshTokenRequest invalidRequest = new RefreshTokenRequest("invalid-uuid-token");
+
+        restTestClient
+                .post()
+                .uri("/api/v1/auth/refresh")
+                .body(invalidRequest)
+                .exchange()
+                .expectStatus().is5xxServerError();
     }
 }

@@ -4,6 +4,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -17,12 +18,16 @@ import java.util.function.Function;
 
 @Service
 @RequiredArgsConstructor
+@Getter
 public class JwtService {
     @Value("${security.jwt.secret-key}")
     private String secretKey;
 
     @Value("${security.jwt.expiration-time}")
     private long jwtExpiration;
+
+    @Value("${security.jwt.refresh-expiration}")
+    private long refreshExpiration;
 
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
