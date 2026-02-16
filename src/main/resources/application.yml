@@ -46,7 +46,7 @@ logging:
 security:
   jwt:
     secret-key: ${L_MT_JWT_SECRET_KEY}
-    expiration-time: 900 # 15 min in seconds
+    expiration-time: 900000 # 15 min in milliseconds
     refresh-expiration: 86400 # 24 hours in seconds
     test-expiration: 60 # 1 minute for tests
 
