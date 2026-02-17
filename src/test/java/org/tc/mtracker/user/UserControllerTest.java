@@ -13,6 +13,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.client.RestTestClient;
 import org.springframework.web.multipart.MultipartFile;
+import org.tc.mtracker.auth.EmailService;
+import org.tc.mtracker.user.dto.RequestUpdateUserEmailDTO;
 import org.tc.mtracker.user.dto.UpdateUserProfileDTO;
 import org.tc.mtracker.utils.S3Service;
 import org.tc.mtracker.utils.TestHelpers;
@@ -55,6 +57,9 @@ class UserControllerTest {
     private S3Service s3Service;
     @Autowired
     private UserService userService;
+
+    @MockitoBean
+    private EmailService emailService;
 
     @Test
     @Sql("/datasets/test_users.sql")
@@ -195,4 +200,106 @@ class UserControllerTest {
 
         verifyNoInteractions(s3Service);
     }
+
+    @Test
+    @Sql("/datasets/test_users.sql")
+    void shouldReturn200WhenEmailUpdateFlowTriggered() {
+        RequestUpdateUserEmailDTO requestUpdateUserEmailDTO = new RequestUpdateUserEmailDTO("newemail@example.com");
+        String token = testHelpers.generateTestToken("test@gmail.com", "access_token", 3600000);
+        restTestClient
+                .post()
+                .uri("/api/v1/users/me/update-email")
+                .header("Authorization", "Bearer " + token)
+                .body(requestUpdateUserEmailDTO)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody();
+
+        verify(emailService).sendVerificationEmail(eq("newemail@example.com"), anyString());
+    }
+
+    @Test
+    @Sql("/datasets/test_users.sql")
+    void shouldVerifyEmailUpdateSuccessfully() {
+        RequestUpdateUserEmailDTO requestUpdateUserEmailDTO = new RequestUpdateUserEmailDTO("newemail@example.com");
+        String accessToken = testHelpers.generateTestToken("test@gmail.com", "access_token", 3600000);
+
+        restTestClient
+                .post()
+                .uri("/api/v1/users/me/update-email")
+                .header("Authorization", "Bearer " + accessToken)
+                .body(requestUpdateUserEmailDTO)
+                .exchange()
+                .expectStatus().isOk();
+
+        String verificationToken = testHelpers.generateTestToken("test@gmail.com", "email_update_verification", 3600000);
+
+        restTestClient
+                .get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/users/verify-email")
+                        .queryParam("token", verificationToken)
+                        .build())
+                .exchange()
+                .expectStatus().isOk();
+
+        User updatedUser = userRepository.findByEmail("newemail@example.com").orElseThrow();
+
+        assertThat(updatedUser.getEmail()).isEqualTo("newemail@example.com");
+        assertThat(updatedUser.getPendingEmail()).isNull();
+        assertThat(updatedUser.getVerificationToken()).isNull();
+    }
+
+    @Test
+    @Sql("/datasets/test_users.sql")
+    void shouldReturn401WhenVerificationTokenHasWrongPurpose() {
+        RequestUpdateUserEmailDTO requestUpdateUserEmailDTO = new RequestUpdateUserEmailDTO("newemail@example.com");
+        String accessToken = testHelpers.generateTestToken("test@gmail.com", "access_token", 3600000);
+
+        restTestClient
+                .post()
+                .uri("/api/v1/users/me/update-email")
+                .header("Authorization", "Bearer " + accessToken)
+                .body(requestUpdateUserEmailDTO)
+                .exchange()
+                .expectStatus().isOk();
+
+        String wrongPurposeToken = testHelpers.generateTestToken("test@gmail.com", "password_reset", 3600000);
+
+        restTestClient
+                .get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/users/verify-email")
+                        .queryParam("token", wrongPurposeToken)
+                        .build())
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    @Sql("/datasets/test_users.sql")
+    void shouldReturn401WhenVerificationTokenIsExpired() {
+        RequestUpdateUserEmailDTO requestUpdateUserEmailDTO = new RequestUpdateUserEmailDTO("newemail@example.com");
+        String accessToken = testHelpers.generateTestToken("test@gmail.com", "access_token", 3600000);
+
+        restTestClient
+                .post()
+                .uri("/api/v1/users/me/update-email")
+                .header("Authorization", "Bearer " + accessToken)
+                .body(requestUpdateUserEmailDTO)
+                .exchange()
+                .expectStatus().isOk();
+
+        String expiredToken = testHelpers.generateTestToken("test@gmail.com", "email_update_verification", -3600000);
+
+        restTestClient
+                .get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/users/verify-email")
+                        .queryParam("token", expiredToken)
+                        .build())
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
 }
