@@ -1,5 +1,6 @@
 package org.tc.mtracker.user;
 
+import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -69,7 +70,7 @@ public class UserService {
 
         user.setPendingEmail(dto.email());
         String generatedToken = jwtService.generateToken(
-                Map.of("purpose", "email_verification"),
+                Map.of("purpose", "email_update_verification"),
                 new CustomUserDetails(user)
         );
 
@@ -77,6 +78,21 @@ public class UserService {
 
         emailService.sendVerificationEmail(dto.email(), generatedToken);
 
+        userRepository.save(user);
+    }
+
+    @Transactional
+    public void verifyEmailUpdate(String token) {
+        String purpose = jwtService.extractClaim(token, claims -> claims.get("purpose", String.class));
+        if (!"email_update_verification".equals(purpose)) {
+            throw new JwtException("Invalid token type for verification");
+        }
+
+        String email = jwtService.extractUsername(token);
+        User user = userRepository.findByEmail(email).orElseThrow();
+        user.setEmail(user.getPendingEmail());
+        user.setPendingEmail(null);
+        user.setVerificationToken(null);
         userRepository.save(user);
     }
 

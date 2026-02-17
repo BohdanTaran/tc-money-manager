@@ -16,6 +16,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.tc.mtracker.user.dto.RequestUpdateUserEmailDTO;
 import org.tc.mtracker.user.dto.ResponseUserProfileDTO;
 import org.tc.mtracker.user.dto.UpdateUserProfileDTO;
 import org.tc.mtracker.user.image.ValidImage;
@@ -80,5 +81,19 @@ public class UserController {
         ResponseUserProfileDTO responseUserProfileDTO = userService.updateProfile(dto, avatar, auth);
         return ResponseEntity.ok()
                 .body(responseUserProfileDTO);
+    }
+
+    @PostMapping(value = "/me/update-email")
+    public ResponseEntity<ResponseUserProfileDTO> updateEmail(
+            @RequestBody RequestUpdateUserEmailDTO dto,
+            @Parameter(hidden = true) Authentication auth) {
+        userService.updateEmail(dto, auth);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping(value = "/verify-email")
+    public ResponseEntity<Void> verifyEmail(@RequestParam String token) {
+        userService.verifyEmailUpdate(token);
+        return ResponseEntity.ok().build();
     }
 }
