@@ -6,12 +6,17 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.tc.mtracker.auth.EmailService;
+import org.tc.mtracker.security.CustomUserDetails;
+import org.tc.mtracker.security.JwtService;
+import org.tc.mtracker.user.dto.RequestUpdateUserEmailDTO;
 import org.tc.mtracker.user.dto.ResponseUserProfileDTO;
 import org.tc.mtracker.user.dto.UpdateUserProfileDTO;
 import org.tc.mtracker.user.dto.UserMapper;
 import org.tc.mtracker.utils.S3Service;
 import org.tc.mtracker.utils.exceptions.UserNotFoundException;
 
+import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
@@ -21,6 +26,8 @@ public class UserService {
     private final UserMapper userMapper;
     private final UserRepository userRepository;
     private final S3Service s3Service;
+    private final JwtService jwtService;
+    private final EmailService emailService;
 
     public User save(User user) {
         return userRepository.save(user);
@@ -52,6 +59,25 @@ public class UserService {
         log.info("User with id {} is updated successfully!", user.getId());
 
         return new ResponseUserProfileDTO(user.getFullName(), presignedAvatarUrl);
+    }
+
+    @Transactional
+    public void updateEmail(RequestUpdateUserEmailDTO dto, Authentication auth) {
+        User user = userRepository.findByEmail(auth.getName()).orElseThrow(
+                () -> new UserNotFoundException("User was not found!")
+        );
+
+        user.setPendingEmail(dto.email());
+        String generatedToken = jwtService.generateToken(
+                Map.of("purpose", "email_verification"),
+                new CustomUserDetails(user)
+        );
+
+        user.setVerificationToken(generatedToken);
+
+        emailService.sendVerificationEmail(dto.email(), generatedToken);
+
+        userRepository.save(user);
     }
 
     private String generateAvatarUrl(User user) {
