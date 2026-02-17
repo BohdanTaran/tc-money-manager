@@ -39,6 +39,16 @@ public class EmailService {
         log.info("Verification email sent to user with id {}", user.getId());
     }
 
+    public void sendVerificationEmail(String email, String token) {
+        String verificationLink = String.format("%s/verify?token=%s", frontendUrl, token);
+        sendPlainTextEmail(
+                email,
+                EMAIL_VERIFICATION_SUBJECT,
+                "Please verify your email by clicking this link: " + verificationLink
+        );
+        log.info("Verification email sent to user with email {}", email);
+    }
+
     private void sendPlainTextEmail(String to, String subject, String content) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(to);
