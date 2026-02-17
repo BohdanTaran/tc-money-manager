@@ -231,8 +231,8 @@ class UserControllerTest {
                 .body(requestUpdateUserEmailDTO)
                 .exchange()
                 .expectStatus().isOk();
-
-        String verificationToken = testHelpers.generateTestToken("test@gmail.com", "email_update_verification", 3600000);
+        User userWithToken = userRepository.findByEmail("test@gmail.com").orElseThrow();
+        String verificationToken = userWithToken.getVerificationToken();
 
         restTestClient
                 .get()
@@ -244,10 +244,34 @@ class UserControllerTest {
                 .expectStatus().isOk();
 
         User updatedUser = userRepository.findByEmail("newemail@example.com").orElseThrow();
-
         assertThat(updatedUser.getEmail()).isEqualTo("newemail@example.com");
         assertThat(updatedUser.getPendingEmail()).isNull();
         assertThat(updatedUser.getVerificationToken()).isNull();
+    }
+
+    @Test
+    @Sql("/datasets/test_users.sql")
+    void shouldReturn401IfWrongVerificationTokenIsProvided() {
+        RequestUpdateUserEmailDTO requestUpdateUserEmailDTO = new RequestUpdateUserEmailDTO("newemail@example.com");
+        String accessToken = testHelpers.generateTestToken("test@gmail.com", "access_token", 3600000);
+
+        restTestClient
+                .post()
+                .uri("/api/v1/users/me/update-email")
+                .header("Authorization", "Bearer " + accessToken)
+                .body(requestUpdateUserEmailDTO)
+                .exchange()
+                .expectStatus().isOk();
+        String verificationToken = testHelpers.generateTestToken("test@gmail.com", "email_update_verification", 3600000);
+
+        restTestClient
+                .get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/users/verify-email")
+                        .queryParam("token", verificationToken)
+                        .build())
+                .exchange()
+                .expectStatus().isBadRequest();
     }
 
     @Test

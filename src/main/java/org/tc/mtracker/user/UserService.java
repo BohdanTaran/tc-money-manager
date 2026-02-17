@@ -15,6 +15,7 @@ import org.tc.mtracker.user.dto.ResponseUserProfileDTO;
 import org.tc.mtracker.user.dto.UpdateUserProfileDTO;
 import org.tc.mtracker.user.dto.UserMapper;
 import org.tc.mtracker.utils.S3Service;
+import org.tc.mtracker.utils.exceptions.EmailVerificationException;
 import org.tc.mtracker.utils.exceptions.UserAlreadyExistsException;
 import org.tc.mtracker.utils.exceptions.UserNotFoundException;
 
@@ -95,6 +96,11 @@ public class UserService {
 
         String email = jwtService.extractUsername(token);
         User user = userRepository.findByEmail(email).orElseThrow();
+
+        if (user.getVerificationToken() == null || !token.equals(user.getVerificationToken())) {
+            throw new EmailVerificationException("Invalid token for verification");
+        }
+
         user.setEmail(user.getPendingEmail());
         user.setPendingEmail(null);
         user.setVerificationToken(null);
