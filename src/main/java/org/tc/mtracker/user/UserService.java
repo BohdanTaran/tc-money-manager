@@ -15,6 +15,7 @@ import org.tc.mtracker.user.dto.ResponseUserProfileDTO;
 import org.tc.mtracker.user.dto.UpdateUserProfileDTO;
 import org.tc.mtracker.user.dto.UserMapper;
 import org.tc.mtracker.utils.S3Service;
+import org.tc.mtracker.utils.exceptions.UserAlreadyExistsException;
 import org.tc.mtracker.utils.exceptions.UserNotFoundException;
 
 import java.util.Map;
@@ -67,6 +68,10 @@ public class UserService {
         User user = userRepository.findByEmail(auth.getName()).orElseThrow(
                 () -> new UserNotFoundException("User was not found!")
         );
+
+        if (userRepository.findByEmail(dto.email()).isPresent()) {
+            throw new UserAlreadyExistsException("Email already used");
+        }
 
         user.setPendingEmail(dto.email());
         String generatedToken = jwtService.generateToken(

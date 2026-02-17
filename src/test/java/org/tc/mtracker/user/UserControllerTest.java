@@ -302,4 +302,20 @@ class UserControllerTest {
                 .expectStatus().isUnauthorized();
     }
 
+    @Test
+    @Sql("/datasets/test_users.sql")
+    void shouldReturn401WhenNewEmailIsUsed() {
+        RequestUpdateUserEmailDTO requestUpdateUserEmailDTO = new RequestUpdateUserEmailDTO("admin@mtracker.com");
+        String accessToken = testHelpers.generateTestToken("test@gmail.com", "email_update_verification", 3600000);
+
+        restTestClient
+                .post()
+                .uri("/api/v1/users/me/update-email")
+                .header("Authorization", "Bearer " + accessToken)
+                .body(requestUpdateUserEmailDTO)
+                .exchange()
+                .expectStatus().is4xxClientError();
+        verifyNoInteractions(emailService);
+    }
+
 }
