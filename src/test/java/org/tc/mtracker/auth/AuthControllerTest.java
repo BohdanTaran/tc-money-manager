@@ -22,6 +22,7 @@ import org.tc.mtracker.auth.dto.AuthRequestDTO;
 import org.tc.mtracker.auth.dto.LoginRequestDto;
 import org.tc.mtracker.auth.dto.RefreshTokenRequest;
 import org.tc.mtracker.auth.dto.ResetPasswordDTO;
+import org.tc.mtracker.currency.CurrencyCode;
 import org.tc.mtracker.security.JwtResponseDTO;
 import org.tc.mtracker.utils.S3Service;
 import org.testcontainers.containers.MySQLContainer;
@@ -74,7 +75,7 @@ class AuthControllerTest {
                     "new1-user@gmail.com",
                     "12345678",
                     "New1 User",
-                    "USD"
+                    CurrencyCode.USD
             ), MediaType.APPLICATION_JSON);
 
             restTestClient
@@ -105,7 +106,7 @@ class AuthControllerTest {
                     "new-user@gmail.com",
                     "12345678",
                     "New User",
-                    "USD"
+                    CurrencyCode.USD
             ), MediaType.APPLICATION_JSON);
 
             byte[] avatarBytes = "test-avatar.jpg".getBytes();
@@ -170,7 +171,7 @@ class AuthControllerTest {
                     "new-user3@gmail.com",
                     "12345678",
                     "New User",
-                    "USD"
+                    CurrencyCode.USD
             ), MediaType.APPLICATION_JSON);
 
             byte[] avatarBytes = "not-an-image".getBytes();

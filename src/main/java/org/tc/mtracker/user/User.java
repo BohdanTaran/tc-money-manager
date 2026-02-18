@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.tc.mtracker.currency.CurrencyCode;
 
 import java.time.LocalDateTime;
 
@@ -32,7 +33,8 @@ public class User {
 
     private String avatarId;
 
-    private String currencyCode;
+    @Enumerated(EnumType.STRING)
+    private CurrencyCode currencyCode;
 
     @Column(nullable = false)
     private boolean isActivated;

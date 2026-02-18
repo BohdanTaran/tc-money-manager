@@ -1,6 +1,7 @@
 package org.tc.mtracker.auth.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import org.tc.mtracker.currency.CurrencyCode;
 
 @Schema(description = "User sign up response")
 public record AuthResponseDTO(
@@ -14,7 +15,7 @@ public record AuthResponseDTO(
         String email,
 
         @Schema(description = "User's main currency code", example = "USD")
-        String currencyCode,
+        CurrencyCode currencyCode,
 
         @Schema(description = "User's avatar url", example = "https://example.com/avatar.jpg")
         String avatarUrl,
