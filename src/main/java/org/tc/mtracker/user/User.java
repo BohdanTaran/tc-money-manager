@@ -31,6 +31,10 @@ public class User {
     @Column(unique = true, nullable = false)
     private String email;
 
+    private String pendingEmail;
+
+    private String verificationToken;
+
     private String avatarId;
 
     @Enumerated(EnumType.STRING)
