@@ -3,8 +3,10 @@ package org.tc.mtracker.auth.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import org.hibernate.validator.constraints.Length;
+import org.tc.mtracker.currency.CurrencyCode;
 
 @Schema(description = "User sign up request")
 public record AuthRequestDTO(
@@ -22,6 +24,6 @@ public record AuthRequestDTO(
         @NotBlank @Length(min = 1, max = 128) String fullName,
 
         @Schema(description = "User's main currency (ISO 4217)", example = "USD")
-        @NotBlank @Pattern(regexp = "^[A-Z]{3}$") String currencyCode
+        @NotNull CurrencyCode currencyCode
 ) {
 }

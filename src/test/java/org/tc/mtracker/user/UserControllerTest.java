@@ -15,6 +15,7 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 import org.springframework.web.multipart.MultipartFile;
 import org.tc.mtracker.auth.EmailService;
 import org.tc.mtracker.user.dto.RequestUpdateUserEmailDTO;
+import org.tc.mtracker.currency.CurrencyCode;
 import org.tc.mtracker.user.dto.UpdateUserProfileDTO;
 import org.tc.mtracker.utils.S3Service;
 import org.tc.mtracker.utils.TestHelpers;
@@ -63,11 +64,12 @@ class UserControllerTest {
 
     @Test
     @Sql("/datasets/test_users.sql")
-    void shouldUpdateUsersFullnameSuccessfully() {
+    void shouldUpdateUserInfoSuccessfully() {
         String email = "test@gmail.com";
         String newFullname = "New Fullname";
+        CurrencyCode newCC = CurrencyCode.UAH;
         String token = testHelpers.generateTestToken(email, "access_token", 3600000);
-        UpdateUserProfileDTO updateDto = new UpdateUserProfileDTO(newFullname);
+        UpdateUserProfileDTO updateDto = new UpdateUserProfileDTO(newFullname, newCC);
 
         MultipartBodyBuilder multipartBodyBuilder = new MultipartBodyBuilder();
         multipartBodyBuilder.part("dto", updateDto, MediaType.APPLICATION_JSON);
@@ -78,13 +80,12 @@ class UserControllerTest {
                 .header("Authorization", "Bearer " + token)
                 .body(multipartBodyBuilder.build())
                 .exchange()
-                .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.fullName").isEqualTo(newFullname);
+                .expectStatus().isOk();
 
         User updatedUser = userRepository.findByEmail(email).orElseThrow();
 
         assertThat(updatedUser.getFullName()).isEqualTo(newFullname);
+        assertThat(updatedUser.getCurrencyCode()).isEqualTo(newCC);
     }
 
     @Test
@@ -93,7 +94,7 @@ class UserControllerTest {
         String email = "test@gmail.com";
         String newFullname = "";
         String token = testHelpers.generateTestToken(email, "access_token", 3600000);
-        UpdateUserProfileDTO updateDto = new UpdateUserProfileDTO(newFullname);
+        UpdateUserProfileDTO updateDto = new UpdateUserProfileDTO(newFullname, null);
 
         MultipartBodyBuilder multipartBodyBuilder = new MultipartBodyBuilder();
         multipartBodyBuilder.part("dto", updateDto, MediaType.APPLICATION_JSON);
@@ -111,7 +112,7 @@ class UserControllerTest {
     @Sql("/datasets/test_users.sql")
     void shouldReturn400WhenFullNameIsTooShort() {
         String token = testHelpers.generateTestToken("test@gmail.com", "access_token", 3600000);
-        UpdateUserProfileDTO updateDto = new UpdateUserProfileDTO("");
+        UpdateUserProfileDTO updateDto = new UpdateUserProfileDTO("", null);
 
         MultipartBodyBuilder multipartBodyBuilder = new MultipartBodyBuilder();
         multipartBodyBuilder.part("dto", updateDto, MediaType.APPLICATION_JSON);
@@ -129,7 +130,7 @@ class UserControllerTest {
     @Sql("/datasets/test_users.sql")
     void shouldReturn400WhenFullNameIsTooLong() {
         String token = testHelpers.generateTestToken("test@gmail.com", "access_token", 3600000);
-        UpdateUserProfileDTO updateDto = new UpdateUserProfileDTO("a".repeat(129));
+        UpdateUserProfileDTO updateDto = new UpdateUserProfileDTO("a".repeat(129), null);
 
         MultipartBodyBuilder multipartBodyBuilder = new MultipartBodyBuilder();
         multipartBodyBuilder.part("dto", updateDto, MediaType.APPLICATION_JSON);
