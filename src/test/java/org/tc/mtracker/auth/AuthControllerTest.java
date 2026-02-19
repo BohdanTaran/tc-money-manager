@@ -24,6 +24,7 @@ import org.tc.mtracker.auth.dto.RefreshTokenRequest;
 import org.tc.mtracker.auth.dto.ResetPasswordDTO;
 import org.tc.mtracker.currency.CurrencyCode;
 import org.tc.mtracker.security.JwtResponseDTO;
+import org.tc.mtracker.utils.EmailService;
 import org.tc.mtracker.utils.S3Service;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;

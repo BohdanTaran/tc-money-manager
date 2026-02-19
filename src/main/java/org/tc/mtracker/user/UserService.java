@@ -7,7 +7,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-import org.tc.mtracker.auth.EmailService;
+import org.tc.mtracker.utils.EmailService;
 import org.tc.mtracker.security.CustomUserDetails;
 import org.tc.mtracker.security.JwtService;
 import org.tc.mtracker.user.dto.RequestUpdateUserEmailDTO;
