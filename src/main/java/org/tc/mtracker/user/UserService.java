@@ -16,6 +16,7 @@ import org.tc.mtracker.user.dto.UpdateUserProfileDTO;
 import org.tc.mtracker.user.dto.UserMapper;
 import org.tc.mtracker.utils.S3Service;
 import org.tc.mtracker.utils.exceptions.EmailVerificationException;
+import org.tc.mtracker.utils.exceptions.FileStorageException;
 import org.tc.mtracker.utils.exceptions.UserAlreadyExistsException;
 import org.tc.mtracker.utils.exceptions.UserNotFoundException;
 
@@ -37,7 +38,9 @@ public class UserService {
     }
 
     public User findByEmail(String email) {
-        return userRepository.findByEmail(email).orElseThrow();
+        return userRepository.findByEmail(email).orElseThrow(
+                () -> new UserNotFoundException("User with email " + email + " was not found!")
+        );
     }
 
     public boolean isExistsByEmail(String email) {
@@ -46,11 +49,9 @@ public class UserService {
 
     @Transactional
     public ResponseUserProfileDTO updateProfile(UpdateUserProfileDTO dto, MultipartFile avatar, Authentication auth) {
-        User user = userRepository.findByEmail(auth.getName()).orElseThrow(
-                () -> new UserNotFoundException("User was not found!")
-        );
+        User user = findByEmail(auth.getName());
 
-        if (avatar != null) {
+        if (avatar != null && !avatar.isEmpty()) {
             uploadAvatar(avatar, user);
         }
 
@@ -66,11 +67,9 @@ public class UserService {
 
     @Transactional
     public void updateEmail(RequestUpdateUserEmailDTO dto, Authentication auth) {
-        User user = userRepository.findByEmail(auth.getName()).orElseThrow(
-                () -> new UserNotFoundException("User was not found!")
-        );
+        User user = findByEmail(auth.getName());
 
-        if (userRepository.findByEmail(dto.email()).isPresent()) {
+        if (isExistsByEmail(dto.email())) {
             throw new UserAlreadyExistsException("Email already used");
         }
 
@@ -107,18 +106,23 @@ public class UserService {
         userRepository.save(user);
     }
 
-    private String generateAvatarUrl(User user) {
+    public String generateAvatarUrl(User user) {
         return user.getAvatarId() != null ? s3Service.generatePresignedUrl(user.getAvatarId()) : null;
     }
 
-    private void uploadAvatar(MultipartFile avatar, User user) {
+    public String uploadAvatar(MultipartFile avatar, User user) {
         String avatarId = user.getAvatarId();
         if (avatarId == null) {
             avatarId = UUID.randomUUID().toString();
             user.setAvatarId(avatarId);
         }
-        s3Service.saveFile(avatarId, avatar);
-        log.info("Avatar with id {} is uploaded successfully!", avatarId);
+        try {
+            s3Service.saveFile(avatarId, avatar);
+            log.info("Avatar with id {} is uploaded successfully!", avatarId);
+        } catch (FileStorageException ex) {
+            log.error("Error while uploading avatar for user {}: {}", user.getId(), ex.getMessage());
+        }
+        return generateAvatarUrl(user);
     }
 
 }
