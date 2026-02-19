@@ -13,6 +13,7 @@ import org.tc.mtracker.security.CustomUserDetails;
 import org.tc.mtracker.security.JwtResponseDTO;
 import org.tc.mtracker.security.JwtService;
 import org.tc.mtracker.user.User;
+import org.tc.mtracker.user.UserRepository;
 import org.tc.mtracker.user.UserService;
 import org.tc.mtracker.utils.EmailService;
 import org.tc.mtracker.utils.exceptions.UserAlreadyActivatedException;
@@ -20,6 +21,7 @@ import org.tc.mtracker.utils.exceptions.UserAlreadyExistsException;
 import org.tc.mtracker.utils.exceptions.UserResetPasswordException;
 
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -35,6 +37,7 @@ public class AuthService {
     private final EmailService emailService;
     private final RefreshTokenService refreshTokenService;
     private final AuthMapper authMapper;
+    private final UserRepository userRepository;
 
     @Transactional
     public AuthResponseDTO registerUser(AuthRequestDTO dto, MultipartFile avatar) {
@@ -65,7 +68,8 @@ public class AuthService {
     }
 
     public JwtResponseDTO login(LoginRequestDto dto) {
-        User user = userService.findByEmail(dto.email());
+        User user = userRepository.findByEmail(dto.email())
+                .orElseThrow(() -> new BadCredentialsException("Invalid credentials. User not found!"));
 
         if (!passwordEncoder.matches(dto.password(), user.getPassword())) {
             throw new BadCredentialsException("Invalid credentials. Password does not match!");
@@ -76,7 +80,11 @@ public class AuthService {
     }
 
     public void sendTokenToResetPassword(String email) {
-        User user = userService.findByEmail(email);
+        Optional<User> userOptional = userRepository.findByEmail(email);
+        if (userOptional.isEmpty()) {
+            return;
+        }
+        User user = userOptional.get();
 
         CustomUserDetails userDetails = new CustomUserDetails(user);
         String resetToken = jwtService.generateToken(Map.of("purpose", PASSWORD_RESET_PURPOSE), userDetails);

@@ -81,7 +81,7 @@ class AuthControllerTest {
 
             restTestClient
                     .post()
-                    .uri("/api/v1/auth/sign-up")
+                    .uri("/api/v1/auth/register")
                     .body(multipartBodyBuilder.build())
                     .exchange()
                     .expectStatus().isCreated()
@@ -121,7 +121,7 @@ class AuthControllerTest {
 
             restTestClient
                     .post()
-                    .uri("/api/v1/auth/sign-up")
+                    .uri("/api/v1/auth/register")
                     .body(multipartBodyBuilder.build())
                     .exchange()
                     .expectStatus().isCreated()
@@ -156,7 +156,7 @@ class AuthControllerTest {
 
             restTestClient
                     .post()
-                    .uri("/api/v1/auth/sign-up")
+                    .uri("/api/v1/auth/register")
                     .body(multipartBodyBuilder.build())
                     .exchange()
                     .expectStatus().isBadRequest()
@@ -186,7 +186,7 @@ class AuthControllerTest {
 
             restTestClient
                     .post()
-                    .uri("/api/v1/auth/sign-up")
+                    .uri("/api/v1/auth/register")
                     .body(multipartBodyBuilder.build())
                     .exchange()
                     .expectStatus().isBadRequest()
@@ -235,9 +235,7 @@ class AuthControllerTest {
                     .uri("/api/v1/auth/login")
                     .body(authDto)
                     .exchange()
-                    .expectStatus().isUnauthorized()
-                    .expectBody()
-                    .jsonPath("$.detail").isEqualTo("User with email nonexistent@gmail.com does not exist.");
+                    .expectStatus().isUnauthorized();
         }
 
     @Test
@@ -246,25 +244,24 @@ class AuthControllerTest {
         restTestClient
                 .post()
                 .uri(uriBuilder -> uriBuilder
-                        .path("/api/v1/auth/getTokenToResetPassword")
+                        .path("/api/v1/auth/reset-password")
                         .queryParam("email", "test@gmail.com")
                         .build())
                 .exchange()
-                .expectStatus().isOk()
-                .expectBody(String.class).isEqualTo("Your link to reset password was sent!");
+                .expectStatus().isAccepted();
     }
 
     @Test
     @Sql("/datasets/test_users.sql")
-    void shouldReturn401WhenRequestingResetForNonExistentEmail() {
+    void shouldReturn202WhenUserEmailNotExists() {
         restTestClient
                 .post()
                 .uri(uriBuilder -> uriBuilder
-                        .path("/api/v1/auth/getTokenToResetPassword")
+                        .path("/api/v1/auth/reset-password")
                         .queryParam("email", "nonexistent@gmail.com")
                         .build())
                 .exchange()
-                .expectStatus().isUnauthorized();
+                .expectStatus().isAccepted();
     }
 
     @Test
@@ -277,7 +274,7 @@ class AuthControllerTest {
         restTestClient
                 .post()
                 .uri(uriBuilder -> uriBuilder
-                        .path("/api/v1/auth/reset-password/confirm")
+                        .path("/api/v1/auth/password")
                         .queryParam("token", validToken)
                         .build())
                 .body(resetDto)
@@ -296,7 +293,7 @@ class AuthControllerTest {
         restTestClient
                 .post()
                 .uri(uriBuilder -> uriBuilder
-                        .path("/api/v1/auth/reset-password/confirm")
+                        .path("/api/v1/auth/password")
                         .queryParam("token", validToken)
                         .build())
                 .body(mismatchDto)
@@ -313,7 +310,7 @@ class AuthControllerTest {
         restTestClient
                 .post()
                 .uri(uriBuilder -> uriBuilder
-                        .path("/api/v1/auth/reset-password/confirm")
+                        .path("/api/v1/auth/password")
                         .queryParam("token", expiredToken)
                         .build())
                 .body(resetDto)
@@ -330,7 +327,7 @@ class AuthControllerTest {
         restTestClient
                 .post()
                 .uri(uriBuilder -> uriBuilder
-                        .path("/api/v1/auth/reset-password/confirm")
+                        .path("/api/v1/auth/password")
                         .queryParam("token", wrongPurposeToken)
                         .build())
                 .body(resetDto)

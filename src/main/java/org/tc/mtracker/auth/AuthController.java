@@ -149,20 +149,13 @@ public class AuthController {
     )
     @ApiResponses(value = {
             @ApiResponse(
-                    responseCode = "200",
-                    description = "Reset link sent successfully",
+                    responseCode = "202",
+                    description = "Reset link sent successfully, but if email not exists will be ignored",
                     content = @Content(
                             mediaType = "text/plain",
                             schema = @Schema(type = "string", example = "Your link to reset password was sent!")
                     )
             ),
-            @ApiResponse(
-                    responseCode = "401",
-                    description = "User with requested email does not exist",
-                    content = @Content(
-                            schema = @Schema(implementation = ProblemDetail.class)
-                    )
-            )
     })
     @PostMapping("/reset-password")
     public ResponseEntity<Void> sendResetPasswordToken(
@@ -170,7 +163,7 @@ public class AuthController {
             String email
     ) {
         authService.sendTokenToResetPassword(email);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.accepted().build();
     }
 
     @Operation(
