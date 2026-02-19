@@ -100,13 +100,9 @@ public class AuthService {
 
     @Transactional
     public JwtResponseDTO resetPassword(String token, ResetPasswordDTO dto) {
+        verifyTokenPurpose(token, "password_reset");
         if (!dto.password().equals(dto.confirmPassword())) {
             throw new UserResetPasswordException("Passwords do not match!");
-        }
-
-        String purpose = jwtService.extractClaim(token, claims -> claims.get("purpose", String.class));
-        if (!"password_reset".equals(purpose)) {
-            throw new JwtException("Invalid token purpose");
         }
 
         String email = jwtService.extractUsername(token);
@@ -124,10 +120,7 @@ public class AuthService {
     }
 
     public JwtResponseDTO verifyToken(String token) {
-        String purpose = jwtService.extractClaim(token, claims -> claims.get("purpose", String.class));
-        if (!EMAIL_VERIFICATION_PURPOSE.equals(purpose)) {
-            throw new JwtException("Invalid token type for verification");
-        }
+        verifyTokenPurpose(token, EMAIL_VERIFICATION_PURPOSE);
 
         String email = jwtService.extractUsername(token);
         User user = userService.findByEmail(email);
@@ -167,6 +160,13 @@ public class AuthService {
                 Map.of("purpose", EMAIL_VERIFICATION_PURPOSE),
                 new CustomUserDetails(user)
         );
+    }
+
+    private void verifyTokenPurpose(String token, String requiredPurpose) {
+        String purpose = jwtService.extractClaim(token, claims -> claims.get("purpose", String.class));
+        if (!requiredPurpose.equals(purpose)) {
+            throw new JwtException("Invalid_token_purpose");
+        }
     }
 
     private @Nullable String uploadAvatar(String imageKey, MultipartFile avatar) {
