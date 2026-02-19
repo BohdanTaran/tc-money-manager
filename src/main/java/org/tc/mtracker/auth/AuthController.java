@@ -27,6 +27,8 @@ import org.tc.mtracker.auth.dto.ResetPasswordDTO;
 import org.tc.mtracker.security.JwtResponseDTO;
 import org.tc.mtracker.user.image.ValidImage;
 
+import java.net.URI;
+
 @RestController
 @RequestMapping(value = "/api/v1/auth")
 @RequiredArgsConstructor
@@ -86,8 +88,9 @@ public class AuthController {
             @RequestPart(name = "avatar", required = false) MultipartFile avatar
 
     ) {
-        AuthResponseDTO authResponseDTO = authService.signUp(authRequestDTO, avatar);
-        return ResponseEntity.status(HttpStatus.CREATED).body(authResponseDTO);
+        AuthResponseDTO authResponseDTO = authService.registerUser(authRequestDTO, avatar);
+        URI location = URI.create("/api/v1/users/" + authResponseDTO.id());
+        return ResponseEntity.created(location).body(authResponseDTO);
     }
 
     @Operation(
