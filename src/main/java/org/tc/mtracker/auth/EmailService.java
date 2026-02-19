@@ -27,18 +27,6 @@ public class EmailService {
     @Value("${app.frontend-url:http://localhost:8080}")
     private String frontendUrl;
 
-    public void sendVerificationEmail(User user) {
-        String token = generateVerificationToken(user);
-        String verificationLink = String.format("%s/verify?token=%s", frontendUrl, token);
-
-        sendPlainTextEmail(
-                user.getEmail(),
-                EMAIL_VERIFICATION_SUBJECT,
-                "Please verify your email by clicking this link: " + verificationLink
-        );
-        log.info("Verification email sent to user with id {}", user.getId());
-    }
-
     public void sendVerificationEmail(String email, String token) {
         String verificationLink = String.format("%s/verify?token=%s", frontendUrl, token);
         sendPlainTextEmail(

@@ -42,14 +42,17 @@ public class AuthService {
     private final AuthMapper authMapper;
 
     @Transactional
-    public AuthResponseDTO signUp(AuthRequestDTO dto, MultipartFile avatar) {
+    public AuthResponseDTO registerUser(AuthRequestDTO dto, MultipartFile avatar) {
         if (userService.isExistsByEmail(dto.email())) {
             throw new UserAlreadyExistsException("User with this email already exists");
         }
 
-        String imageKey = UUID.randomUUID().toString();
-        String avatarUrl = uploadAvatar(imageKey, avatar);
-
+        String imageKey = null;
+        String avatarUrl = null;
+        if (avatar != null && !avatar.isEmpty()) {
+            imageKey = UUID.randomUUID().toString();
+            avatarUrl = uploadAvatar(imageKey, avatar);
+        }
         User user = User.builder()
                 .email(dto.email())
                 .fullName(dto.fullName())
@@ -60,7 +63,8 @@ public class AuthService {
                 .build();
         User savedUser = userService.save(user);
 
-        emailService.sendVerificationEmail(user);
+        sendVerificationEmail(savedUser);
+
         log.info("User with id {} is registered successfully.", savedUser.getId());
         return authMapper.toAuthResponseDTO(savedUser, avatarUrl);
     }
@@ -80,10 +84,7 @@ public class AuthService {
         log.info("User with id {} is authenticated successfully.", user.getId());
         return new JwtResponseDTO(accessToken, refreshToken.getToken());
     }
-    /**
-     * Searches user by requested email and sends a link if it exists.
-     * @param email requested email
-     */
+
     public void sendTokenToResetPassword(String email) {
         User user = userRepository.findByEmail(email).orElseThrow(
                 () -> new BadCredentialsException("User with email " + email + " does not exist.")
@@ -95,12 +96,7 @@ public class AuthService {
         emailService.sendResetPassword(user, resetToken);
         log.info("Reset password token sent to user's email with id: {}", user.getId());
     }
-    /**
-     * Method to reset user's password
-     * @param token token from email link
-     * @param dto new password and password confirm
-     * @return access token in good case
-     */
+
     @Transactional
     public JwtResponseDTO resetPassword(String token, ResetPasswordDTO dto) {
         if (!dto.password().equals(dto.confirmPassword())) {
@@ -160,6 +156,17 @@ public class AuthService {
                 .orElseThrow(() -> new RuntimeException("Refresh token is not in database"));
     }
 
+    private void sendVerificationEmail(User user) {
+        String token = generateEmailVerificationToken(user);
+        emailService.sendVerificationEmail(user.getEmail(), token);
+    }
+
+    private String generateEmailVerificationToken(User user) {
+        return jwtService.generateToken(
+                Map.of("purpose", EMAIL_VERIFICATION_PURPOSE),
+                new CustomUserDetails(user)
+        );
+    }
 
     private @Nullable String uploadAvatar(String imageKey, MultipartFile avatar) {
         if (avatar == null || avatar.isEmpty()) {
