@@ -80,7 +80,7 @@ public class AuthService {
         CustomUserDetails userDetails = new CustomUserDetails(user);
         String resetToken = jwtService.generateToken(Map.of("purpose", PASSWORD_RESET_PURPOSE), userDetails);
 
-        emailService.sendResetPassword(user, resetToken);
+        emailService.sendPasswordResetEmail(user, resetToken);
         log.info("Reset password token sent to user's email with id: {}", user.getId());
     }
 
