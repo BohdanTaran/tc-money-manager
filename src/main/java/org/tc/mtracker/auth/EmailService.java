@@ -16,12 +16,6 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class EmailService {
-
-    private static final String PURPOSE_CLAIM_KEY = "purpose";
-    private static final String EMAIL_VERIFICATION_PURPOSE = "email_verification";
-    private static final String EMAIL_VERIFICATION_SUBJECT = "Email Verification";
-
-    private final JwtService jwtService;
     private final JavaMailSender javaMailSender;
 
     @Value("${app.frontend-url:http://localhost:8080}")
@@ -31,7 +25,7 @@ public class EmailService {
         String verificationLink = String.format("%s/verify?token=%s", frontendUrl, token);
         sendPlainTextEmail(
                 email,
-                EMAIL_VERIFICATION_SUBJECT,
+                "Email Verification",
                 "Please verify your email by clicking this link: " + verificationLink
         );
         log.info("Verification email sent to user with email {}", email);
@@ -58,10 +52,4 @@ public class EmailService {
                 "Please click on this link within 24 hours to reset your password: " + verificationLink);
     }
 
-    private String generateVerificationToken(User user) {
-        return jwtService.generateToken(
-                Map.of(PURPOSE_CLAIM_KEY, EMAIL_VERIFICATION_PURPOSE),
-                new CustomUserDetails(user)
-        );
-    }
 }
