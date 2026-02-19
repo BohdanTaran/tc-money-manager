@@ -19,7 +19,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.tc.mtracker.auth.dto.*;
+import org.tc.mtracker.auth.dto.AuthRequestDTO;
+import org.tc.mtracker.auth.dto.AuthResponseDTO;
+import org.tc.mtracker.auth.dto.LoginRequestDto;
+import org.tc.mtracker.auth.dto.RefreshTokenRequest;
+import org.tc.mtracker.auth.dto.ResetPasswordDTO;
 import org.tc.mtracker.security.JwtResponseDTO;
 import org.tc.mtracker.user.image.ValidImage;
 
@@ -57,8 +61,8 @@ public class AuthController {
                     }
             )
     })
-    @PostMapping(value = "/sign-up", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<AuthResponseDTO> signUp(
+    @PostMapping(value = "/register", consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<AuthResponseDTO> register(
             @Parameter(
                     name = "User dto",
                     required = true,
@@ -88,7 +92,7 @@ public class AuthController {
 
     @Operation(
             summary = "Login user",
-            description = "Logins user and returns an access token."
+            description = "Logs in user and returns an access token."
     )
     @ApiResponses(value = {
             @ApiResponse(
@@ -127,7 +131,7 @@ public class AuthController {
                     }
             ),
     })
-    @PostMapping("/login")
+    @PostMapping(value = "/login", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<JwtResponseDTO> login(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "User login details",
@@ -138,15 +142,9 @@ public class AuthController {
             @Valid @RequestBody LoginRequestDto loginRequestDto
     ) {
         JwtResponseDTO jwt = authService.login(loginRequestDto);
-        return ResponseEntity
-                .status(HttpStatus.OK)
-                .body(jwt);
+        return ResponseEntity.ok(jwt);
     }
-    /**
-     * Sends to user's email a link with token to be able to reset user's password
-     * @param email requested email for resetting password
-     * @return Http status code and message
-     */
+
     @Operation(
             summary = "Send reset password email",
             description = "Generates a reset link and sends it to the user's email."
@@ -168,19 +166,15 @@ public class AuthController {
                     )
             )
     })
-    @PostMapping("/getTokenToResetPassword")
-    public ResponseEntity<String> sendResetPasswordToken(
-            @RequestParam("email") @Email String email
+    @PostMapping("/reset-password")
+    public ResponseEntity<Void> sendResetPasswordToken(
+            @RequestParam("email") @Email
+            String email
     ) {
         authService.sendTokenToResetPassword(email);
-        return ResponseEntity.ok("Your link to reset password was sent!");
+        return ResponseEntity.ok().build();
     }
-    /**
-     * Resets user's password
-     * @param token token from email link
-     * @param resetPasswordDTO new user's password and confirm password
-     * @return access token to login in good case
-     */
+
     @Operation(
             summary = "Reset password using token",
             description = "Updates the user password if the token is valid."
@@ -209,7 +203,7 @@ public class AuthController {
                     )
             )
     })
-    @PostMapping("/reset-password/confirm")
+    @PostMapping(value = "/password", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<JwtResponseDTO> resetPassword(
             @RequestParam("token") String token,
             @Valid @RequestBody ResetPasswordDTO resetPasswordDTO
@@ -248,7 +242,7 @@ public class AuthController {
                             schema = @Schema(implementation = ProblemDetail.class))
             )
     })
-    @GetMapping("/verify")
+    @GetMapping(value = "/verify", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<JwtResponseDTO> verifyToken(
             @Parameter(
                     name = "token",
@@ -259,17 +253,14 @@ public class AuthController {
             )
             @RequestParam String token) {
         JwtResponseDTO jwt = authService.verifyToken(token);
-        return ResponseEntity.ok().body(jwt);
+        return ResponseEntity.ok(jwt);
     }
 
-    /**
-     * Refresh authentication token using refresh token
-     */
     @Operation(
             summary = "Refresh token",
             description = "Generates a new access token using a valid refresh token"
     )
-    @ApiResponses({
+    @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Token successfully refreshed",
                     content = @Content(mediaType = "application/json",
                             examples = @ExampleObject(
@@ -278,7 +269,7 @@ public class AuthController {
                             ))),
             @ApiResponse(responseCode = "401", description = "Invalid or expired refresh token")
     })
-    @PostMapping("/refresh")
+    @PostMapping(value = "/refresh", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<JwtResponseDTO> refreshToken(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "Refresh token payload",

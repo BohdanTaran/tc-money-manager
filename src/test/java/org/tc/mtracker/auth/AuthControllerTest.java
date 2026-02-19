@@ -141,7 +141,7 @@ class AuthControllerTest {
         }
 
         @Test
-        void shouldReturn400IfDtoPartIsMissingOnSignUp() {
+        void shouldReturn400IfDtoPartIsMissingOnRegister() {
             MultipartBodyBuilder multipartBodyBuilder = new MultipartBodyBuilder();
 
             byte[] avatarBytes = "avatar".getBytes();
@@ -165,7 +165,7 @@ class AuthControllerTest {
         }
 
         @Test
-        void shouldReturn400IfAvatarHasUnsupportedContentTypeOnSignUp() {
+        void shouldReturn400IfAvatarHasUnsupportedContentTypeOnRegister() {
             MultipartBodyBuilder multipartBodyBuilder = new MultipartBodyBuilder();
             multipartBodyBuilder.part("dto", new AuthRequestDTO(
                     "new-user3@gmail.com",
