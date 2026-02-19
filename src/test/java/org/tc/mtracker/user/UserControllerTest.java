@@ -146,7 +146,7 @@ class UserControllerTest {
 
     @Test
     @Sql("/datasets/test_users.sql")
-    void shouldReturn200WhenUserAvatarIsSuccessfullyUpdated() {
+    void shouldReturn200WhenUserAvatarIsSuccessfullyUpdated() throws Exception{
         MultipartBodyBuilder multipartBodyBuilder = new MultipartBodyBuilder();
         when(s3Service.generatePresignedUrl(Mockito.anyString())).thenReturn("https://example.com/test-avatar.jpg");
 

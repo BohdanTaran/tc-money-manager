@@ -99,7 +99,7 @@ class AuthControllerTest {
         }
 
         @Test
-        void shouldReturn201AndAuthResponseDtoIfUserIsSignedUpSuccessfullyWithAvatar() {
+        void shouldReturn201AndAuthResponseDtoIfUserIsSignedUpSuccessfullyWithAvatar() throws Exception{
             when(s3Service.generatePresignedUrl(any(String.class))).thenReturn("test-avatar-url");
 
             MultipartBodyBuilder multipartBodyBuilder = new MultipartBodyBuilder();
