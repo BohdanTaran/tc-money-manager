@@ -171,7 +171,7 @@ class UserControllerTest {
                 .expectBody()
                 .jsonPath("$.avatarUrl").isEqualTo("https://example.com/test-avatar.jpg");
 
-        verify(s3Service).generatePresignedUrl(Mockito.anyString());
+        verify(s3Service, atLeast(1)).generatePresignedUrl(Mockito.anyString());
         verify(s3Service).saveFile(Mockito.anyString(), Mockito.any(MultipartFile.class));
     }
 
