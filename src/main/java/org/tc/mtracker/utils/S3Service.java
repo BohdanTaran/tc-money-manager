@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.tc.mtracker.utils.exceptions.FileStorageException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
@@ -13,7 +14,6 @@ import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignReques
 import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.time.Duration;
 
 @Service
@@ -27,17 +27,14 @@ public class S3Service {
     @Value("${aws.s3.bucket-name}")
     private String bucketName;
 
-
-    public void saveFile(String objectKey, MultipartFile file) {
-        PutObjectRequest putObjectRequest = buildPutObjectRequest(objectKey, file);
-
+    public void saveFile(String objectKey, MultipartFile file) throws FileStorageException{
         try {
+            PutObjectRequest putObjectRequest = buildPutObjectRequest(objectKey, file);
             s3Client.putObject(
                     putObjectRequest,
-                    RequestBody.fromInputStream(file.getInputStream(), file.getSize())
-            );
+                    RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
         } catch (IOException e) {
-            throw new UncheckedIOException("Failed to upload file to S3. key=" + objectKey, e);
+            throw new FileStorageException("Could not save file to S3: " + objectKey, e);
         }
     }
 

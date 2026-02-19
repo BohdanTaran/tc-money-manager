@@ -78,4 +78,11 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleException(Exception ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
+
+    @ExceptionHandler(FileStorageException.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public ProblemDetail handleFileStorageException(FileStorageException ex) {
+        log.error("File storage error: {}", ex.getMessage(), ex);
+        return ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, "Error occurred while processing file");
+    }
 }

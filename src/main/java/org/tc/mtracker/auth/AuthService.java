@@ -17,6 +17,7 @@ import org.tc.mtracker.user.User;
 import org.tc.mtracker.user.UserRepository;
 import org.tc.mtracker.user.UserService;
 import org.tc.mtracker.utils.S3Service;
+import org.tc.mtracker.utils.exceptions.FileStorageException;
 import org.tc.mtracker.utils.exceptions.UserAlreadyActivatedException;
 import org.tc.mtracker.utils.exceptions.UserAlreadyExistsException;
 import org.tc.mtracker.utils.exceptions.UserResetPasswordException;
@@ -173,7 +174,12 @@ public class AuthService {
             return null;
         }
 
-        imageService.saveFile(imageKey, avatar);
+        try {
+            imageService.saveFile(imageKey, avatar);
+        } catch (FileStorageException ex){
+            log.error("Error while uploading avatar: {}", ex.getMessage());
+            return null;
+        }
         return imageService.generatePresignedUrl(imageKey);
     }
 }
