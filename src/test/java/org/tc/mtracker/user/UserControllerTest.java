@@ -343,4 +343,30 @@ class UserControllerTest {
         verifyNoInteractions(emailService);
     }
 
+    @Test
+    @Sql("/datasets/test_users.sql")
+    void shouldReturnUserProfileWhenAuthenticated() {
+        String email = "test@gmail.com";
+        String token = testHelpers.generateTestToken(email, "access_token", 3600000);
+
+        restTestClient
+                .get()
+                .uri("/api/v1/users/me")
+                .header("Authorization", "Bearer " + token)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.email").isEqualTo(email)
+                .jsonPath("$.fullName").isEqualTo("Active User")
+                .jsonPath("$.currencyCode").isEqualTo("USD");
+    }
+
+    @Test
+    void shouldReturn403WhenAccessingMeWithoutToken() {
+        restTestClient
+                .get()
+                .uri("/api/v1/users/me")
+                .exchange()
+                .expectStatus().isForbidden();
+    }
 }

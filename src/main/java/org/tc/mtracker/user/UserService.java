@@ -47,6 +47,12 @@ public class UserService {
         return userRepository.findByEmail(email).isPresent();
     }
 
+    public UserResponseDTO getUser(Authentication auth) {
+        User user = findByEmail(auth.getName());
+
+        return userMapper.toDto(user);
+    }
+
     @Transactional
     public UserProfileResponseDTO updateProfile(UpdateUserProfileRequestDTO dto, MultipartFile avatar, Authentication auth) {
         User user = findByEmail(auth.getName());

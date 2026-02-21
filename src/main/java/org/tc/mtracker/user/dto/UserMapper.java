@@ -2,7 +2,6 @@ package org.tc.mtracker.user.dto;
 
 import org.mapstruct.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 import org.tc.mtracker.user.User;
 import org.tc.mtracker.user.UserAvatarService;
 
@@ -14,6 +13,8 @@ public abstract class UserMapper {
     public abstract void updateEntityFromDto(UpdateUserProfileRequestDTO dto, @MappingTarget User user);
 
     public abstract UserProfileResponseDTO toUserProfileResponseDTO(User user);
+
+    public abstract UserResponseDTO toDto(User user);
 
     @AfterMapping
     protected void setAvatarUrl(User user, @MappingTarget UserProfileResponseDTO.UserProfileResponseDTOBuilder dto) {

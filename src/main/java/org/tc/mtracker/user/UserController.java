@@ -43,4 +43,9 @@ public class UserController implements UserOperations {
         userService.verifyEmailUpdate(token);
         return ResponseEntity.ok().build();
     }
+
+    @Override
+    public ResponseEntity<UserResponseDTO> getUserProfile(Authentication auth) {
+        return ResponseEntity.ok(userService.getUser(auth));
+    }
 }
