@@ -1,6 +1,7 @@
 package org.tc.mtracker.security;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -68,6 +69,13 @@ public class JwtService {
     public boolean isTokenValid(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
         return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
+    }
+
+    public void validateToken(String token, String requiredPurpose) {
+        String purpose = extractClaim(token, claims -> claims.get("purpose", String.class));
+        if (requiredPurpose != null && !requiredPurpose.equals(purpose)) {
+            throw new JwtException("Invalid token purpose: expected " + requiredPurpose + ", but got " + purpose);
+        }
     }
 
     private boolean isTokenExpired(String token) {

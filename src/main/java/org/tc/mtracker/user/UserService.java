@@ -88,10 +88,7 @@ public class UserService {
 
     @Transactional
     public void verifyEmailUpdate(String token) {
-        String purpose = jwtService.extractClaim(token, claims -> claims.get("purpose", String.class));
-        if (!"email_update_verification".equals(purpose)) {
-            throw new JwtException("Invalid token type for verification");
-        }
+        jwtService.validateToken(token, JwtPurpose.EMAIL_UPDATE_VERIFICATION.getValue());
 
         String email = jwtService.extractUsername(token);
         User user = userRepository.findByEmail(email).orElseThrow();

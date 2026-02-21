@@ -95,7 +95,7 @@ public class AuthService {
 
     @Transactional
     public JwtResponseDTO resetPassword(String token, ResetPasswordDTO dto) {
-        verifyTokenPurpose(token, PASSWORD_RESET_PURPOSE);
+        jwtService.validateToken(token, JwtPurpose.PASSWORD_RESET.getValue());
         if (!dto.password().equals(dto.confirmPassword())) {
             throw new UserResetPasswordException("Passwords do not match!");
         }
@@ -112,7 +112,7 @@ public class AuthService {
 
     @Transactional
     public JwtResponseDTO verifyToken(String token) {
-        verifyTokenPurpose(token, EMAIL_VERIFICATION_PURPOSE);
+        jwtService.validateToken(token, JwtPurpose.EMAIL_VERIFICATION.getValue());
 
         String email = jwtService.extractUsername(token);
         User user = userService.findByEmail(email);
@@ -152,13 +152,6 @@ public class AuthService {
                 Map.of("purpose", EMAIL_VERIFICATION_PURPOSE),
                 new CustomUserDetails(user)
         );
-    }
-
-    private void verifyTokenPurpose(String token, String requiredPurpose) {
-        String purpose = jwtService.extractClaim(token, claims -> claims.get("purpose", String.class));
-        if (!requiredPurpose.equals(purpose)) {
-            throw new JwtException("Invalid_token_purpose");
-        }
     }
 }
 
