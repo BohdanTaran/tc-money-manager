@@ -132,7 +132,7 @@ public class AuthService {
                 .map(refreshTokenService::verifyExpiration)
                 .map(RefreshToken::getUser)
                 .map(user -> new JwtResponseDTO(jwtService.generateToken(new CustomUserDetails(user)), request.refreshToken()))
-                .orElseThrow(() -> new RuntimeException("Refresh token is not in database"));
+                .orElseThrow(() -> new TokenNotFoundException("Refresh token is not in database"));
     }
 
     private JwtResponseDTO createJwtResponseDTO(User user) {

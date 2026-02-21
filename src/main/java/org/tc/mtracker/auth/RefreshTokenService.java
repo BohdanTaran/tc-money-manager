@@ -6,6 +6,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.tc.mtracker.security.JwtService;
 import org.tc.mtracker.user.User;
+import org.tc.mtracker.utils.exceptions.TokenExpiredException;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -37,7 +38,7 @@ public class RefreshTokenService {
     public RefreshToken verifyExpiration(RefreshToken token) {
         if (token.getExpiryDate().isBefore(LocalDateTime.now())) {
             refreshTokenRepository.delete(token);
-            throw new RuntimeException("Refresh token was expired. Please make a new sign-in request");
+            throw new TokenExpiredException("Refresh token was expired. Please make a new sign-in request");
         }
         return token;
     }
