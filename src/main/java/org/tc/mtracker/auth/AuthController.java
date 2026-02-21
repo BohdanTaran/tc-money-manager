@@ -58,7 +58,7 @@ public class AuthController implements AuthOperations {
     public ResponseEntity<JwtResponseDTO> verifyToken(
             String token
     ) {
-        JwtResponseDTO jwt = authService.verifyToken(token);
+        JwtResponseDTO jwt = authService.processEmailVerification(token);
         return ResponseEntity.ok(jwt);
     }
 

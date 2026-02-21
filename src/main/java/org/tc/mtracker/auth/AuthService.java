@@ -10,17 +10,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.tc.mtracker.auth.dto.*;
 import org.tc.mtracker.security.CustomUserDetails;
-import org.tc.mtracker.security.JwtPurpose;
 import org.tc.mtracker.security.JwtResponseDTO;
 import org.tc.mtracker.security.JwtService;
 import org.tc.mtracker.user.*;
 import org.tc.mtracker.utils.exceptions.TokenNotFoundException;
-import org.tc.mtracker.utils.exceptions.UserAlreadyActivatedException;
 import org.tc.mtracker.utils.exceptions.UserAlreadyExistsException;
-import org.tc.mtracker.utils.exceptions.UserResetPasswordException;
-
-import java.util.Map;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -122,6 +116,9 @@ public class AuthService {
         return passwordResetService.resetPassword(token, resetPasswordDTO);
     }
 
+    public JwtResponseDTO processEmailVerification(String token) {
+        return emailVerificationService.processEmailVerification(token);
+    }
 }
 
 
