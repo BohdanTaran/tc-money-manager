@@ -38,33 +38,20 @@ public class AuthService {
     private final UserRepository userRepository;
 
     @Transactional
-    public AuthResponseDTO register(AuthRequestDTO dto, MultipartFile avatar) {
+    public AuthResponseDTO register(AuthRequestDTO dto, MultipartFile avatar) { //todo two endpoints
         if (userService.existsByEmail(dto.email())) {
             throw new UserAlreadyExistsException("User with this newEmail already exists");
         }
 
-        User user = User.builder()
-                .email(dto.email())
-                .fullName(dto.fullName())
-                .password(passwordEncoder.encode(dto.password()))
-                .currencyCode(dto.currencyCode())
-                .isActivated(false)
-                .build();
-
+        User user = buildUserFromAuthRequest(dto);
+        userService.uploadAvatar(avatar, user);
         User savedUser = userService.save(user);
-
-        String avatarUrl = null;
-        if (avatar != null && !avatar.isEmpty()) {
-            userService.uploadAvatar(avatar, savedUser);
-            userService.save(savedUser);
-            avatarUrl = userService.generateAvatarUrl(savedUser);
-        }
-
-        sendVerificationEmail(savedUser);
+        sendVerificationEmail(user);
 
         log.info("User with id {} is registered successfully.", savedUser.getId());
-        return authMapper.toAuthResponseDTO(savedUser, avatarUrl);
+        return authMapper.toAuthResponseDTO(savedUser, userService.generateAvatarUrl(savedUser));
     }
+
 
     public JwtResponseDTO login(LoginRequestDTO dto) {
         User user = userRepository.findByEmail(dto.email())
@@ -151,6 +138,16 @@ public class AuthService {
                 Map.of("purpose", JwtPurpose.EMAIL_VERIFICATION.getValue()),
                 new CustomUserDetails(user)
         );
+    }
+
+    private User buildUserFromAuthRequest(AuthRequestDTO dto) {
+        return User.builder()
+                .email(dto.email())
+                .fullName(dto.fullName())
+                .password(passwordEncoder.encode(dto.password()))
+                .currencyCode(dto.currencyCode())
+                .isActivated(false)
+                .build();
     }
 }
 

@@ -51,9 +51,7 @@ public class UserService {
     public UserProfileResponseDTO updateProfile(UpdateUserProfileRequestDTO dto, MultipartFile avatar, Authentication auth) {
         User user = findByEmail(auth.getName());
 
-        if (avatar != null && !avatar.isEmpty()) {
-            uploadAvatar(avatar, user);
-        }
+        uploadAvatar(avatar, user);
 
         if (dto != null) {
             userMapper.updateEntityFromDto(dto, user);
@@ -110,6 +108,9 @@ public class UserService {
     }
 
     public void uploadAvatar(MultipartFile avatar, User user) {
+        if (avatar == null || avatar.isEmpty()) {
+            return;
+        }
         String avatarId = user.getAvatarId();
         if (avatarId == null) {
             avatarId = UUID.randomUUID().toString();
