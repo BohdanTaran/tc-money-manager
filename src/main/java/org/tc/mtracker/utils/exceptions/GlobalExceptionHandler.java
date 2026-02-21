@@ -68,14 +68,33 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(UserNotFoundException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
     public ProblemDetail handleUserNotFound(UserNotFoundException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
     @ExceptionHandler(EmailVerificationException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ProblemDetail handleException(Exception ex) {
+    public ProblemDetail handleEmailVerificationException(EmailVerificationException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(FileStorageException.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public ProblemDetail handleFileStorageException(FileStorageException ex) {
+        log.error("File storage error: {}", ex.getMessage(), ex);
+        return ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, "Error occurred while processing file");
+    }
+
+    @ExceptionHandler(TokenExpiredException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ProblemDetail handleTokenExpiredException(TokenExpiredException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+    }
+
+    @ExceptionHandler(TokenNotFoundException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ProblemDetail handleTokenNotFoundException(TokenNotFoundException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
     }
 }

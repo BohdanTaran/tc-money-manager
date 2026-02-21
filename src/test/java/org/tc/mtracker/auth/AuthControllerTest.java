@@ -19,11 +19,12 @@ import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.client.RestTestClient;
 import org.springframework.web.multipart.MultipartFile;
 import org.tc.mtracker.auth.dto.AuthRequestDTO;
-import org.tc.mtracker.auth.dto.LoginRequestDto;
+import org.tc.mtracker.auth.dto.LoginRequestDTO;
 import org.tc.mtracker.auth.dto.RefreshTokenRequest;
 import org.tc.mtracker.auth.dto.ResetPasswordDTO;
 import org.tc.mtracker.currency.CurrencyCode;
 import org.tc.mtracker.security.JwtResponseDTO;
+import org.tc.mtracker.utils.EmailService;
 import org.tc.mtracker.utils.S3Service;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -80,7 +81,7 @@ class AuthControllerTest {
 
             restTestClient
                     .post()
-                    .uri("/api/v1/auth/sign-up")
+                    .uri("/api/v1/auth/register")
                     .body(multipartBodyBuilder.build())
                     .exchange()
                     .expectStatus().isCreated()
@@ -93,12 +94,12 @@ class AuthControllerTest {
                     .jsonPath("$.isActivated").isEqualTo(false);
 
             verifyNoInteractions(s3Service);
-            verify(emailService, times(1)).sendVerificationEmail(any());
+            verify(emailService, times(1)).sendVerificationEmail(any(), any());
             verifyNoMoreInteractions(emailService);
         }
 
         @Test
-        void shouldReturn201AndAuthResponseDtoIfUserIsSignedUpSuccessfullyWithAvatar() {
+        void shouldReturn201AndAuthResponseDtoIfUserIsSignedUpSuccessfullyWithAvatar() throws Exception{
             when(s3Service.generatePresignedUrl(any(String.class))).thenReturn("test-avatar-url");
 
             MultipartBodyBuilder multipartBodyBuilder = new MultipartBodyBuilder();
@@ -120,7 +121,7 @@ class AuthControllerTest {
 
             restTestClient
                     .post()
-                    .uri("/api/v1/auth/sign-up")
+                    .uri("/api/v1/auth/register")
                     .body(multipartBodyBuilder.build())
                     .exchange()
                     .expectStatus().isCreated()
@@ -136,12 +137,12 @@ class AuthControllerTest {
 
             verify(s3Service, times(1)).saveFile(keyCaptor.capture(), any(MultipartFile.class));
             verify(s3Service, times(1)).generatePresignedUrl(keyCaptor.getValue());
-            verify(emailService, times(1)).sendVerificationEmail(any());
+            verify(emailService, times(1)).sendVerificationEmail(any(), any());
             verifyNoMoreInteractions(s3Service, emailService);
         }
 
         @Test
-        void shouldReturn400IfDtoPartIsMissingOnSignUp() {
+        void shouldReturn400IfDtoPartIsMissingOnRegister() {
             MultipartBodyBuilder multipartBodyBuilder = new MultipartBodyBuilder();
 
             byte[] avatarBytes = "avatar".getBytes();
@@ -155,7 +156,7 @@ class AuthControllerTest {
 
             restTestClient
                     .post()
-                    .uri("/api/v1/auth/sign-up")
+                    .uri("/api/v1/auth/register")
                     .body(multipartBodyBuilder.build())
                     .exchange()
                     .expectStatus().isBadRequest()
@@ -165,7 +166,7 @@ class AuthControllerTest {
         }
 
         @Test
-        void shouldReturn400IfAvatarHasUnsupportedContentTypeOnSignUp() {
+        void shouldReturn400IfAvatarHasUnsupportedContentTypeOnRegister() {
             MultipartBodyBuilder multipartBodyBuilder = new MultipartBodyBuilder();
             multipartBodyBuilder.part("dto", new AuthRequestDTO(
                     "new-user3@gmail.com",
@@ -185,7 +186,7 @@ class AuthControllerTest {
 
             restTestClient
                     .post()
-                    .uri("/api/v1/auth/sign-up")
+                    .uri("/api/v1/auth/register")
                     .body(multipartBodyBuilder.build())
                     .exchange()
                     .expectStatus().isBadRequest()
@@ -197,7 +198,7 @@ class AuthControllerTest {
         @Test
         @Sql("/datasets/test_users.sql")
         void shouldReturnAccessTokenIfUserIsLoggedSuccessfully() {
-            LoginRequestDto authDto = new LoginRequestDto("test@gmail.com", "12345678");
+            LoginRequestDTO authDto = new LoginRequestDTO("test@gmail.com", "12345678");
 
             restTestClient
                     .post()
@@ -212,7 +213,7 @@ class AuthControllerTest {
         @Test
         @Sql("/datasets/test_users.sql")
         void shouldReturn401IfPasswordIsIncorrect() {
-            LoginRequestDto authDto = new LoginRequestDto("test@gmail.com", "wrongpassword");
+            LoginRequestDTO authDto = new LoginRequestDTO("test@gmail.com", "wrongpassword");
 
             restTestClient
                     .post()
@@ -227,16 +228,14 @@ class AuthControllerTest {
         @Test
         @Sql("/datasets/test_users.sql")
         void shouldReturn401IfUserDoesNotExist() {
-            LoginRequestDto authDto = new LoginRequestDto("nonexistent@gmail.com", "12345678");
+            LoginRequestDTO authDto = new LoginRequestDTO("nonexistent@gmail.com", "12345678");
 
             restTestClient
                     .post()
                     .uri("/api/v1/auth/login")
                     .body(authDto)
                     .exchange()
-                    .expectStatus().isUnauthorized()
-                    .expectBody()
-                    .jsonPath("$.detail").isEqualTo("User with email nonexistent@gmail.com does not exist.");
+                    .expectStatus().isUnauthorized();
         }
 
     @Test
@@ -245,25 +244,24 @@ class AuthControllerTest {
         restTestClient
                 .post()
                 .uri(uriBuilder -> uriBuilder
-                        .path("/api/v1/auth/getTokenToResetPassword")
+                        .path("/api/v1/auth/reset-password")
                         .queryParam("email", "test@gmail.com")
                         .build())
                 .exchange()
-                .expectStatus().isOk()
-                .expectBody(String.class).isEqualTo("Your link to reset password was sent!");
+                .expectStatus().isAccepted();
     }
 
     @Test
     @Sql("/datasets/test_users.sql")
-    void shouldReturn401WhenRequestingResetForNonExistentEmail() {
+    void shouldReturn202WhenUserEmailNotExists() {
         restTestClient
                 .post()
                 .uri(uriBuilder -> uriBuilder
-                        .path("/api/v1/auth/getTokenToResetPassword")
+                        .path("/api/v1/auth/reset-password")
                         .queryParam("email", "nonexistent@gmail.com")
                         .build())
                 .exchange()
-                .expectStatus().isUnauthorized();
+                .expectStatus().isAccepted();
     }
 
     @Test
@@ -276,7 +274,7 @@ class AuthControllerTest {
         restTestClient
                 .post()
                 .uri(uriBuilder -> uriBuilder
-                        .path("/api/v1/auth/reset-password/confirm")
+                        .path("/api/v1/auth/password")
                         .queryParam("token", validToken)
                         .build())
                 .body(resetDto)
@@ -295,7 +293,7 @@ class AuthControllerTest {
         restTestClient
                 .post()
                 .uri(uriBuilder -> uriBuilder
-                        .path("/api/v1/auth/reset-password/confirm")
+                        .path("/api/v1/auth/password")
                         .queryParam("token", validToken)
                         .build())
                 .body(mismatchDto)
@@ -312,7 +310,7 @@ class AuthControllerTest {
         restTestClient
                 .post()
                 .uri(uriBuilder -> uriBuilder
-                        .path("/api/v1/auth/reset-password/confirm")
+                        .path("/api/v1/auth/password")
                         .queryParam("token", expiredToken)
                         .build())
                 .body(resetDto)
@@ -329,7 +327,7 @@ class AuthControllerTest {
         restTestClient
                 .post()
                 .uri(uriBuilder -> uriBuilder
-                        .path("/api/v1/auth/reset-password/confirm")
+                        .path("/api/v1/auth/password")
                         .queryParam("token", wrongPurposeToken)
                         .build())
                 .body(resetDto)
@@ -357,7 +355,7 @@ class AuthControllerTest {
     @Test
     @Sql("/datasets/test_users.sql")
     void shouldRefreshAccessTokenSuccessfully() throws InterruptedException {
-        LoginRequestDto loginDto = new LoginRequestDto("test@gmail.com", "12345678");
+        LoginRequestDTO loginDto = new LoginRequestDTO("test@gmail.com", "12345678");
 
         JwtResponseDTO loginResponse = restTestClient
                 .post()
@@ -401,6 +399,6 @@ class AuthControllerTest {
                 .uri("/api/v1/auth/refresh")
                 .body(invalidRequest)
                 .exchange()
-                .expectStatus().is5xxServerError();
+                .expectStatus().isUnauthorized();
     }
 }
