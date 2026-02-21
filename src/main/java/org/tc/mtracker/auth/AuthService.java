@@ -2,6 +2,7 @@ package org.tc.mtracker.auth;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.NonNull;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -12,10 +13,7 @@ import org.tc.mtracker.security.CustomUserDetails;
 import org.tc.mtracker.security.JwtPurpose;
 import org.tc.mtracker.security.JwtResponseDTO;
 import org.tc.mtracker.security.JwtService;
-import org.tc.mtracker.user.User;
-import org.tc.mtracker.user.UserRepository;
-import org.tc.mtracker.user.UserService;
-import org.tc.mtracker.utils.EmailService;
+import org.tc.mtracker.user.*;
 import org.tc.mtracker.utils.exceptions.TokenNotFoundException;
 import org.tc.mtracker.utils.exceptions.UserAlreadyActivatedException;
 import org.tc.mtracker.utils.exceptions.UserAlreadyExistsException;
@@ -36,6 +34,8 @@ public class AuthService {
     private final RefreshTokenService refreshTokenService;
     private final AuthMapper authMapper;
     private final UserRepository userRepository;
+    private final PasswordResetService passwordResetService;
+    private final EmailVerificationService emailVerificationService;
 
     @Transactional
     public AuthResponseDTO register(AuthRequestDTO dto, MultipartFile avatar) { //todo two endpoints
@@ -54,63 +54,10 @@ public class AuthService {
 
 
     public JwtResponseDTO login(LoginRequestDTO dto) {
-        User user = userRepository.findByEmail(dto.email())
-                .orElseThrow(() -> new BadCredentialsException("Invalid credentials. User not found!"));
-
-        if (!passwordEncoder.matches(dto.password(), user.getPassword())) {
-            throw new BadCredentialsException("Invalid credentials. Password does not match!");
-        }
+        User user = getUser(dto.email());
+        verifyPassword(dto.password(), user.getPassword());
 
         log.info("User with id {} is authenticated successfully.", user.getId());
-        return createJwtResponseDTO(user);
-    }
-
-    public void sendPasswordResetToken(String email) {
-        Optional<User> userOptional = userRepository.findByEmail(email);
-        if (userOptional.isEmpty()) {
-            return;
-        }
-        User user = userOptional.get();
-
-        CustomUserDetails userDetails = new CustomUserDetails(user);
-        String resetToken = jwtService.generateToken(Map.of("purpose", JwtPurpose.PASSWORD_RESET.getValue()), userDetails);
-
-        emailService.sendPasswordResetEmail(user, resetToken);
-        log.info("Reset password token sent to user's email with id: {}", user.getId());
-    }
-
-    @Transactional
-    public JwtResponseDTO resetPassword(String token, ResetPasswordDTO dto) {
-        jwtService.validateToken(token, JwtPurpose.PASSWORD_RESET.getValue());
-        if (!dto.password().equals(dto.confirmPassword())) {
-            throw new UserResetPasswordException("Passwords do not match!");
-        }
-
-        String email = jwtService.extractUsername(token);
-        User user = userService.findByEmail(email);
-
-        user.setPassword(passwordEncoder.encode(dto.password()));
-        userService.save(user);
-
-        log.info("Password successfully changed for user with id: {}", user.getId());
-        return createJwtResponseDTO(user);
-    }
-
-    @Transactional
-    public JwtResponseDTO verifyToken(String token) {
-        jwtService.validateToken(token, JwtPurpose.EMAIL_VERIFICATION.getValue());
-
-        String email = jwtService.extractUsername(token);
-        User user = userService.findByEmail(email);
-
-        if (user.isActivated()) {
-            throw new UserAlreadyActivatedException("User with email " + email + " is already activated");
-        }
-
-        user.setActivated(true);
-        userService.save(user);
-
-        log.info("User with id {} is verified successfully.", user.getId());
         return createJwtResponseDTO(user);
     }
 
@@ -120,6 +67,23 @@ public class AuthService {
                 .map(RefreshToken::getUser)
                 .map(user -> new JwtResponseDTO(jwtService.generateToken(new CustomUserDetails(user)), request.refreshToken()))
                 .orElseThrow(() -> new TokenNotFoundException("Refresh token is not in database"));
+    }
+
+    private @NonNull User getUser(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new BadCredentialsException("Invalid credentials. User not found!"));
+    }
+
+    private void validateEmailUniqueness(AuthRequestDTO dto) {
+        if (userService.existsByEmail(dto.email())) {
+            throw new UserAlreadyExistsException("User with this newEmail already exists");
+        }
+    }
+
+    private void verifyPassword(String providedPassword, String expectedPassword) {
+        if (!passwordEncoder.matches(providedPassword, expectedPassword)) {
+            throw new BadCredentialsException("Invalid credentials. Password does not match!");
+        }
     }
 
     private JwtResponseDTO createJwtResponseDTO(User user) {
@@ -149,6 +113,15 @@ public class AuthService {
                 .isActivated(false)
                 .build();
     }
+
+    public void sendPasswordResetToken(String email) {
+        passwordResetService.sendPasswordResetToken(email);
+    }
+
+    public JwtResponseDTO resetPassword(String token, ResetPasswordDTO resetPasswordDTO) {
+        return passwordResetService.resetPassword(token, resetPasswordDTO);
+    }
+
 }
 
 
