@@ -4,11 +4,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.tc.mtracker.user.dto.UpdateUserEmailRequestDTO;
-import org.tc.mtracker.user.dto.UserProfileResponseDTO;
 import org.tc.mtracker.user.dto.UpdateUserProfileRequestDTO;
+import org.tc.mtracker.user.dto.UserProfileResponseDTO;
 
 @RestController
 @RequestMapping("/api/v1/users")
