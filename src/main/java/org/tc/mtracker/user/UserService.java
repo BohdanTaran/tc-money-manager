@@ -10,10 +10,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.tc.mtracker.auth.EmailService;
 import org.tc.mtracker.security.CustomUserDetails;
 import org.tc.mtracker.security.JwtService;
-import org.tc.mtracker.user.dto.RequestUpdateUserEmailDTO;
-import org.tc.mtracker.user.dto.ResponseUserProfileDTO;
-import org.tc.mtracker.user.dto.UpdateUserProfileDTO;
-import org.tc.mtracker.user.dto.UserMapper;
+import org.tc.mtracker.user.dto.*;
 import org.tc.mtracker.utils.S3Service;
 import org.tc.mtracker.utils.exceptions.EmailVerificationException;
 import org.tc.mtracker.utils.exceptions.UserAlreadyExistsException;
@@ -42,6 +39,14 @@ public class UserService {
 
     public boolean isExistsByEmail(String email) {
         return userRepository.findByEmail(email).isPresent();
+    }
+
+    public UserDTO getUser(Authentication auth) {
+        User user = userRepository.findByEmail(auth.getName()).orElseThrow(
+                () -> new UserNotFoundException("User with username '" + auth.getName() + "' not found")
+        );
+
+        return userMapper.toDto(user);
     }
 
     @Transactional

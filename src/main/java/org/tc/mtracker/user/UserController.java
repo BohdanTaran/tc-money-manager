@@ -3,6 +3,7 @@ package org.tc.mtracker.user;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -19,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.tc.mtracker.user.dto.RequestUpdateUserEmailDTO;
 import org.tc.mtracker.user.dto.ResponseUserProfileDTO;
 import org.tc.mtracker.user.dto.UpdateUserProfileDTO;
+import org.tc.mtracker.user.dto.UserDTO;
 import org.tc.mtracker.user.image.ValidImage;
 
 @RestController
@@ -95,5 +97,27 @@ public class UserController {
     public ResponseEntity<Void> verifyEmail(@RequestParam String token) {
         userService.verifyEmailUpdate(token);
         return ResponseEntity.ok().build();
+    }
+
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "User profile returned",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = UserDTO.class))),
+            @ApiResponse(responseCode = "400", description = "User not found",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = "User with username 'Alex Noob' not found"))),
+            @ApiResponse(responseCode = "401", description = "Unauthorized",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = "Full authentication is required to access this resource"))),
+            @ApiResponse(responseCode = "405", description = "Method not allowed",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = "The method is not supported: POST"))),
+            @ApiResponse(responseCode = "500", description = "Internal server error",
+                    content = @Content(mediaType = "application/json",
+                            examples = @ExampleObject(value = "Internal error: NullPointerException")))
+    })
+    @GetMapping("/me")
+    public ResponseEntity<UserDTO> getUserProfile(Authentication auth) {
+        return ResponseEntity.ok(userService.getUser(auth));
     }
 }
