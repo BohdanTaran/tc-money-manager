@@ -29,7 +29,6 @@ import java.util.UUID;
 public class UserService {
     private final UserMapper userMapper;
     private final UserRepository userRepository;
-    private final S3Service s3Service;
     private final UserAvatarService userAvatarService;
     private final UserEmailService userEmailService;
     private final JwtService jwtService;
@@ -52,18 +51,12 @@ public class UserService {
     public UserProfileResponseDTO updateProfile(UpdateUserProfileRequestDTO dto, MultipartFile avatar, Authentication auth) {
         User user = findByEmail(auth.getName());
 
-        uploadAvatar(avatar, user);
-
-        if (dto != null) {
-            userMapper.updateEntityFromDto(dto, user);
-        }
-
+        userAvatarService.uploadAvatar(avatar, user);
+        userMapper.updateEntityFromDto(dto, user);
         userRepository.save(user);
 
-        String presignedAvatarUrl = generateAvatarUrl(user);
         log.info("User with id {} is updated successfully!", user.getId());
-
-        return new UserProfileResponseDTO(user.getFullName(), presignedAvatarUrl);
+        return userMapper.toUserProfileResponseDTO(user);
     }
 
     @Transactional
@@ -82,25 +75,6 @@ public class UserService {
         String email = jwtService.extractUsername(token);
         User user = findByEmail(email);
 
-    public String generateAvatarUrl(User user) {
-        return user.getAvatarId() != null ? s3Service.generatePresignedUrl(user.getAvatarId()) : null;
-    }
-
-    public void uploadAvatar(MultipartFile avatar, User user) {
-        if (avatar == null || avatar.isEmpty()) {
-            return;
-        }
-        String avatarId = user.getAvatarId();
-        if (avatarId == null) {
-            avatarId = UUID.randomUUID().toString();
-        }
-        try {
-            s3Service.saveFile(avatarId, avatar);
-            user.setAvatarId(avatarId);
-            log.info("Avatar with id {} is uploaded successfully for user {}!", avatarId, user.getId());
-        } catch (FileStorageException ex) {
-            log.error("Error while uploading avatar for user {}: {}", user.getId(), ex.getMessage());
-        }
         userEmailService.verifyEmailUpdate(user, token);
     }
 

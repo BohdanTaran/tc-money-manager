@@ -27,6 +27,7 @@ public class AuthService {
     private final RefreshTokenService refreshTokenService;
     private final AuthMapper authMapper;
     private final UserRepository userRepository;
+    private final UserAvatarService userAvatarService;
     private final UserEmailService userEmailService;
     private final PasswordResetService passwordResetService;
     private final EmailVerificationService emailVerificationService;
@@ -36,12 +37,12 @@ public class AuthService {
         validateEmailUniqueness(dto);
 
         User user = buildUserFromAuthRequest(dto);
-        userService.uploadAvatar(avatar, user);
+        userAvatarService.uploadAvatar(avatar, user);
         User savedUser = userService.save(user);
         userEmailService.sendVerificationEmail(user);
 
         log.info("User with id {} is registered successfully.", savedUser.getId());
-        return authMapper.toAuthResponseDTO(savedUser, userService.generateAvatarUrl(savedUser));
+        return authMapper.toAuthResponseDTO(savedUser, userAvatarService.generateAvatarUrl(savedUser));
     }
 
 
