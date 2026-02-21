@@ -8,5 +8,5 @@
     public interface UserMapper {
         void updateEntityFromDto(UpdateUserProfileDTO updateUserProfileDTO, @MappingTarget User user);
 
-        UserDTO toDto(User user);
+        UserResponseDTO toDto(User user);
     }

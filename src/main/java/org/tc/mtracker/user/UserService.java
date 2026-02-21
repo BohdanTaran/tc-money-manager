@@ -41,7 +41,7 @@ public class UserService {
         return userRepository.findByEmail(email).isPresent();
     }
 
-    public UserDTO getUser(Authentication auth) {
+    public UserResponseDTO getUser(Authentication auth) {
         User user = userRepository.findByEmail(auth.getName()).orElseThrow(
                 () -> new UserNotFoundException("User with username '" + auth.getName() + "' not found")
         );

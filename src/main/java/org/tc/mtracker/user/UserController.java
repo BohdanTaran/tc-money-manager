@@ -20,7 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.tc.mtracker.user.dto.RequestUpdateUserEmailDTO;
 import org.tc.mtracker.user.dto.ResponseUserProfileDTO;
 import org.tc.mtracker.user.dto.UpdateUserProfileDTO;
-import org.tc.mtracker.user.dto.UserDTO;
+import org.tc.mtracker.user.dto.UserResponseDTO;
 import org.tc.mtracker.user.image.ValidImage;
 
 @RestController
@@ -102,7 +102,7 @@ public class UserController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "User profile returned",
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = UserDTO.class))),
+                            schema = @Schema(implementation = UserResponseDTO.class))),
             @ApiResponse(responseCode = "400", description = "User not found",
                     content = @Content(mediaType = "application/json",
                             examples = @ExampleObject(value = "User with username 'Alex Noob' not found"))),
@@ -117,7 +117,7 @@ public class UserController {
                             examples = @ExampleObject(value = "Internal error: NullPointerException")))
     })
     @GetMapping("/me")
-    public ResponseEntity<UserDTO> getUserProfile(Authentication auth) {
+    public ResponseEntity<UserResponseDTO> getUserProfile(Authentication auth) {
         return ResponseEntity.ok(userService.getUser(auth));
     }
 }
