@@ -10,12 +10,14 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.tc.mtracker.auth.dto.*;
 import org.tc.mtracker.security.CustomUserDetails;
+import org.tc.mtracker.security.JwtPurpose;
 import org.tc.mtracker.security.JwtResponseDTO;
 import org.tc.mtracker.security.JwtService;
 import org.tc.mtracker.user.User;
 import org.tc.mtracker.user.UserRepository;
 import org.tc.mtracker.user.UserService;
 import org.tc.mtracker.utils.EmailService;
+import org.tc.mtracker.utils.exceptions.TokenNotFoundException;
 import org.tc.mtracker.utils.exceptions.UserAlreadyActivatedException;
 import org.tc.mtracker.utils.exceptions.UserAlreadyExistsException;
 import org.tc.mtracker.utils.exceptions.UserResetPasswordException;
@@ -27,9 +29,6 @@ import java.util.Optional;
 @RequiredArgsConstructor
 @Slf4j
 public class AuthService {
-
-    private static final String EMAIL_VERIFICATION_PURPOSE = "email_verification";
-    private static final String PASSWORD_RESET_PURPOSE = "password_reset";
 
     private final UserService userService;
     private final JwtService jwtService;
@@ -87,7 +86,7 @@ public class AuthService {
         User user = userOptional.get();
 
         CustomUserDetails userDetails = new CustomUserDetails(user);
-        String resetToken = jwtService.generateToken(Map.of("purpose", PASSWORD_RESET_PURPOSE), userDetails);
+        String resetToken = jwtService.generateToken(Map.of("purpose", JwtPurpose.PASSWORD_RESET.getValue()), userDetails);
 
         emailService.sendPasswordResetEmail(user, resetToken);
         log.info("Reset password token sent to user's email with id: {}", user.getId());
@@ -149,7 +148,7 @@ public class AuthService {
 
     private String generateEmailVerificationToken(User user) {
         return jwtService.generateToken(
-                Map.of("purpose", EMAIL_VERIFICATION_PURPOSE),
+                Map.of("purpose", JwtPurpose.EMAIL_VERIFICATION.getValue()),
                 new CustomUserDetails(user)
         );
     }

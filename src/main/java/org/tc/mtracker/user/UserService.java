@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.tc.mtracker.utils.EmailService;
 import org.tc.mtracker.security.CustomUserDetails;
+import org.tc.mtracker.security.JwtPurpose;
 import org.tc.mtracker.security.JwtService;
 import org.tc.mtracker.user.dto.RequestUpdateUserEmailDTO;
 import org.tc.mtracker.user.dto.ResponseUserProfileDTO;
@@ -75,7 +76,7 @@ public class UserService {
 
         user.setPendingEmail(dto.email());
         String generatedToken = jwtService.generateToken(
-                Map.of("purpose", "email_update_verification"),
+                Map.of("purpose", JwtPurpose.EMAIL_UPDATE_VERIFICATION.getValue()),
                 new CustomUserDetails(user)
         );
 
