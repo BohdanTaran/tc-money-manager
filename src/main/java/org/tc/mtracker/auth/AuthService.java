@@ -24,23 +24,21 @@ public class AuthService {
     private final UserService userService;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
-    private final EmailService emailService;
     private final RefreshTokenService refreshTokenService;
     private final AuthMapper authMapper;
     private final UserRepository userRepository;
+    private final UserEmailService userEmailService;
     private final PasswordResetService passwordResetService;
     private final EmailVerificationService emailVerificationService;
 
     @Transactional
-    public AuthResponseDTO register(AuthRequestDTO dto, MultipartFile avatar) { //todo two endpoints
-        if (userService.existsByEmail(dto.email())) {
-            throw new UserAlreadyExistsException("User with this newEmail already exists");
-        }
+    public AuthResponseDTO register(AuthRequestDTO dto, MultipartFile avatar) {
+        validateEmailUniqueness(dto);
 
         User user = buildUserFromAuthRequest(dto);
         userService.uploadAvatar(avatar, user);
         User savedUser = userService.save(user);
-        sendVerificationEmail(user);
+        userEmailService.sendVerificationEmail(user);
 
         log.info("User with id {} is registered successfully.", savedUser.getId());
         return authMapper.toAuthResponseDTO(savedUser, userService.generateAvatarUrl(savedUser));
@@ -84,18 +82,6 @@ public class AuthService {
         String accessToken = jwtService.generateToken(new CustomUserDetails(user));
         RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
         return new JwtResponseDTO(accessToken, refreshToken.getToken());
-    }
-
-    private void sendVerificationEmail(User user) {
-        String token = generateEmailVerificationToken(user);
-        emailService.sendVerificationEmail(user.getEmail(), token);
-    }
-
-    private String generateEmailVerificationToken(User user) {
-        return jwtService.generateToken(
-                Map.of("purpose", JwtPurpose.EMAIL_VERIFICATION.getValue()),
-                new CustomUserDetails(user)
-        );
     }
 
     private User buildUserFromAuthRequest(AuthRequestDTO dto) {

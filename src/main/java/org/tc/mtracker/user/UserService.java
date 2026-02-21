@@ -30,8 +30,9 @@ public class UserService {
     private final UserMapper userMapper;
     private final UserRepository userRepository;
     private final S3Service s3Service;
+    private final UserAvatarService userAvatarService;
+    private final UserEmailService userEmailService;
     private final JwtService jwtService;
-    private final EmailService emailService;
 
     public User save(User user) {
         return userRepository.save(user);
@@ -67,41 +68,19 @@ public class UserService {
 
     @Transactional
     public void updateEmail(UpdateUserEmailRequestDTO dto, Authentication auth) {
-        User user = findByEmail(auth.getName());
-
         if (existsByEmail(dto.email())) {
             throw new UserAlreadyExistsException("Email already used");
         }
 
-        user.setPendingEmail(dto.email());
-        String generatedToken = jwtService.generateToken(
-                Map.of("purpose", JwtPurpose.EMAIL_UPDATE_VERIFICATION.getValue()),
-                new CustomUserDetails(user)
-        );
+        User user = findByEmail(auth.getName());
 
-        user.setVerificationToken(generatedToken);
-
-        emailService.sendVerificationEmail(dto.email(), generatedToken);
-
-        userRepository.save(user);
+        userEmailService.sendEmailUpdateVerification(user, dto.email());
     }
 
     @Transactional
     public void verifyEmailUpdate(String token) {
-        jwtService.validateToken(token, JwtPurpose.EMAIL_UPDATE_VERIFICATION.getValue());
-
         String email = jwtService.extractUsername(token);
-        User user = userRepository.findByEmail(email).orElseThrow();
-
-        if (user.getVerificationToken() == null || !token.equals(user.getVerificationToken())) {
-            throw new EmailVerificationException("Invalid token for verification");
-        }
-
-        user.setEmail(user.getPendingEmail());
-        user.setPendingEmail(null);
-        user.setVerificationToken(null);
-        userRepository.save(user);
-    }
+        User user = findByEmail(email);
 
     public String generateAvatarUrl(User user) {
         return user.getAvatarId() != null ? s3Service.generatePresignedUrl(user.getAvatarId()) : null;
@@ -122,6 +101,7 @@ public class UserService {
         } catch (FileStorageException ex) {
             log.error("Error while uploading avatar for user {}: {}", user.getId(), ex.getMessage());
         }
+        userEmailService.verifyEmailUpdate(user, token);
     }
 
 }
