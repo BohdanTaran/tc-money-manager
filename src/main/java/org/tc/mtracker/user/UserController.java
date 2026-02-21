@@ -10,6 +10,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.tc.mtracker.user.dto.UpdateUserEmailRequestDTO;
 import org.tc.mtracker.user.dto.UpdateUserProfileRequestDTO;
 import org.tc.mtracker.user.dto.UserProfileResponseDTO;
+import org.tc.mtracker.user.dto.UserResponseDTO;
 
 @RestController
 @RequestMapping("/api/v1/users")

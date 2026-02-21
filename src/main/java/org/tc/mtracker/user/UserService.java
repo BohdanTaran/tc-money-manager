@@ -6,22 +6,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-import org.tc.mtracker.utils.EmailService;
-import org.tc.mtracker.security.CustomUserDetails;
-import org.tc.mtracker.security.JwtPurpose;
 import org.tc.mtracker.security.JwtService;
-import org.tc.mtracker.user.dto.UpdateUserEmailRequestDTO;
-import org.tc.mtracker.user.dto.UserProfileResponseDTO;
-import org.tc.mtracker.user.dto.UpdateUserProfileRequestDTO;
-import org.tc.mtracker.user.dto.UserMapper;
-import org.tc.mtracker.utils.S3Service;
-import org.tc.mtracker.utils.exceptions.EmailVerificationException;
-import org.tc.mtracker.utils.exceptions.FileStorageException;
+import org.tc.mtracker.user.dto.*;
 import org.tc.mtracker.utils.exceptions.UserAlreadyExistsException;
 import org.tc.mtracker.utils.exceptions.UserNotFoundException;
-
-import java.util.Map;
-import java.util.UUID;
 
 @Slf4j
 @Service
