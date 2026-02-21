@@ -120,9 +120,9 @@ public interface AuthOperations {
                     description = "User login details",
                     required = true,
                     content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = LoginRequestDto.class))
+                            schema = @Schema(implementation = LoginRequestDTO.class))
             )
-            @Valid @RequestBody LoginRequestDto loginRequestDto
+            @Valid @RequestBody LoginRequestDTO loginRequestDto
     );
 
     @Operation(

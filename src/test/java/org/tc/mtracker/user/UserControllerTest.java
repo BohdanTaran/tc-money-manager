@@ -14,9 +14,9 @@ import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.client.RestTestClient;
 import org.springframework.web.multipart.MultipartFile;
 import org.tc.mtracker.utils.EmailService;
-import org.tc.mtracker.user.dto.RequestUpdateUserEmailDTO;
+import org.tc.mtracker.user.dto.UpdateUserEmailRequestDTO;
 import org.tc.mtracker.currency.CurrencyCode;
-import org.tc.mtracker.user.dto.UpdateUserProfileDTO;
+import org.tc.mtracker.user.dto.UpdateUserProfileRequestDTO;
 import org.tc.mtracker.utils.S3Service;
 import org.tc.mtracker.utils.TestHelpers;
 import org.testcontainers.containers.MySQLContainer;
@@ -69,7 +69,7 @@ class UserControllerTest {
         String newFullname = "New Fullname";
         CurrencyCode newCC = CurrencyCode.UAH;
         String token = testHelpers.generateTestToken(email, "access_token", 3600000);
-        UpdateUserProfileDTO updateDto = new UpdateUserProfileDTO(newFullname, newCC);
+        UpdateUserProfileRequestDTO updateDto = new UpdateUserProfileRequestDTO(newFullname, newCC);
 
         MultipartBodyBuilder multipartBodyBuilder = new MultipartBodyBuilder();
         multipartBodyBuilder.part("dto", updateDto, MediaType.APPLICATION_JSON);
@@ -94,7 +94,7 @@ class UserControllerTest {
         String email = "test@gmail.com";
         String newFullname = "";
         String token = testHelpers.generateTestToken(email, "access_token", 3600000);
-        UpdateUserProfileDTO updateDto = new UpdateUserProfileDTO(newFullname, null);
+        UpdateUserProfileRequestDTO updateDto = new UpdateUserProfileRequestDTO(newFullname, null);
 
         MultipartBodyBuilder multipartBodyBuilder = new MultipartBodyBuilder();
         multipartBodyBuilder.part("dto", updateDto, MediaType.APPLICATION_JSON);
@@ -112,7 +112,7 @@ class UserControllerTest {
     @Sql("/datasets/test_users.sql")
     void shouldReturn400WhenFullNameIsTooShort() {
         String token = testHelpers.generateTestToken("test@gmail.com", "access_token", 3600000);
-        UpdateUserProfileDTO updateDto = new UpdateUserProfileDTO("", null);
+        UpdateUserProfileRequestDTO updateDto = new UpdateUserProfileRequestDTO("", null);
 
         MultipartBodyBuilder multipartBodyBuilder = new MultipartBodyBuilder();
         multipartBodyBuilder.part("dto", updateDto, MediaType.APPLICATION_JSON);
@@ -130,7 +130,7 @@ class UserControllerTest {
     @Sql("/datasets/test_users.sql")
     void shouldReturn400WhenFullNameIsTooLong() {
         String token = testHelpers.generateTestToken("test@gmail.com", "access_token", 3600000);
-        UpdateUserProfileDTO updateDto = new UpdateUserProfileDTO("a".repeat(129), null);
+        UpdateUserProfileRequestDTO updateDto = new UpdateUserProfileRequestDTO("a".repeat(129), null);
 
         MultipartBodyBuilder multipartBodyBuilder = new MultipartBodyBuilder();
         multipartBodyBuilder.part("dto", updateDto, MediaType.APPLICATION_JSON);
@@ -205,7 +205,7 @@ class UserControllerTest {
     @Test
     @Sql("/datasets/test_users.sql")
     void shouldReturn200WhenEmailUpdateFlowTriggered() {
-        RequestUpdateUserEmailDTO requestUpdateUserEmailDTO = new RequestUpdateUserEmailDTO("newemail@example.com");
+        UpdateUserEmailRequestDTO requestUpdateUserEmailDTO = new UpdateUserEmailRequestDTO("newemail@example.com");
         String token = testHelpers.generateTestToken("test@gmail.com", "access_token", 3600000);
         restTestClient
                 .post()
@@ -222,7 +222,7 @@ class UserControllerTest {
     @Test
     @Sql("/datasets/test_users.sql")
     void shouldVerifyEmailUpdateSuccessfully() {
-        RequestUpdateUserEmailDTO requestUpdateUserEmailDTO = new RequestUpdateUserEmailDTO("newemail@example.com");
+        UpdateUserEmailRequestDTO requestUpdateUserEmailDTO = new UpdateUserEmailRequestDTO("newemail@example.com");
         String accessToken = testHelpers.generateTestToken("test@gmail.com", "access_token", 3600000);
 
         restTestClient
@@ -253,7 +253,7 @@ class UserControllerTest {
     @Test
     @Sql("/datasets/test_users.sql")
     void shouldReturn401IfWrongVerificationTokenIsProvided() {
-        RequestUpdateUserEmailDTO requestUpdateUserEmailDTO = new RequestUpdateUserEmailDTO("newemail@example.com");
+        UpdateUserEmailRequestDTO requestUpdateUserEmailDTO = new UpdateUserEmailRequestDTO("newemail@example.com");
         String accessToken = testHelpers.generateTestToken("test@gmail.com", "access_token", 3600000);
 
         restTestClient
@@ -278,7 +278,7 @@ class UserControllerTest {
     @Test
     @Sql("/datasets/test_users.sql")
     void shouldReturn401WhenVerificationTokenHasWrongPurpose() {
-        RequestUpdateUserEmailDTO requestUpdateUserEmailDTO = new RequestUpdateUserEmailDTO("newemail@example.com");
+        UpdateUserEmailRequestDTO requestUpdateUserEmailDTO = new UpdateUserEmailRequestDTO("newemail@example.com");
         String accessToken = testHelpers.generateTestToken("test@gmail.com", "access_token", 3600000);
 
         restTestClient
@@ -304,7 +304,7 @@ class UserControllerTest {
     @Test
     @Sql("/datasets/test_users.sql")
     void shouldReturn401WhenVerificationTokenIsExpired() {
-        RequestUpdateUserEmailDTO requestUpdateUserEmailDTO = new RequestUpdateUserEmailDTO("newemail@example.com");
+        UpdateUserEmailRequestDTO requestUpdateUserEmailDTO = new UpdateUserEmailRequestDTO("newemail@example.com");
         String accessToken = testHelpers.generateTestToken("test@gmail.com", "access_token", 3600000);
 
         restTestClient
@@ -330,7 +330,7 @@ class UserControllerTest {
     @Test
     @Sql("/datasets/test_users.sql")
     void shouldReturn401WhenNewEmailIsUsed() {
-        RequestUpdateUserEmailDTO requestUpdateUserEmailDTO = new RequestUpdateUserEmailDTO("admin@mtracker.com");
+        UpdateUserEmailRequestDTO requestUpdateUserEmailDTO = new UpdateUserEmailRequestDTO("admin@mtracker.com");
         String accessToken = testHelpers.generateTestToken("test@gmail.com", "email_update_verification", 3600000);
 
         restTestClient

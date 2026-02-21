@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import org.hibernate.validator.constraints.Length;
 
 @Schema(description = "Login user request")
-public record LoginRequestDto(
+public record LoginRequestDTO(
         @Schema(description = "User's email address", example = "example@mail.com")
         @NotBlank @Email String email,
 

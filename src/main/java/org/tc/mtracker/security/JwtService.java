@@ -72,6 +72,9 @@ public class JwtService {
     }
 
     public void validateToken(String token, String requiredPurpose) {
+        if (isTokenExpired(token)) {
+            throw new JwtException("Token has expired");
+        }
         String purpose = extractClaim(token, claims -> claims.get("purpose", String.class));
         if (requiredPurpose != null && !requiredPurpose.equals(purpose)) {
             throw new JwtException("Invalid token purpose: expected " + requiredPurpose + ", but got " + purpose);

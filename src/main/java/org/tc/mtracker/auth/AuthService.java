@@ -1,6 +1,5 @@
 package org.tc.mtracker.auth;
 
-import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -39,9 +38,9 @@ public class AuthService {
     private final UserRepository userRepository;
 
     @Transactional
-    public AuthResponseDTO registerUser(AuthRequestDTO dto, MultipartFile avatar) {
-        if (userService.isExistsByEmail(dto.email())) {
-            throw new UserAlreadyExistsException("User with this email already exists");
+    public AuthResponseDTO register(AuthRequestDTO dto, MultipartFile avatar) {
+        if (userService.existsByEmail(dto.email())) {
+            throw new UserAlreadyExistsException("User with this newEmail already exists");
         }
 
         User user = User.builder()
@@ -56,8 +55,9 @@ public class AuthService {
 
         String avatarUrl = null;
         if (avatar != null && !avatar.isEmpty()) {
-            avatarUrl = userService.uploadAvatar(avatar, savedUser);
+            userService.uploadAvatar(avatar, savedUser);
             userService.save(savedUser);
+            avatarUrl = userService.generateAvatarUrl(savedUser);
         }
 
         sendVerificationEmail(savedUser);
@@ -66,7 +66,7 @@ public class AuthService {
         return authMapper.toAuthResponseDTO(savedUser, avatarUrl);
     }
 
-    public JwtResponseDTO login(LoginRequestDto dto) {
+    public JwtResponseDTO login(LoginRequestDTO dto) {
         User user = userRepository.findByEmail(dto.email())
                 .orElseThrow(() -> new BadCredentialsException("Invalid credentials. User not found!"));
 
@@ -78,7 +78,7 @@ public class AuthService {
         return createJwtResponseDTO(user);
     }
 
-    public void sendTokenToResetPassword(String email) {
+    public void sendPasswordResetToken(String email) {
         Optional<User> userOptional = userRepository.findByEmail(email);
         if (userOptional.isEmpty()) {
             return;

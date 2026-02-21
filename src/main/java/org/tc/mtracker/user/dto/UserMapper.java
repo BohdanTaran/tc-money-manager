@@ -6,5 +6,5 @@ import org.tc.mtracker.user.User;
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING,
         nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
 public interface UserMapper {
-    void updateEntityFromDto(UpdateUserProfileDTO updateUserProfileDTO, @MappingTarget User user);
+    void updateEntityFromDto(UpdateUserProfileRequestDTO updateUserProfileDTO, @MappingTarget User user);
 }

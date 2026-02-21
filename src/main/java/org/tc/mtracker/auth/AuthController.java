@@ -21,19 +21,17 @@ public class AuthController implements AuthOperations {
 
     @Override
     public ResponseEntity<AuthResponseDTO> register(
-            @ValidImage
-            @RequestPart(name = "avatar", required = false) MultipartFile avatar
             AuthRequestDTO authRequestDTO,
             MultipartFile avatar
     ) {
-        AuthResponseDTO authResponseDTO = authService.registerUser(authRequestDTO, avatar);
+        AuthResponseDTO authResponseDTO = authService.register(authRequestDTO, avatar);
         URI location = URI.create("/api/v1/users/" + authResponseDTO.id());
         return ResponseEntity.created(location).body(authResponseDTO);
     }
 
     @Override
     public ResponseEntity<JwtResponseDTO> login(
-            LoginRequestDto loginRequestDto
+            LoginRequestDTO loginRequestDto
     ) {
         JwtResponseDTO jwt = authService.login(loginRequestDto);
         return ResponseEntity.ok(jwt);
@@ -43,7 +41,7 @@ public class AuthController implements AuthOperations {
     public ResponseEntity<Void> sendResetPasswordToken(
             String email
     ) {
-        authService.sendTokenToResetPassword(email);
+        authService.sendPasswordResetToken(email);
         return ResponseEntity.accepted().build();
     }
 

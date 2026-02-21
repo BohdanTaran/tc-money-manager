@@ -1,4 +1,4 @@
-package org.tc.mtracker.user.image;
+package org.tc.mtracker.utils.image;
 
 import jakarta.validation.Constraint;
 import jakarta.validation.Payload;
@@ -8,7 +8,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-@Target({ElementType.PARAMETER})
+@Target({ElementType.PARAMETER, ElementType.FIELD})
 @Retention(RetentionPolicy.RUNTIME)
 @Constraint(validatedBy = ImageValidator.class)
 public @interface ValidImage {
@@ -17,4 +17,8 @@ public @interface ValidImage {
     Class<?>[] groups() default {};
 
     Class<? extends Payload>[] payload() default {};
+
+    String[] allowedExtensions() default {"png", "jpg", "jpeg"};
+
+    String[] allowedMimeTypes() default {"image/png", "image/jpeg", "image/jpg"};
 }

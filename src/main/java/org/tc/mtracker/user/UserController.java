@@ -6,10 +6,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.tc.mtracker.user.dto.RequestUpdateUserEmailDTO;
-import org.tc.mtracker.user.dto.ResponseUserProfileDTO;
-import org.tc.mtracker.user.dto.UpdateUserProfileDTO;
-import org.tc.mtracker.user.image.ValidImage;
+import org.tc.mtracker.user.dto.UpdateUserEmailRequestDTO;
+import org.tc.mtracker.user.dto.UserProfileResponseDTO;
+import org.tc.mtracker.user.dto.UpdateUserProfileRequestDTO;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -20,18 +19,18 @@ public class UserController implements UserOperations {
     private final UserService userService;
 
     @Override
-    public ResponseEntity<ResponseUserProfileDTO> updateMe(
-            UpdateUserProfileDTO dto,
+    public ResponseEntity<UserProfileResponseDTO> updateMe(
+            UpdateUserProfileRequestDTO dto,
             MultipartFile avatar,
             Authentication auth
     ) {
-        ResponseUserProfileDTO responseUserProfileDTO = userService.updateProfile(dto, avatar, auth);
+        UserProfileResponseDTO responseUserProfileDTO = userService.updateProfile(dto, avatar, auth);
         return ResponseEntity.ok(responseUserProfileDTO);
     }
 
     @Override
-    public ResponseEntity<ResponseUserProfileDTO> updateEmail(
-            RequestUpdateUserEmailDTO dto,
+    public ResponseEntity<UserProfileResponseDTO> updateEmail(
+            UpdateUserEmailRequestDTO dto,
             Authentication auth
     ) {
         userService.updateEmail(dto, auth);

@@ -19,7 +19,7 @@ import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.client.RestTestClient;
 import org.springframework.web.multipart.MultipartFile;
 import org.tc.mtracker.auth.dto.AuthRequestDTO;
-import org.tc.mtracker.auth.dto.LoginRequestDto;
+import org.tc.mtracker.auth.dto.LoginRequestDTO;
 import org.tc.mtracker.auth.dto.RefreshTokenRequest;
 import org.tc.mtracker.auth.dto.ResetPasswordDTO;
 import org.tc.mtracker.currency.CurrencyCode;
@@ -198,7 +198,7 @@ class AuthControllerTest {
         @Test
         @Sql("/datasets/test_users.sql")
         void shouldReturnAccessTokenIfUserIsLoggedSuccessfully() {
-            LoginRequestDto authDto = new LoginRequestDto("test@gmail.com", "12345678");
+            LoginRequestDTO authDto = new LoginRequestDTO("test@gmail.com", "12345678");
 
             restTestClient
                     .post()
@@ -213,7 +213,7 @@ class AuthControllerTest {
         @Test
         @Sql("/datasets/test_users.sql")
         void shouldReturn401IfPasswordIsIncorrect() {
-            LoginRequestDto authDto = new LoginRequestDto("test@gmail.com", "wrongpassword");
+            LoginRequestDTO authDto = new LoginRequestDTO("test@gmail.com", "wrongpassword");
 
             restTestClient
                     .post()
@@ -228,7 +228,7 @@ class AuthControllerTest {
         @Test
         @Sql("/datasets/test_users.sql")
         void shouldReturn401IfUserDoesNotExist() {
-            LoginRequestDto authDto = new LoginRequestDto("nonexistent@gmail.com", "12345678");
+            LoginRequestDTO authDto = new LoginRequestDTO("nonexistent@gmail.com", "12345678");
 
             restTestClient
                     .post()
@@ -355,7 +355,7 @@ class AuthControllerTest {
     @Test
     @Sql("/datasets/test_users.sql")
     void shouldRefreshAccessTokenSuccessfully() throws InterruptedException {
-        LoginRequestDto loginDto = new LoginRequestDto("test@gmail.com", "12345678");
+        LoginRequestDTO loginDto = new LoginRequestDTO("test@gmail.com", "12345678");
 
         JwtResponseDTO loginResponse = restTestClient
                 .post()
@@ -399,6 +399,6 @@ class AuthControllerTest {
                 .uri("/api/v1/auth/refresh")
                 .body(invalidRequest)
                 .exchange()
-                .expectStatus().is5xxServerError();
+                .expectStatus().isUnauthorized();
     }
 }

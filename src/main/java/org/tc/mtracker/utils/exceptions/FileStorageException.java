@@ -1,6 +1,6 @@
 package org.tc.mtracker.utils.exceptions;
 
-public class FileStorageException extends Exception {
+public class FileStorageException extends RuntimeException {
     public FileStorageException(String message, Throwable cause) {
         super(message, cause);
     }

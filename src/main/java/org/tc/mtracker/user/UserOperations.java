@@ -14,9 +14,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.tc.mtracker.user.dto.RequestUpdateUserEmailDTO;
-import org.tc.mtracker.user.dto.ResponseUserProfileDTO;
-import org.tc.mtracker.user.dto.UpdateUserProfileDTO;
+import org.tc.mtracker.user.dto.UpdateUserEmailRequestDTO;
+import org.tc.mtracker.user.dto.UserProfileResponseDTO;
+import org.tc.mtracker.user.dto.UpdateUserProfileRequestDTO;
 import org.tc.mtracker.utils.image.ValidImage;
 
 @Tag(name = "User Management", description = "User management endpoints")
@@ -30,7 +30,7 @@ public interface UserOperations {
                     description = "User's data updated successfully",
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = ResponseUserProfileDTO.class)
+                            schema = @Schema(implementation = UserProfileResponseDTO.class)
                     )
             ),
             @ApiResponse(
@@ -50,14 +50,14 @@ public interface UserOperations {
             )
     })
     @PutMapping(value = "/me", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    ResponseEntity<ResponseUserProfileDTO> updateMe(
+    ResponseEntity<UserProfileResponseDTO> updateMe(
             @Parameter(
                     name = "User profile update DTO",
                     required = false,
                     content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE)
             )
             @Valid
-            @RequestPart(name = "dto", required = false) UpdateUserProfileDTO dto,
+            @RequestPart(name = "dto", required = false) UpdateUserProfileRequestDTO dto,
             @Parameter(
                     name = "avatar",
                     required = false,
@@ -72,8 +72,8 @@ public interface UserOperations {
     );
 
     @PostMapping(value = "/me/update-email")
-    ResponseEntity<ResponseUserProfileDTO> updateEmail(
-            @RequestBody RequestUpdateUserEmailDTO dto,
+    ResponseEntity<UserProfileResponseDTO> updateEmail(
+            @RequestBody UpdateUserEmailRequestDTO dto,
             @Parameter(hidden = true) Authentication auth
     );
 

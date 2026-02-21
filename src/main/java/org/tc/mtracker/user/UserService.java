@@ -1,6 +1,5 @@
 package org.tc.mtracker.user;
 
-import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -11,9 +10,9 @@ import org.tc.mtracker.utils.EmailService;
 import org.tc.mtracker.security.CustomUserDetails;
 import org.tc.mtracker.security.JwtPurpose;
 import org.tc.mtracker.security.JwtService;
-import org.tc.mtracker.user.dto.RequestUpdateUserEmailDTO;
-import org.tc.mtracker.user.dto.ResponseUserProfileDTO;
-import org.tc.mtracker.user.dto.UpdateUserProfileDTO;
+import org.tc.mtracker.user.dto.UpdateUserEmailRequestDTO;
+import org.tc.mtracker.user.dto.UserProfileResponseDTO;
+import org.tc.mtracker.user.dto.UpdateUserProfileRequestDTO;
 import org.tc.mtracker.user.dto.UserMapper;
 import org.tc.mtracker.utils.S3Service;
 import org.tc.mtracker.utils.exceptions.EmailVerificationException;
@@ -44,33 +43,35 @@ public class UserService {
         );
     }
 
-    public boolean isExistsByEmail(String email) {
+    public boolean existsByEmail(String email) {
         return userRepository.findByEmail(email).isPresent();
     }
 
     @Transactional
-    public ResponseUserProfileDTO updateProfile(UpdateUserProfileDTO dto, MultipartFile avatar, Authentication auth) {
+    public UserProfileResponseDTO updateProfile(UpdateUserProfileRequestDTO dto, MultipartFile avatar, Authentication auth) {
         User user = findByEmail(auth.getName());
 
         if (avatar != null && !avatar.isEmpty()) {
             uploadAvatar(avatar, user);
         }
 
-        userMapper.updateEntityFromDto(dto, user);
+        if (dto != null) {
+            userMapper.updateEntityFromDto(dto, user);
+        }
 
         userRepository.save(user);
 
         String presignedAvatarUrl = generateAvatarUrl(user);
         log.info("User with id {} is updated successfully!", user.getId());
 
-        return new ResponseUserProfileDTO(user.getFullName(), presignedAvatarUrl);
+        return new UserProfileResponseDTO(user.getFullName(), presignedAvatarUrl);
     }
 
     @Transactional
-    public void updateEmail(RequestUpdateUserEmailDTO dto, Authentication auth) {
+    public void updateEmail(UpdateUserEmailRequestDTO dto, Authentication auth) {
         User user = findByEmail(auth.getName());
 
-        if (isExistsByEmail(dto.email())) {
+        if (existsByEmail(dto.email())) {
             throw new UserAlreadyExistsException("Email already used");
         }
 
@@ -108,19 +109,18 @@ public class UserService {
         return user.getAvatarId() != null ? s3Service.generatePresignedUrl(user.getAvatarId()) : null;
     }
 
-    public String uploadAvatar(MultipartFile avatar, User user) {
+    public void uploadAvatar(MultipartFile avatar, User user) {
         String avatarId = user.getAvatarId();
         if (avatarId == null) {
             avatarId = UUID.randomUUID().toString();
-            user.setAvatarId(avatarId);
         }
         try {
             s3Service.saveFile(avatarId, avatar);
-            log.info("Avatar with id {} is uploaded successfully!", avatarId);
+            user.setAvatarId(avatarId);
+            log.info("Avatar with id {} is uploaded successfully for user {}!", avatarId, user.getId());
         } catch (FileStorageException ex) {
             log.error("Error while uploading avatar for user {}: {}", user.getId(), ex.getMessage());
         }
-        return generateAvatarUrl(user);
     }
 
 }
