@@ -36,8 +36,7 @@ public class CategoryController  {
             @RequestParam("type") List<CategoryType> type,
             @Parameter(hidden = true) Authentication auth
     ) {
-        List<Category> foundCategories = categoryService.getCategories(name, type, auth);
 
-        return ResponseEntity.ok(categoryMapper.toListDto(foundCategories));
+        return ResponseEntity.ok((categoryService.getCategories(name, type, auth)));
     }
 }

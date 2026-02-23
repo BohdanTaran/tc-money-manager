@@ -18,13 +18,15 @@ public class CategoryService {
     private final CategoryMapper categoryMapper;
     private final UserService userService;
 
-    public List<Category> getCategories(String name, List<CategoryType> types, Authentication auth) {
+    public List<CategoryResponseDTO> getCategories(String name, List<CategoryType> types, Authentication auth) {
         User currentUser = userService.getCurrentAuthenticatedUser(auth);
 
-        return categoryRepository.findGlobalAndUserCategories(
+        List<Category> categories = categoryRepository.findGlobalAndUserCategories(
                 currentUser,
                 name,
                 types
         );
+
+        return categoryMapper.toListDto(categories);
     }
 }
