@@ -47,4 +47,8 @@ public class EmailService {
         message.setText(content);
         javaMailSender.send(message);
     }
+
+    public void sendPasswordUpdateNotification(String email) {
+        sendPlainTextEmail(email, "Password Updated", "Your password has been successfully updated.");
+    }
 }

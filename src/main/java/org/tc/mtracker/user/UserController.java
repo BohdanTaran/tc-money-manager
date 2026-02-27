@@ -7,10 +7,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-import org.tc.mtracker.user.dto.UpdateUserEmailRequestDTO;
-import org.tc.mtracker.user.dto.UpdateUserProfileRequestDTO;
-import org.tc.mtracker.user.dto.UserProfileResponseDTO;
-import org.tc.mtracker.user.dto.UserResponseDTO;
+import org.tc.mtracker.user.dto.*;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -19,6 +16,7 @@ import org.tc.mtracker.user.dto.UserResponseDTO;
 public class UserController implements UserProfileAPI {
 
     private final UserService userService;
+    private final UserChangePasswordService userChangePasswordService;
 
     @Override
     public ResponseEntity<UserProfileResponseDTO> updateMe(
@@ -28,6 +26,13 @@ public class UserController implements UserProfileAPI {
     ) {
         UserProfileResponseDTO responseUserProfileDTO = userService.updateProfile(dto, avatar, auth);
         return ResponseEntity.ok(responseUserProfileDTO);
+    }
+
+    @Override
+    public ResponseEntity<Void> updatePassword(UpdateUserPasswordRequestDTO dto,
+                                               Authentication auth) {
+        userChangePasswordService.changeUserPassword(dto, auth);
+        return ResponseEntity.ok().build();
     }
 
     @Override
