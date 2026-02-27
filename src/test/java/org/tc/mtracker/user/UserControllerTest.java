@@ -13,6 +13,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.client.RestTestClient;
 import org.springframework.web.multipart.MultipartFile;
+import org.tc.mtracker.user.dto.UpdateUserPasswordRequestDTO;
 import org.tc.mtracker.utils.EmailService;
 import org.tc.mtracker.user.dto.UpdateUserEmailRequestDTO;
 import org.tc.mtracker.currency.CurrencyCode;
@@ -368,5 +369,35 @@ class UserControllerTest {
                 .uri("/api/v1/users/me")
                 .exchange()
                 .expectStatus().isForbidden();
+    }
+
+    @Test
+    @Sql("/datasets/test_users.sql")
+    void shouldReturn200WhenPasswordUpdated() {
+        String accessToken = testHelpers.generateTestToken("test@gmail.com", "access_token", 3600000);
+        UpdateUserPasswordRequestDTO dto = new UpdateUserPasswordRequestDTO("12345678", "newPassword", "newPassword");
+
+        restTestClient
+                .put()
+                .uri("/api/v1/users/me/update-password")
+                .header("Authorization", "Bearer " + accessToken)
+                .body(dto)
+                .exchange()
+                .expectStatus().isOk();
+    }
+
+    @Test
+    @Sql("/datasets/test_users.sql")
+    void shouldReturn401WhenCurrentPasswordIsInvalid() {
+        String accessToken = testHelpers.generateTestToken("test@gmail.com", "access_token", 3600000);
+        UpdateUserPasswordRequestDTO dto = new UpdateUserPasswordRequestDTO("87654321", "newPassword", "newPassword");
+
+        restTestClient
+                .put()
+                .uri("/api/v1/users/me/update-password")
+                .header("Authorization", "Bearer " + accessToken)
+                .body(dto)
+                .exchange()
+                .expectStatus().isUnauthorized();
     }
 }

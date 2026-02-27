@@ -15,14 +15,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.tc.mtracker.user.dto.UpdateUserEmailRequestDTO;
-import org.tc.mtracker.user.dto.UserProfileResponseDTO;
-import org.tc.mtracker.user.dto.UpdateUserProfileRequestDTO;
-import org.tc.mtracker.user.dto.UserResponseDTO;
+import org.tc.mtracker.user.dto.*;
 import org.tc.mtracker.utils.image.ValidImage;
 
 @Tag(name = "User Management", description = "User management endpoints")
-public interface UserOperations {
+public interface UserProfileAPI {
 
     @Operation(summary = "Update user's profile",
             description = "Updates the user's data by new one.")
@@ -70,6 +67,12 @@ public interface UserOperations {
             )
             @ValidImage
             @RequestParam(name = "avatar", required = false) MultipartFile avatar,
+            @Parameter(hidden = true) Authentication auth
+    );
+
+    @PutMapping(value = "/me/update-password")
+    ResponseEntity<Void> updatePassword(
+            @RequestBody UpdateUserPasswordRequestDTO dto,
             @Parameter(hidden = true) Authentication auth
     );
 

@@ -10,12 +10,11 @@ import org.tc.mtracker.security.JwtPurpose;
 import org.tc.mtracker.security.JwtResponseDTO;
 import org.tc.mtracker.security.JwtService;
 import org.tc.mtracker.user.User;
-import org.tc.mtracker.user.UserPasswordService;
+import org.tc.mtracker.user.UserChangePasswordService;
 import org.tc.mtracker.user.UserService;
 import org.tc.mtracker.utils.EmailService;
 
 import java.util.Map;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -24,7 +23,7 @@ public class PasswordResetService {
 
     private final JwtService jwtService;
     private final UserService userService;
-    private final UserPasswordService userPasswordService;
+    private final UserChangePasswordService userChangePasswordService;
     private final RefreshTokenService refreshTokenService;
     private final EmailService emailService;
 
@@ -44,7 +43,7 @@ public class PasswordResetService {
         verifyResetToken(token);
         User user = getUser(token);
 
-        userPasswordService.changeUserPassword(user, dto);
+        userChangePasswordService.changeUserPassword(user, dto);
 
         return createJwtResponseDTO(user);
     }

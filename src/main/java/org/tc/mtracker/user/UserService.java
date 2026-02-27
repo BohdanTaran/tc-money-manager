@@ -2,7 +2,9 @@ package org.tc.mtracker.user;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -20,6 +22,7 @@ public class UserService {
     private final UserAvatarService userAvatarService;
     private final UserEmailService userEmailService;
     private final JwtService jwtService;
+    private final PasswordEncoder passwordEncoder;
 
     public User save(User user) {
         return userRepository.save(user);

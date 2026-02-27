@@ -72,4 +72,8 @@ public class UserEmailService {
         userRepository.save(user);
         log.info("Email updated successfully for user with id: {}", user.getId());
     }
+
+    public void sendNotificationAboutPasswordUpdate(String email) {
+        emailService.sendPasswordUpdateNotification(email);
+    }
 }
