@@ -34,29 +34,27 @@ public class AuthController {
 
     @Operation(summary = "Sign up a new user",
             description = "Creates a new user and sends email verification link. Account not activated until verified")
-    @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "201",
-                    description = "User created successfully",
-                    content = {@Content(mediaType = "application/json",
-                            schema = @Schema(implementation = AuthResponseDTO.class))
-                    }
-            ),
-            @ApiResponse(
-                    responseCode = "400",
-                    description = "Bad request",
-                    content = {@Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ProblemDetail.class))
-                    }
-            ),
-            @ApiResponse(
-                    responseCode = "409",
-                    description = "User with this email already exists",
-                    content = {@Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ProblemDetail.class))
-                    }
-            )
-    })
+    @ApiResponse(
+            responseCode = "201",
+            description = "User created successfully",
+            content = {@Content(mediaType = "application/json",
+                    schema = @Schema(implementation = AuthResponseDTO.class))
+            }
+    )
+    @ApiResponse(
+            responseCode = "400",
+            description = "Bad request",
+            content = {@Content(mediaType = "application/json",
+                    schema = @Schema(implementation = ProblemDetail.class))
+            }
+    )
+    @ApiResponse(
+            responseCode = "409",
+            description = "User with this email already exists",
+            content = {@Content(mediaType = "application/json",
+                    schema = @Schema(implementation = ProblemDetail.class))
+            }
+    )
     @PostMapping(value = "/sign-up", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<AuthResponseDTO> signUp(
             @Parameter(
@@ -90,43 +88,41 @@ public class AuthController {
             summary = "Login user",
             description = "Logins user and returns an access token."
     )
-    @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "User logged successfully",
-                    content = {@Content(mediaType = "application/json",
-                            schema = @Schema(implementation = JwtResponseDTO.class))
-                    }
-            ),
-            @ApiResponse(
-                    responseCode = "401",
-                    description = "Authentication failed",
-                    content = {@Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ProblemDetail.class))
-                    }
-            ),
-            @ApiResponse(
-                    responseCode = "400",
-                    description = "Fields were filled incorrectly",
-                    content = {@Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ProblemDetail.class))
-                    }
-            ),
-            @ApiResponse(
-                    responseCode = "403",
-                    description = "Access Denied",
-                    content = {@Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ProblemDetail.class))
-                    }
-            ),
-            @ApiResponse(
-                    responseCode = "500",
-                    description = "Internal Server Error",
-                    content = {@Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ProblemDetail.class))
-                    }
-            ),
-    })
+    @ApiResponse(
+            responseCode = "200",
+            description = "User logged successfully",
+            content = {@Content(mediaType = "application/json",
+                    schema = @Schema(implementation = JwtResponseDTO.class))
+            }
+    )
+    @ApiResponse(
+            responseCode = "401",
+            description = "Authentication failed",
+            content = {@Content(mediaType = "application/json",
+                    schema = @Schema(implementation = ProblemDetail.class))
+            }
+    )
+    @ApiResponse(
+            responseCode = "400",
+            description = "Fields were filled incorrectly",
+            content = {@Content(mediaType = "application/json",
+                    schema = @Schema(implementation = ProblemDetail.class))
+            }
+    )
+    @ApiResponse(
+            responseCode = "403",
+            description = "Access Denied",
+            content = {@Content(mediaType = "application/json",
+                    schema = @Schema(implementation = ProblemDetail.class))
+            }
+    )
+    @ApiResponse(
+            responseCode = "500",
+            description = "Internal Server Error",
+            content = {@Content(mediaType = "application/json",
+                    schema = @Schema(implementation = ProblemDetail.class))
+            }
+    )
     @PostMapping("/login")
     public ResponseEntity<JwtResponseDTO> login(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -142,8 +138,10 @@ public class AuthController {
                 .status(HttpStatus.OK)
                 .body(jwt);
     }
+
     /**
      * Sends to user's email a link with token to be able to reset user's password
+     *
      * @param email requested email for resetting password
      * @return Http status code and message
      */
@@ -151,23 +149,21 @@ public class AuthController {
             summary = "Send reset password email",
             description = "Generates a reset link and sends it to the user's email."
     )
-    @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Reset link sent successfully",
-                    content = @Content(
-                            mediaType = "text/plain",
-                            schema = @Schema(type = "string", example = "Your link to reset password was sent!")
-                    )
-            ),
-            @ApiResponse(
-                    responseCode = "401",
-                    description = "User with requested email does not exist",
-                    content = @Content(
-                            schema = @Schema(implementation = ProblemDetail.class)
-                    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "Reset link sent successfully",
+            content = @Content(
+                    mediaType = "text/plain",
+                    schema = @Schema(type = "string", example = "Your link to reset password was sent!")
             )
-    })
+    )
+    @ApiResponse(
+            responseCode = "401",
+            description = "User with requested email does not exist",
+            content = @Content(
+                    schema = @Schema(implementation = ProblemDetail.class)
+            )
+    )
     @PostMapping("/getTokenToResetPassword")
     public ResponseEntity<String> sendResetPasswordToken(
             @RequestParam("email") @Email String email
@@ -175,9 +171,11 @@ public class AuthController {
         authService.sendTokenToResetPassword(email);
         return ResponseEntity.ok("Your link to reset password was sent!");
     }
+
     /**
      * Resets user's password
-     * @param token token from email link
+     *
+     * @param token            token from email link
      * @param resetPasswordDTO new user's password and confirm password
      * @return access token to login in good case
      */
@@ -185,30 +183,28 @@ public class AuthController {
             summary = "Reset password using token",
             description = "Updates the user password if the token is valid."
     )
-    @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Password updated successfully",
-                    content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(implementation = JwtResponseDTO.class)
-                    )
-            ),
-            @ApiResponse(
-                    responseCode = "400",
-                    description = "Invalid request (Passwords do not match or validation failed)",
-                    content = @Content(
-                            schema = @Schema(implementation = ProblemDetail.class)
-                    )
-            ),
-            @ApiResponse(
-                    responseCode = "401",
-                    description = "Token expired or invalid purpose",
-                    content = @Content(
-                            schema = @Schema(implementation = ProblemDetail.class)
-                    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "Password updated successfully",
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = JwtResponseDTO.class)
             )
-    })
+    )
+    @ApiResponse(
+            responseCode = "400",
+            description = "Invalid request (Passwords do not match or validation failed)",
+            content = @Content(
+                    schema = @Schema(implementation = ProblemDetail.class)
+            )
+    )
+    @ApiResponse(
+            responseCode = "401",
+            description = "Token expired or invalid purpose",
+            content = @Content(
+                    schema = @Schema(implementation = ProblemDetail.class)
+            )
+    )
     @PostMapping("/reset-password/confirm")
     public ResponseEntity<JwtResponseDTO> resetPassword(
             @RequestParam("token") String token,
@@ -222,32 +218,30 @@ public class AuthController {
             summary = "Verify email by verification token",
             description = "Activates user account using email verification token and returns access JWT."
     )
-    @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "User activated, access token issued",
-                    content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = JwtResponseDTO.class))
-            ),
-            @ApiResponse(
-                    responseCode = "400",
-                    description = "Invalid token (wrong purpose/format)",
-                    content = @Content(mediaType = "application/problem+json",
-                            schema = @Schema(implementation = ProblemDetail.class))
-            ),
-            @ApiResponse(
-                    responseCode = "409",
-                    description = "User already activated",
-                    content = @Content(mediaType = "application/problem+json",
-                            schema = @Schema(implementation = ProblemDetail.class))
-            ),
-            @ApiResponse(
-                    responseCode = "401",
-                    description = "JWT parsing/validation error",
-                    content = @Content(mediaType = "application/problem+json",
-                            schema = @Schema(implementation = ProblemDetail.class))
-            )
-    })
+    @ApiResponse(
+            responseCode = "200",
+            description = "User activated, access token issued",
+            content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = JwtResponseDTO.class))
+    )
+    @ApiResponse(
+            responseCode = "400",
+            description = "Invalid token (wrong purpose/format)",
+            content = @Content(mediaType = "application/problem+json",
+                    schema = @Schema(implementation = ProblemDetail.class))
+    )
+    @ApiResponse(
+            responseCode = "409",
+            description = "User already activated",
+            content = @Content(mediaType = "application/problem+json",
+                    schema = @Schema(implementation = ProblemDetail.class))
+    )
+    @ApiResponse(
+            responseCode = "401",
+            description = "JWT parsing/validation error",
+            content = @Content(mediaType = "application/problem+json",
+                    schema = @Schema(implementation = ProblemDetail.class))
+    )
     @GetMapping("/verify")
     public ResponseEntity<JwtResponseDTO> verifyToken(
             @Parameter(
@@ -269,15 +263,13 @@ public class AuthController {
             summary = "Refresh token",
             description = "Generates a new access token using a valid refresh token"
     )
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Token successfully refreshed",
-                    content = @Content(mediaType = "application/json",
-                            examples = @ExampleObject(
-                                    name = "Token refreshed",
-                                    value = "{ \"accessToken\": \"new-jwt-access-token\", \"refreshToken\": \"new-jwt-refresh-token\" }"
-                            ))),
-            @ApiResponse(responseCode = "401", description = "Invalid or expired refresh token")
-    })
+    @ApiResponse(responseCode = "200", description = "Token successfully refreshed",
+            content = @Content(mediaType = "application/json",
+                    examples = @ExampleObject(
+                            name = "Token refreshed",
+                            value = "{ \"accessToken\": \"new-jwt-access-token\", \"refreshToken\": \"new-jwt-refresh-token\" }"
+                    )))
+    @ApiResponse(responseCode = "401", description = "Invalid or expired refresh token")
     @PostMapping("/refresh")
     public ResponseEntity<JwtResponseDTO> refreshToken(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(

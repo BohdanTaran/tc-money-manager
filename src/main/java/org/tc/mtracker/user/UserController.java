@@ -6,7 +6,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -31,31 +30,29 @@ public class UserController {
 
     @Operation(summary = "Update user's profile",
             description = "Updates the user's data by new one.")
-    @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "User's data updated successfully",
-                    content = @Content(
-                            mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = ResponseUserProfileDTO.class)
-                    )
-            ),
-            @ApiResponse(
-                    responseCode = "400",
-                    description = "Bad request",
-                    content = @Content(
-                            mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = ProblemDetail.class))
-            ),
-            @ApiResponse(
-                    responseCode = "404",
-                    description = "User not found",
-                    content = @Content(
-                            mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = ProblemDetail.class)
-                    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "User's data updated successfully",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                    schema = @Schema(implementation = ResponseUserProfileDTO.class)
             )
-    })
+    )
+    @ApiResponse(
+            responseCode = "400",
+            description = "Bad request",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                    schema = @Schema(implementation = ProblemDetail.class))
+    )
+    @ApiResponse(
+            responseCode = "404",
+            description = "User not found",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                    schema = @Schema(implementation = ProblemDetail.class)
+            )
+    )
     @PutMapping(value = "/me", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ResponseUserProfileDTO> updateMe(
             @Parameter(
@@ -92,28 +89,26 @@ public class UserController {
 
     @Operation(summary = "Update user's password",
             description = "Updates the user's password by new one.")
-    @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Password updated successfully"
-            ),
-            @ApiResponse(
-                    responseCode = "400",
-                    description = "Invalid password format",
-                    content = @Content(
-                            mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = ProblemDetail.class)
-                    )
-            ),
-            @ApiResponse(
-                    responseCode = "404",
-                    description = "User not found",
-                    content = @Content(
-                            mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = ProblemDetail.class)
-                    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "Password updated successfully"
+    )
+    @ApiResponse(
+            responseCode = "400",
+            description = "Invalid password format",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                    schema = @Schema(implementation = ProblemDetail.class)
             )
-    })
+    )
+    @ApiResponse(
+            responseCode = "404",
+            description = "User not found",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                    schema = @Schema(implementation = ProblemDetail.class)
+            )
+    )
     @PutMapping(value = "/me/update-password")
     public ResponseEntity<Void> updatePassword(
             @RequestBody @Valid UpdateUserPasswordRequestDTO dto,
@@ -128,23 +123,21 @@ public class UserController {
         return ResponseEntity.ok().build();
     }
 
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "User profile returned",
-                    content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = UserResponseDTO.class))),
-            @ApiResponse(responseCode = "400", description = "User not found",
-                    content = @Content(mediaType = "application/json",
-                            examples = @ExampleObject(value = "User with username 'Alex Noob' not found"))),
-            @ApiResponse(responseCode = "401", description = "Unauthorized",
-                    content = @Content(mediaType = "application/json",
-                            examples = @ExampleObject(value = "Full authentication is required to access this resource"))),
-            @ApiResponse(responseCode = "405", description = "Method not allowed",
-                    content = @Content(mediaType = "application/json",
-                            examples = @ExampleObject(value = "The method is not supported: POST"))),
-            @ApiResponse(responseCode = "500", description = "Internal server error",
-                    content = @Content(mediaType = "application/json",
-                            examples = @ExampleObject(value = "Internal error: NullPointerException")))
-    })
+    @ApiResponse(responseCode = "200", description = "User profile returned",
+            content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = UserResponseDTO.class)))
+    @ApiResponse(responseCode = "400", description = "User not found",
+            content = @Content(mediaType = "application/json",
+                    examples = @ExampleObject(value = "User with username 'Alex Noob' not found")))
+    @ApiResponse(responseCode = "401", description = "Unauthorized",
+            content = @Content(mediaType = "application/json",
+                    examples = @ExampleObject(value = "Full authentication is required to access this resource")))
+    @ApiResponse(responseCode = "405", description = "Method not allowed",
+            content = @Content(mediaType = "application/json",
+                    examples = @ExampleObject(value = "The method is not supported: POST")))
+    @ApiResponse(responseCode = "500", description = "Internal server error",
+            content = @Content(mediaType = "application/json",
+                    examples = @ExampleObject(value = "Internal error: NullPointerException")))
     @GetMapping("/me")
     public ResponseEntity<UserResponseDTO> getUserProfile(Authentication auth) {
         return ResponseEntity.ok(userService.getUser(auth));
