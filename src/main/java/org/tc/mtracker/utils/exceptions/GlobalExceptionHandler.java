@@ -90,4 +90,10 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleUsersCategoryNameAlreadyExistsException(CategoryAlreadyExistsException ex) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
     }
+
+    @ExceptionHandler(UserNotActivatedException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ProblemDetail handleUserNotActivatedException(UserNotActivatedException ex) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
+    }
 }
