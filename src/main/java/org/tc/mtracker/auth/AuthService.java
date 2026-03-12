@@ -19,6 +19,7 @@ import org.tc.mtracker.user.UserService;
 import org.tc.mtracker.utils.S3Service;
 import org.tc.mtracker.utils.exceptions.UserAlreadyActivatedException;
 import org.tc.mtracker.utils.exceptions.UserAlreadyExistsException;
+import org.tc.mtracker.utils.exceptions.UserNotActivatedException;
 import org.tc.mtracker.utils.exceptions.UserResetPasswordException;
 
 import java.util.Map;
@@ -69,6 +70,10 @@ public class AuthService {
         User user = userRepository.findByEmail(dto.email()).orElseThrow(
                 () -> new BadCredentialsException("User with email " + dto.email() + " does not exist.")
         );
+
+        if (!user.isActivated()) {
+            throw new UserNotActivatedException("User with id " + user.getId() + " is not activated yet.");
+        }
 
         if (!passwordEncoder.matches(dto.password(), user.getPassword())) {
             throw new BadCredentialsException("Invalid credentials. Password does not match!");

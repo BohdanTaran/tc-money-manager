@@ -213,6 +213,19 @@ class AuthControllerTest {
 
     @Test
     @Sql("/datasets/test_users.sql")
+    void shouldReturn403IfUserLoginWithoutAccountActivation() {
+        LoginRequestDto authDto = new LoginRequestDto("inactive@gmail.com", "12345678");
+
+        restTestClient
+                .post()
+                .uri("/api/v1/auth/login")
+                .body(authDto)
+                .exchange()
+                .expectStatus().isForbidden();
+    }
+
+    @Test
+    @Sql("/datasets/test_users.sql")
     void shouldReturn401IfPasswordIsIncorrect() {
         LoginRequestDto authDto = new LoginRequestDto("test@gmail.com", "wrongpassword");
 
