@@ -328,7 +328,7 @@ class AuthControllerTest {
         MultipartBodyBuilder multipartBodyBuilder = new MultipartBodyBuilder();
         multipartBodyBuilder.part("dto", new AuthRequestDTO(
                 "test@test.com",
-                "3XqgtwJeRa76TbRKxApPaXeahvr4eVUKHPe7Sm2ai0R7dxXxPhb0GRFnXf5PL2GfjaQ3Uf9U",
+                "3XqgtwJeRa76TbRKxApPaXeahvr4eVUKHPe7Sm2ai0R7dxXxPhb0GRFnXf5PL2!fjaQ3Uf9U",
                 "Test User",
                 CurrencyCode.USD
         ));
@@ -365,6 +365,24 @@ class AuthControllerTest {
         multipartBodyBuilder.part("dto", new AuthRequestDTO(
                 "test@test.com",
                 "VALIDPASSWORD1!",
+                "Test User",
+                CurrencyCode.USD
+        ));
+
+        restTestClient
+                .post()
+                .uri("/api/v1/auth/sign-up")
+                .body(multipartBodyBuilder.build())
+                .exchange()
+                .expectStatus().isBadRequest();
+    }
+
+    @Test
+    void shouldReturn400IsNotContainsSpecialCharatersOnSignUp() {
+        MultipartBodyBuilder multipartBodyBuilder = new MultipartBodyBuilder();
+        multipartBodyBuilder.part("dto", new AuthRequestDTO(
+                "test@test.com",
+                "SuperStrong1",
                 "Test User",
                 CurrencyCode.USD
         ));

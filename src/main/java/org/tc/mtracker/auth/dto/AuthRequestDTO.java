@@ -20,7 +20,7 @@ public record AuthRequestDTO(
                 format = "password"
         )
         @NotBlank @Length(min = 8, max = 72)
-        @Pattern(regexp = "^((?=\\S*?[A-Z])(?=\\S*?[a-z])(?=\\S*?[0-9]).{8,})\\S$")
+        @Pattern(regexp = "^((?=\\S*?[A-Z])(?=\\S*?[a-z])(?=\\S*?[!@#$%^&*]).{7,})\\S$")
         String password,
         @Schema(description = "User's full name", example = "Abraham Lincoln")
         @NotBlank @Length(min = 3, max = 35)
