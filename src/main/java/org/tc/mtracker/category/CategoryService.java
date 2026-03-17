@@ -1,6 +1,7 @@
 package org.tc.mtracker.category;
 
 import lombok.RequiredArgsConstructor;
+import org.mapstruct.Named;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.tc.mtracker.category.dto.CategoryResponseDTO;
@@ -11,8 +12,6 @@ import org.tc.mtracker.user.User;
 import org.tc.mtracker.user.UserService;
 import org.tc.mtracker.utils.exceptions.CategoryAlreadyExistsException;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -34,6 +33,11 @@ public class CategoryService {
         );
 
         return categoryMapper.toListDto(categories);
+    }
+
+    @Named("categoryById")
+    public Category findById(Long id) {
+        return categoryRepository.findById(id).orElseThrow();
     }
 
     public CategoryResponseDTO createCategory(CreateCategoryDTO dto, Authentication auth) {

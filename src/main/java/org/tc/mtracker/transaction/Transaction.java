@@ -1,6 +1,7 @@
 package org.tc.mtracker.transaction;
 
 import jakarta.persistence.*;
+import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.tc.mtracker.category.Category;
@@ -10,22 +11,27 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 
 @Entity
 @Table(name = "transactions")
+@RequiredArgsConstructor
+@AllArgsConstructor
+@Builder
+@Getter
 public class Transaction {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Setter
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
 
     private TransactionType type;
 
+    @Setter
     @ManyToOne(fetch = FetchType.LAZY)
     private Category category;
 
@@ -33,7 +39,8 @@ public class Transaction {
 
     private String description;
 
-    private List<UUID> imageIds;
+    @OneToMany(mappedBy = "transaction", cascade = CascadeType.ALL)
+    private List<ReceiptImage> receipts;
 
     private LocalDate date;
 
