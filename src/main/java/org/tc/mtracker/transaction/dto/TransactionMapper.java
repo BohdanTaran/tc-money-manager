@@ -1,9 +1,6 @@
 package org.tc.mtracker.transaction.dto;
 
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.MappingConstants;
-import org.mapstruct.ReportingPolicy;
+import org.mapstruct.*;
 import org.tc.mtracker.category.CategoryMapper;
 import org.tc.mtracker.category.CategoryService;
 import org.tc.mtracker.transaction.Transaction;
@@ -13,10 +10,18 @@ import java.util.List;
 
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING,
         uses = {CategoryMapper.class, CategoryService.class},
-        unmappedTargetPolicy = ReportingPolicy.WARN)
+        unmappedTargetPolicy = ReportingPolicy.ERROR)
 public interface TransactionMapper {
 
-    @Mapping(target = Transaction.Fields.user, source = "user")
+    @Mappings({
+            @Mapping(target = Transaction.Fields.id, ignore = true),
+            @Mapping(target = Transaction.Fields.user, source = "user"),
+            @Mapping(target = Transaction.Fields.category, ignore = true),
+            @Mapping(target = Transaction.Fields.createdAt, ignore = true),
+            @Mapping(target = Transaction.Fields.updatedAt, ignore = true),
+            @Mapping(target = Transaction.Fields.deletedAt, ignore = true),
+            @Mapping(target = Transaction.Fields.receipts, ignore = true)
+    })
     Transaction toEntity(TransactionCreateRequestDTO dto, User user);
 
     TransactionResponseDTO toDto(Transaction transaction, List<String> receiptsUrls);

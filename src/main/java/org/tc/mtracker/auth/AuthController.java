@@ -7,7 +7,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
@@ -20,8 +19,8 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.tc.mtracker.auth.dto.*;
+import org.tc.mtracker.common.image.ValidImage;
 import org.tc.mtracker.security.JwtResponseDTO;
-import org.tc.mtracker.user.image.ValidImage;
 
 @RestController
 @RequestMapping(value = "/api/v1/auth")

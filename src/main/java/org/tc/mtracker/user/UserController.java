@@ -16,11 +16,11 @@ import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.tc.mtracker.common.image.ValidImage;
 import org.tc.mtracker.user.dto.RequestUpdateUserEmailDTO;
 import org.tc.mtracker.user.dto.RequestUpdateUserPasswordDTO;
 import org.tc.mtracker.user.dto.RequestUpdateUserProfileDTO;
 import org.tc.mtracker.user.dto.ResponseUserDTO;
-import org.tc.mtracker.user.image.ValidImage;
 
 @RestController
 @RequestMapping("/api/v1/users")

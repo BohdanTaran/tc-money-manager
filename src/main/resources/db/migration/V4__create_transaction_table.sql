@@ -9,6 +9,7 @@ CREATE TABLE transactions
     description VARCHAR(255),
     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    deleted_at  TIMESTAMP
+    deleted_at TIMESTAMP,
+    CONSTRAINT fk_transaction_user FOREIGN KEY (user_id) REFERENCES users (id)
 
 )

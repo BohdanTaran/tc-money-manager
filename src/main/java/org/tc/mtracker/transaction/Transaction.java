@@ -12,6 +12,7 @@ import org.tc.mtracker.user.User;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -37,6 +38,7 @@ public class Transaction {
 
     @Setter
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
     private Category category;
 
     private BigDecimal amount;
@@ -45,7 +47,7 @@ public class Transaction {
 
     @OneToMany(mappedBy = "transaction", cascade = CascadeType.ALL)
     @Builder.Default
-    private List<ReceiptImage> receipts = List.of();
+    private List<ReceiptImage> receipts = new ArrayList<>();
 
     private LocalDate date;
 
@@ -56,5 +58,10 @@ public class Transaction {
     private LocalDateTime updatedAt;
 
     private LocalDateTime deletedAt;
+
+    public List<ReceiptImage> addReceipt(ReceiptImage receipt) {
+        this.receipts.add(receipt);
+        return receipts;
+    }
 
 }
