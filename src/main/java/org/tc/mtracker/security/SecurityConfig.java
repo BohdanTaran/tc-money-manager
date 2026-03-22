@@ -45,11 +45,11 @@ public class SecurityConfig {
 
     private CorsConfiguration getCorsConfiguration() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(
+        config.setAllowedOriginPatterns(
                 List.of(
                         "http://financeapp.local:5173",
-                        "https://financeapp.local:5173",
-                        "https://project-finance-sigma.vercel.app"
+                        "https://project-finance-sigma.vercel.app",
+                        "https://*.vercel.app"
                 ));
         config.addAllowedMethod(HttpMethod.OPTIONS);
         config.addAllowedMethod(HttpMethod.POST);
