@@ -6,13 +6,11 @@ import org.springframework.stereotype.Service;
 import org.tc.mtracker.category.dto.CategoryResponseDTO;
 import org.tc.mtracker.category.dto.CreateCategoryDTO;
 import org.tc.mtracker.category.enums.CategoryStatus;
-import org.tc.mtracker.category.enums.CategoryType;
+import org.tc.mtracker.common.enums.TransactionType;
 import org.tc.mtracker.user.User;
 import org.tc.mtracker.user.UserService;
 import org.tc.mtracker.utils.exceptions.CategoryAlreadyExistsException;
 
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,7 +22,7 @@ public class CategoryService {
     private final CategoryMapper categoryMapper;
     private final UserService userService;
 
-    public List<CategoryResponseDTO> getCategories(String name, List<CategoryType> types, Authentication auth) {
+    public List<CategoryResponseDTO> getCategories(String name, List<TransactionType> types, Authentication auth) {
         User currentUser = userService.getCurrentAuthenticatedUser(auth);
 
         List<Category> categories = categoryRepository.findGlobalAndUserCategories(
@@ -34,6 +32,10 @@ public class CategoryService {
         );
 
         return categoryMapper.toListDto(categories);
+    }
+
+    public Category findById(Long id) {
+        return categoryRepository.findById(id).orElseThrow();
     }
 
     public CategoryResponseDTO createCategory(CreateCategoryDTO dto, Authentication auth) {

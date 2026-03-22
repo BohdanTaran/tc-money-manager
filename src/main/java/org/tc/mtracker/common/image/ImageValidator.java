@@ -1,4 +1,4 @@
-package org.tc.mtracker.user.image;
+package org.tc.mtracker.common.image;
 
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;

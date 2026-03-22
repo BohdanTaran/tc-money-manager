@@ -1,4 +1,4 @@
-package org.tc.mtracker.user.image;
+package org.tc.mtracker.common.receipt;
 
 import jakarta.validation.Constraint;
 import jakarta.validation.Payload;
@@ -8,11 +8,11 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-@Target({ElementType.PARAMETER})
+@Target({ElementType.PARAMETER, ElementType.TYPE_USE})
 @Retention(RetentionPolicy.RUNTIME)
-@Constraint(validatedBy = ImageValidator.class)
-public @interface ValidImage {
-    String message() default "Invalid image file";
+@Constraint(validatedBy = ReceiptValidator.class)
+public @interface ValidReceiptFile {
+    String message() default "Invalid receipt format";
 
     Class<?>[] groups() default {};
 
