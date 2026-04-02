@@ -23,6 +23,7 @@ import org.tc.mtracker.utils.exceptions.MoneyFlowTypeMismatchException;
 import org.tc.mtracker.utils.exceptions.TransactionNotFoundException;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -58,6 +59,37 @@ public class TransactionService {
         List<String> presignedUrls = generatePresignedUrlsForReceipts(saved);
 
         return transactionMapper.toDto(saved, presignedUrls);
+    }
+
+    @Transactional(readOnly = true)
+    public List<TransactionResponseDTO> getTransactions(
+            Authentication auth,
+            Long accountId,
+            Long categoryId,
+            TransactionType type,
+            LocalDate dateFrom,
+            LocalDate dateTo
+    ) {
+        User user = userService.getCurrentAuthenticatedUser(auth);
+
+        if (accountId != null) {
+            resolveAccount(user, accountId);
+        }
+        if (categoryId != null) {
+            categoryService.findAccessibleById(categoryId, user);
+        }
+
+        return transactionRepository.findAllByUserAndFilters(user, accountId, categoryId, type, dateFrom, dateTo)
+                .stream()
+                .map(this::toResponseDto)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public TransactionResponseDTO getTransactionById(Long transactionId, Authentication auth) {
+        User user = userService.getCurrentAuthenticatedUser(auth);
+        Transaction transaction = findOwnedTransaction(transactionId, user);
+        return toResponseDto(transaction);
     }
 
     @Transactional
@@ -135,13 +167,16 @@ public class TransactionService {
     }
 
     private List<String> generatePresignedUrlsForReceipts(Transaction saved) {
-
         List<ReceiptImage> receipts = saved.getReceipts();
         if (receipts.isEmpty()) {
             return List.of();
         }
         return receipts.stream()
                 .map(i -> s3Service.generatePresignedUrl(i.getId().toString())).toList();
+    }
+
+    private TransactionResponseDTO toResponseDto(Transaction transaction) {
+        return transactionMapper.toDto(transaction, generatePresignedUrlsForReceipts(transaction));
     }
 
     private static void validateTransactionType(TransactionCreateRequestDTO createRequestDTO, Category category) {

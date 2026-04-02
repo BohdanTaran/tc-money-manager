@@ -228,6 +228,100 @@ class TransactionControllerTest {
     @Test
     @SqlMergeMode(SqlMergeMode.MergeMode.MERGE)
     @Sql(statements = {
+            "INSERT INTO transactions (id, user_id, account_id, category_id, amount, type, date, description, created_at, updated_at) " +
+                    "VALUES (90, 1, 1, 1, 100.00, 'INCOME', '2026-04-01', 'Salary', NOW(), NOW())",
+            "INSERT INTO transactions (id, user_id, account_id, category_id, amount, type, date, description, created_at, updated_at) " +
+                    "VALUES (91, 1, 1, 2, 20.00, 'EXPENSE', '2026-04-02', 'Groceries', NOW(), NOW())",
+            "INSERT INTO transactions (id, user_id, account_id, category_id, amount, type, date, description, created_at, updated_at) " +
+                    "VALUES (92, 2, 2, 1, 75.00, 'INCOME', '2026-04-03', 'Other user income', NOW(), NOW())"
+    })
+    void shouldReturnTransactionsWithoutFilters() {
+        restTestClient.get()
+                .uri("/api/v1/transactions")
+                .header(HttpHeaders.AUTHORIZATION, authToken)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.length()").isEqualTo(2)
+                .jsonPath("$[0].id").isEqualTo(91)
+                .jsonPath("$[1].id").isEqualTo(90);
+
+        verifyNoInteractions(s3Service);
+    }
+
+    @Test
+    @SqlMergeMode(SqlMergeMode.MergeMode.MERGE)
+    @Sql(statements = {
+            "INSERT INTO accounts (id, user_id, balance) VALUES (10, 1, 0.00)",
+            "INSERT INTO transactions (id, user_id, account_id, category_id, amount, type, date, description, created_at, updated_at) " +
+                    "VALUES (93, 1, 1, 1, 200.00, 'INCOME', '2026-03-10', 'Salary', NOW(), NOW())",
+            "INSERT INTO transactions (id, user_id, account_id, category_id, amount, type, date, description, created_at, updated_at) " +
+                    "VALUES (94, 1, 10, 2, 40.00, 'EXPENSE', '2026-04-10', 'April groceries', NOW(), NOW())",
+            "INSERT INTO transactions (id, user_id, account_id, category_id, amount, type, date, description, created_at, updated_at) " +
+                    "VALUES (95, 1, 10, 2, 55.00, 'EXPENSE', '2026-05-10', 'May groceries', NOW(), NOW())"
+    })
+    void shouldReturnTransactionsWithFilters() {
+        restTestClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/transactions")
+                        .queryParam("accountId", 10)
+                        .queryParam("categoryId", 2)
+                        .queryParam("type", TransactionType.EXPENSE)
+                        .queryParam("dateFrom", "2026-04-01")
+                        .queryParam("dateTo", "2026-04-30")
+                        .build())
+                .header(HttpHeaders.AUTHORIZATION, authToken)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.length()").isEqualTo(1)
+                .jsonPath("$[0].id").isEqualTo(94)
+                .jsonPath("$[0].accountId").isEqualTo(10)
+                .jsonPath("$[0].type").isEqualTo("EXPENSE")
+                .jsonPath("$[0].category.id").isEqualTo(2);
+
+        verifyNoInteractions(s3Service);
+    }
+
+    @Test
+    @SqlMergeMode(SqlMergeMode.MergeMode.MERGE)
+    @Sql(statements = "INSERT INTO transactions (id, user_id, account_id, category_id, amount, type, date, description, created_at, updated_at) " +
+            "VALUES (96, 1, 1, 1, 333.00, 'INCOME', '2026-04-05', 'Bonus', NOW(), NOW())")
+    void shouldReturnTransactionById() {
+        restTestClient.get()
+                .uri("/api/v1/transactions/96")
+                .header(HttpHeaders.AUTHORIZATION, authToken)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(TransactionResponseDTO.class)
+                .value(response -> {
+                    assertThat(response.id()).isEqualTo(96L);
+                    assertThat(response.accountId()).isEqualTo(1L);
+                    assertThat(response.type()).isEqualTo(TransactionType.INCOME);
+                    assertThat(response.amount()).isEqualByComparingTo("333.00");
+                    assertThat(response.description()).isEqualTo("Bonus");
+                });
+
+        verifyNoInteractions(s3Service);
+    }
+
+    @Test
+    @SqlMergeMode(SqlMergeMode.MergeMode.MERGE)
+    @Sql(statements = "INSERT INTO transactions (id, user_id, account_id, category_id, amount, type, date, description, created_at, updated_at) " +
+            "VALUES (97, 2, 2, 1, 15.00, 'INCOME', '2026-04-05', 'Other user bonus', NOW(), NOW())")
+    void shouldReturn404WhenTransactionBelongsToAnotherUser() {
+        restTestClient.get()
+                .uri("/api/v1/transactions/97")
+                .header(HttpHeaders.AUTHORIZATION, authToken)
+                .exchange()
+                .expectStatus().isNotFound();
+
+        verifyNoInteractions(s3Service);
+    }
+
+    @Test
+    @SqlMergeMode(SqlMergeMode.MergeMode.MERGE)
+    @Sql(statements = {
             "INSERT INTO accounts (id, user_id, balance) VALUES (10, 1, 0.00)",
             "INSERT INTO transactions (id, user_id, account_id, category_id, amount, type, date, description, created_at, updated_at) " +
                     "VALUES (100, 1, 1, 1, 10.00, 'INCOME', CURRENT_DATE, 'Initial salary', NOW(), NOW())",
