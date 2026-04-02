@@ -10,10 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.tc.mtracker.common.receipt.ValidReceiptFile;
 import org.tc.mtracker.transaction.dto.TransactionCreateRequestDTO;
@@ -56,7 +53,25 @@ public class TransactionController {
             @RequestPart(name = "receipts", required = false)
             @Size(max = 10)
             List<@ValidReceiptFile MultipartFile> receipts) {
-        TransactionResponseDTO transactionResponseDTO = transactionService.saveTransaction(auth, createRequestDTO, receipts);
+        TransactionResponseDTO transactionResponseDTO = transactionService.createTransaction(auth, createRequestDTO, receipts);
         return ResponseEntity.status(HttpStatus.CREATED).body(transactionResponseDTO);
+    }
+
+    @PutMapping("/{transactionId}")
+    public ResponseEntity<TransactionResponseDTO> updateTransaction(
+            @PathVariable Long transactionId,
+            @Valid @RequestBody TransactionCreateRequestDTO updateRequestDTO,
+            Authentication auth
+    ) {
+        return ResponseEntity.ok(transactionService.updateTransaction(transactionId, auth, updateRequestDTO));
+    }
+
+    @DeleteMapping("/{transactionId}")
+    public ResponseEntity<Void> deleteTransaction(
+            @PathVariable Long transactionId,
+            Authentication auth
+    ) {
+        transactionService.deleteTransaction(transactionId, auth);
+        return ResponseEntity.noContent().build();
     }
 }

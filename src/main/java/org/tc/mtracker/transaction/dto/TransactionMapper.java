@@ -25,5 +25,18 @@ public interface TransactionMapper {
     })
     Transaction toEntity(TransactionCreateRequestDTO dto, User user);
 
+    @Mappings({
+            @Mapping(target = Transaction.Fields.id, ignore = true),
+            @Mapping(target = Transaction.Fields.user, ignore = true),
+            @Mapping(target = Transaction.Fields.account, ignore = true),
+            @Mapping(target = Transaction.Fields.category, ignore = true),
+            @Mapping(target = Transaction.Fields.createdAt, ignore = true),
+            @Mapping(target = Transaction.Fields.updatedAt, ignore = true),
+            @Mapping(target = Transaction.Fields.deletedAt, ignore = true),
+            @Mapping(target = Transaction.Fields.receipts, ignore = true)
+    })
+    void updateEntity(TransactionCreateRequestDTO dto, @MappingTarget Transaction transaction);
+
+    @Mapping(target = "accountId", source = "transaction.account.id")
     TransactionResponseDTO toDto(Transaction transaction, List<String> receiptsUrls);
 }
