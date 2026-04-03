@@ -32,6 +32,7 @@ public class AuthController {
     private final AuthService authService;
     private final RegistrationService registrationService;
     private final LoginService loginService;
+    private final ResetPasswordService resetPasswordService;
 
     @Operation(summary = "Sign up a new user",
             description = "Creates a new user and sends email verification link. Account not activated until verified")
@@ -169,7 +170,7 @@ public class AuthController {
     public ResponseEntity<String> sendResetPasswordToken(
             @RequestParam("email") @Email String email
     ) {
-        authService.sendTokenToResetPassword(email);
+        resetPasswordService.sendTokenToResetPassword(email);
         return ResponseEntity.ok("Your link to reset password was sent!");
     }
 
@@ -211,7 +212,7 @@ public class AuthController {
             @RequestParam("token") String token,
             @Valid @RequestBody ResetPasswordDTO resetPasswordDTO
     ) {
-        JwtResponseDTO response = authService.resetPassword(token, resetPasswordDTO);
+        JwtResponseDTO response = resetPasswordService.resetPassword(token, resetPasswordDTO);
         return ResponseEntity.ok(response);
     }
 
