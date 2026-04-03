@@ -1,4 +1,4 @@
-package org.tc.mtracker.user.dto;
+package org.tc.mtracker.auth.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import org.hibernate.validator.constraints.Length;
