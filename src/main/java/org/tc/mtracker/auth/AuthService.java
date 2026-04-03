@@ -7,7 +7,6 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.tc.mtracker.auth.dto.LoginRequestDto;
 import org.tc.mtracker.auth.dto.RefreshTokenRequest;
 import org.tc.mtracker.auth.dto.ResetPasswordDTO;
 import org.tc.mtracker.security.CustomUserDetails;
@@ -17,7 +16,6 @@ import org.tc.mtracker.user.User;
 import org.tc.mtracker.user.UserRepository;
 import org.tc.mtracker.user.UserService;
 import org.tc.mtracker.utils.exceptions.UserAlreadyActivatedException;
-import org.tc.mtracker.utils.exceptions.UserNotActivatedException;
 import org.tc.mtracker.utils.exceptions.UserResetPasswordException;
 
 import java.util.Map;
@@ -38,25 +36,7 @@ public class AuthService {
 
 
 
-    public JwtResponseDTO login(LoginRequestDto dto) {
-        User user = userRepository.findByEmail(dto.email()).orElseThrow(
-                () -> new BadCredentialsException("User with email " + dto.email() + " does not exist.")
-        );
 
-        if (!user.isActivated()) {
-            throw new UserNotActivatedException("User with id " + user.getId() + " is not activated yet.");
-        }
-
-        if (!passwordEncoder.matches(dto.password(), user.getPassword())) {
-            throw new BadCredentialsException("Invalid credentials. Password does not match!");
-        }
-
-        String accessToken = jwtService.generateToken(new CustomUserDetails(user));
-        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
-
-        log.info("User with id {} is authenticated successfully.", user.getId());
-        return new JwtResponseDTO(accessToken, refreshToken.getToken());
-    }
     /**
      * Searches user by requested email and sends a link if it exists.
      * @param email requested email

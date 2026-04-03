@@ -31,6 +31,7 @@ public class AuthController {
 
     private final AuthService authService;
     private final RegistrationService registrationService;
+    private final LoginService loginService;
 
     @Operation(summary = "Sign up a new user",
             description = "Creates a new user and sends email verification link. Account not activated until verified")
@@ -133,7 +134,7 @@ public class AuthController {
             )
             @Valid @RequestBody LoginRequestDto loginRequestDto
     ) {
-        JwtResponseDTO jwt = authService.login(loginRequestDto);
+        JwtResponseDTO jwt = loginService.login(loginRequestDto);
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(jwt);
