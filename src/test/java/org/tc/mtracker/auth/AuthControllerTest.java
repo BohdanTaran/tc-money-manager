@@ -470,15 +470,63 @@ class AuthControllerTest {
 
     @Test
     @Sql("/datasets/test_users.sql")
+    void shouldSendResetTokenSuccessfullyViaNewEndpoint() {
+        restTestClient
+                .post()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/auth/reset-token")
+                        .queryParam("email", "test@gmail.com")
+                        .build())
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class).isEqualTo("Your link to reset password was sent!");
+    }
+
+    @Test
+    @Sql("/datasets/test_users.sql")
     void shouldReturn401WhenRequestingResetForNonExistentEmail() {
         restTestClient
                 .post()
                 .uri(uriBuilder -> uriBuilder
-                        .path("/api/v1/auth/getTokenToResetPassword")
+                        .path("/api/v1/auth/reset-token")
                         .queryParam("email", "nonexistent@gmail.com")
                         .build())
                 .exchange()
                 .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void shouldReturn404WhenResetTokenReferencesMissingUser() {
+        String validToken = generateTestToken("deleted-user@gmail.com", "password_reset", 60000);
+        ResetPasswordDTO resetDto = new ResetPasswordDTO("newPassword123", "newPassword123");
+
+        restTestClient
+                .post()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/auth/reset-password/confirm")
+                        .queryParam("token", validToken)
+                        .build())
+                .body(resetDto)
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.detail").isEqualTo("User with email 'deleted-user@gmail.com' not found");
+    }
+
+    @Test
+    void shouldReturn404WhenVerificationTokenReferencesMissingUser() {
+        String validToken = generateTestToken("deleted-user@gmail.com", "email_verification", 60000);
+
+        restTestClient
+                .get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/auth/verify")
+                        .queryParam("token", validToken)
+                        .build())
+                .exchange()
+                .expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.detail").isEqualTo("User with email 'deleted-user@gmail.com' not found");
     }
 
     @Test
@@ -616,6 +664,8 @@ class AuthControllerTest {
                 .uri("/api/v1/auth/refresh")
                 .body(invalidRequest)
                 .exchange()
-                .expectStatus().is5xxServerError();
+                .expectStatus().isUnauthorized()
+                .expectBody()
+                .jsonPath("$.detail").isEqualTo("Refresh token is invalid.");
     }
 }

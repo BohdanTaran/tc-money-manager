@@ -7,6 +7,7 @@ import org.tc.mtracker.auth.dto.RefreshTokenRequest;
 import org.tc.mtracker.security.CustomUserDetails;
 import org.tc.mtracker.security.JwtResponseDTO;
 import org.tc.mtracker.security.JwtService;
+import org.tc.mtracker.utils.exceptions.InvalidRefreshTokenException;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +24,6 @@ public class TokenRefreshService {
                     String accessToken = jwtService.generateToken(new CustomUserDetails(user));
                     return new JwtResponseDTO(accessToken, request.refreshToken());
                 })
-                .orElseThrow(() -> new RuntimeException("Refresh token is not in database"));
+                .orElseThrow(() -> new InvalidRefreshTokenException("Refresh token is invalid."));
     }
 }
