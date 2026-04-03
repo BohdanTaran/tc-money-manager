@@ -21,6 +21,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @AllArgsConstructor
 @Getter
+@Setter
 @Builder
 @FieldNameConstants
 public class Transaction {
@@ -29,12 +30,10 @@ public class Transaction {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Setter
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
 
-    @Setter
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "account_id", nullable = false)
     private Account account;
@@ -42,7 +41,6 @@ public class Transaction {
     @Enumerated(EnumType.STRING)
     private TransactionType type;
 
-    @Setter
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
     private Category category;
@@ -51,7 +49,7 @@ public class Transaction {
 
     private String description;
 
-    @OneToMany(mappedBy = "transaction", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "transaction", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<ReceiptImage> receipts = new ArrayList<>();
 

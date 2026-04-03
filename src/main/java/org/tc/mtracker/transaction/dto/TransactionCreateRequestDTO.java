@@ -10,9 +10,11 @@ import java.time.LocalDate;
 
 public record TransactionCreateRequestDTO(
 
+        @NotNull
         @DecimalMin(value = "0.00")
         BigDecimal amount,
 
+        @NotNull
         TransactionType type,
 
         @NotNull
@@ -22,6 +24,8 @@ public record TransactionCreateRequestDTO(
         LocalDate date,
 
         @Length(max = 256)
-        String description
+        String description,
+
+        Long accountId
 ) {
 }

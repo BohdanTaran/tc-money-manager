@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.tc.mtracker.account.Account;
+import org.tc.mtracker.account.AccountRepository;
 import org.tc.mtracker.category.Category;
 import org.tc.mtracker.category.CategoryService;
 import org.tc.mtracker.category.enums.CategoryStatus;
@@ -16,10 +17,13 @@ import org.tc.mtracker.transaction.dto.TransactionResponseDTO;
 import org.tc.mtracker.user.User;
 import org.tc.mtracker.user.UserService;
 import org.tc.mtracker.utils.S3Service;
+import org.tc.mtracker.utils.exceptions.AccountNotFoundException;
 import org.tc.mtracker.utils.exceptions.CategoryIsNotActiveException;
 import org.tc.mtracker.utils.exceptions.MoneyFlowTypeMismatchException;
+import org.tc.mtracker.utils.exceptions.TransactionNotFoundException;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -27,15 +31,16 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class TransactionService {
     private final TransactionRepository transactionRepository;
+    private final AccountRepository accountRepository;
     private final CategoryService categoryService;
     private final TransactionMapper transactionMapper;
     private final UserService userService;
     private final S3Service s3Service;
 
     @Transactional
-    public TransactionResponseDTO saveTransaction(Authentication auth, TransactionCreateRequestDTO createRequestDTO, List<MultipartFile> receipts) {
+    public TransactionResponseDTO createTransaction(Authentication auth, TransactionCreateRequestDTO createRequestDTO, List<MultipartFile> receipts) {
         User user = userService.getCurrentAuthenticatedUser(auth);
-        Account account = resolveDefaultAccount(user);
+        Account account = resolveAccount(user, createRequestDTO.accountId());
 
         Transaction transaction = transactionMapper.toEntity(createRequestDTO, user);
         Category category = getCategory(createRequestDTO, user);
@@ -56,12 +61,79 @@ public class TransactionService {
         return transactionMapper.toDto(saved, presignedUrls);
     }
 
-    private static Account resolveDefaultAccount(User user) {
-        Account defaultAccount = user.getDefaultAccount();
-        if (defaultAccount == null) {
-            throw new IllegalStateException("Current user does not have default account");
+    @Transactional(readOnly = true)
+    public List<TransactionResponseDTO> getTransactions(
+            Authentication auth,
+            Long accountId,
+            Long categoryId,
+            TransactionType type,
+            LocalDate dateFrom,
+            LocalDate dateTo
+    ) {
+        User user = userService.getCurrentAuthenticatedUser(auth);
+
+        if (accountId != null) {
+            resolveAccount(user, accountId);
         }
-        return defaultAccount;
+        if (categoryId != null) {
+            categoryService.findAccessibleById(categoryId, user);
+        }
+
+        return transactionRepository.findAllByUserAndFilters(user, accountId, categoryId, type, dateFrom, dateTo)
+                .stream()
+                .map(this::toResponseDto)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public TransactionResponseDTO getTransactionById(Long transactionId, Authentication auth) {
+        User user = userService.getCurrentAuthenticatedUser(auth);
+        Transaction transaction = findOwnedTransaction(transactionId, user);
+        return toResponseDto(transaction);
+    }
+
+    @Transactional
+    public TransactionResponseDTO updateTransaction(Long transactionId, Authentication auth, TransactionCreateRequestDTO updateRequestDTO) {
+        User user = userService.getCurrentAuthenticatedUser(auth);
+        Transaction transaction = findOwnedTransaction(transactionId, user);
+
+        Account currentAccount = transaction.getAccount();
+        Account targetAccount = resolveAccount(user, updateRequestDTO.accountId());
+        Category category = getCategory(updateRequestDTO, user);
+
+        validateTransactionType(updateRequestDTO, category);
+
+        revertBalanceDelta(currentAccount, transaction);
+        transactionMapper.updateEntity(updateRequestDTO, transaction);
+        transaction.setAccount(targetAccount);
+        transaction.setCategory(category);
+        applyBalanceDelta(targetAccount, transaction);
+
+        Transaction saved = transactionRepository.save(transaction);
+        return transactionMapper.toDto(saved, generatePresignedUrlsForReceipts(saved));
+    }
+
+    @Transactional
+    public void deleteTransaction(Long transactionId, Authentication auth) {
+        User user = userService.getCurrentAuthenticatedUser(auth);
+        Transaction transaction = findOwnedTransaction(transactionId, user);
+
+        revertBalanceDelta(transaction.getAccount(), transaction);
+        deleteReceipts(transaction);
+        transactionRepository.delete(transaction);
+    }
+
+    private Account resolveAccount(User user, Long accountId) {
+        if (accountId == null) {
+            Account defaultAccount = user.getDefaultAccount();
+            if (defaultAccount == null) {
+                throw new AccountNotFoundException("Current user does not have default account");
+            }
+            return defaultAccount;
+        }
+
+        return accountRepository.findByIdAndUser(accountId, user)
+                .orElseThrow(() -> new AccountNotFoundException("Account with id %d not found".formatted(accountId)));
     }
 
     private Category getCategory(TransactionCreateRequestDTO createRequestDTO, User currentUser) {
@@ -72,11 +144,11 @@ public class TransactionService {
     }
 
     private static void applyBalanceDelta(Account account, Transaction transaction) {
-        BigDecimal currentBalance = account.getBalance() == null ? BigDecimal.ZERO : account.getBalance();
-        BigDecimal delta = transaction.getType() == TransactionType.INCOME
-                ? transaction.getAmount()
-                : transaction.getAmount().negate();
-        account.setBalance(currentBalance.add(delta));
+        account.setBalance(currentBalance(account).add(calculateDelta(transaction.getType(), transaction.getAmount())));
+    }
+
+    private static void revertBalanceDelta(Account account, Transaction transaction) {
+        account.setBalance(currentBalance(account).subtract(calculateDelta(transaction.getType(), transaction.getAmount())));
     }
 
     private void addReceiptsToTransaction(List<MultipartFile> receipts, Transaction transaction) {
@@ -89,8 +161,12 @@ public class TransactionService {
         }
     }
 
-    private List<String> generatePresignedUrlsForReceipts(Transaction saved) {
+    private void deleteReceipts(Transaction transaction) {
+        transaction.getReceipts()
+                .forEach(receipt -> s3Service.deleteFile(receipt.getId().toString()));
+    }
 
+    private List<String> generatePresignedUrlsForReceipts(Transaction saved) {
         List<ReceiptImage> receipts = saved.getReceipts();
         if (receipts.isEmpty()) {
             return List.of();
@@ -99,10 +175,27 @@ public class TransactionService {
                 .map(i -> s3Service.generatePresignedUrl(i.getId().toString())).toList();
     }
 
+    private TransactionResponseDTO toResponseDto(Transaction transaction) {
+        return transactionMapper.toDto(transaction, generatePresignedUrlsForReceipts(transaction));
+    }
+
     private static void validateTransactionType(TransactionCreateRequestDTO createRequestDTO, Category category) {
         if (!category.getType().equals(createRequestDTO.type())) {
             throw new MoneyFlowTypeMismatchException("Category type does not match transaction type");
         }
+    }
+
+    private Transaction findOwnedTransaction(Long transactionId, User user) {
+        return transactionRepository.findActiveByIdAndUser(transactionId, user)
+                .orElseThrow(() -> new TransactionNotFoundException("Transaction with id %d not found".formatted(transactionId)));
+    }
+
+    private static BigDecimal calculateDelta(TransactionType type, BigDecimal amount) {
+        return type == TransactionType.INCOME ? amount : amount.negate();
+    }
+
+    private static BigDecimal currentBalance(Account account) {
+        return account.getBalance() == null ? BigDecimal.ZERO : account.getBalance();
     }
 
 }
