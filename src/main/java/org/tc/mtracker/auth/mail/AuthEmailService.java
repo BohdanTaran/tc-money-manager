@@ -2,10 +2,11 @@ package org.tc.mtracker.auth.mail;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.tc.mtracker.utils.config.properties.AppProperties;
 
 @Slf4j
 @Service
@@ -18,12 +19,11 @@ public class AuthEmailService {
     private static final String PASSWORD_CHANGED_CONTENT = "Your password has been changed successfully.";
 
     private final JavaMailSender javaMailSender;
+    private final AppProperties appProperties;
 
-    @Value("${app.frontend-url:http://localhost:8080}")
-    private String frontendUrl;
-
+    @Async
     public void sendVerificationEmail(String email, String token) {
-        String verificationLink = String.format("%s/verify?token=%s", frontendUrl, token);
+        String verificationLink = String.format("%s/verify?token=%s", frontendUrl(), token);
         sendPlainTextEmail(
                 email,
                 EMAIL_VERIFICATION_SUBJECT,
@@ -32,7 +32,21 @@ public class AuthEmailService {
         log.info("Verification email sent to user with email {}", email);
     }
 
-    public void sendPlainTextEmail(String to, String subject, String content) {
+    @Async
+    public void sendResetPassword(String email, String resetToken) {
+        String verificationLink = String.format("%s/reset-password?resetToken=%s", frontendUrl(), resetToken);
+
+        sendPlainTextEmail(email,
+                PASSWORD_RESET_SUBJECT,
+                "Please click on this link within 24 hours to reset your password: " + verificationLink);
+    }
+
+    @Async
+    public void sendPasswordChangedNotification(String email) {
+        sendPlainTextEmail(email, PASSWORD_CHANGED_SUBJECT, PASSWORD_CHANGED_CONTENT);
+    }
+
+    private void sendPlainTextEmail(String to, String subject, String content) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(to);
         message.setSubject(subject);
@@ -40,15 +54,7 @@ public class AuthEmailService {
         javaMailSender.send(message);
     }
 
-    public void sendResetPassword(String email, String resetToken) {
-        String verificationLink = String.format("%s/reset-password?resetToken=%s", frontendUrl, resetToken);
-
-        sendPlainTextEmail(email,
-                PASSWORD_RESET_SUBJECT,
-                "Please click on this link within 24 hours to reset your password: " + verificationLink);
-    }
-
-    public void sendPasswordChangedNotification(String email) {
-        sendPlainTextEmail(email, PASSWORD_CHANGED_SUBJECT, PASSWORD_CHANGED_CONTENT);
+    private String frontendUrl() {
+        return appProperties.frontendUrl();
     }
 }

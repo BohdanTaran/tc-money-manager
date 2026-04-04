@@ -2,43 +2,36 @@ spring:
   config:
     activate:
       on-profile: dev
-
-  datasource:
-    url: ${MT_MYSQL_URL}
-    username: ${MT_MYSQL_USERNAME}
-    password: ${MT_MYSQL_PASSWORD}
-
-    jpa:
-      hibernate:
-        ddl-auto: none
-
-  mail:
-    host: smtp.gmail.com
-    port: 587
-    username: ${MT_MAIL_USERNAME}
-    password: ${MT_MAIL_PASSWORD}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
   servlet:
     multipart:
       max-file-size: 10MB
       max-request-size: 10MB
-
-security:
-  jwt:
-    secret-key: ${MT_JWT_SECRET_KEY}
-    expiration-time: ${MT_JWT_EXPIRATION_TIME}
+  mail:
+    host: localhost
+    port: 1025
+    username: ""
+    password: ""
+    properties:
+      mail:
+        smtp:
+          connectiontimeout: 3000
+          timeout: 3000
+          writetimeout: 3000
+          auth: false
+          starttls:
+            enable: false
 
 aws:
-  region: ${MT_AWS_REGION}
-  access-key-id: ${MT_AWS_ACCESS_KEY_ID}
-  secret-access-key: ${MT_AWS_SECRET_KEY}
+  region: us-east-1
+  access-key-id: minioadmin
+  secret-access-key: minioadmin
+  endpoint: http://localhost:9000
   s3:
-    bucket-name: ${MT_AWS_S3_BUCKET_NAME}
+    bucket-name: mtracker
+    path-style-access-enabled: true
+
+app:
+  frontend-url: ${MT_FRONTEND_URL:http://localhost:5173}
 
 logging:
   level:

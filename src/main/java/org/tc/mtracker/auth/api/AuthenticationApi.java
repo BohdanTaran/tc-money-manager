@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import org.springframework.http.MediaType;
@@ -18,6 +19,8 @@ import org.tc.mtracker.auth.dto.*;
 import org.tc.mtracker.common.image.ValidImage;
 import org.tc.mtracker.security.JwtResponseDTO;
 
+@RequestMapping("/api/v1/auth")
+@Tag(name = "Authentication", description = "Authentication and email verification endpoints")
 public interface AuthenticationApi {
     @Operation(summary = "Sign up a new user",
             description = "Creates a new user and sends email verification link. Account not activated until verified")
