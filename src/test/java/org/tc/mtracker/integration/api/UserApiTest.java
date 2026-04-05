@@ -2,6 +2,8 @@ package org.tc.mtracker.integration.api;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
@@ -132,6 +134,69 @@ class UserApiTest extends BaseApiIntegrationTest {
                 userRepository.findByEmail(user.getEmail()).orElseThrow().getPassword()
         )).isTrue();
         verify(authEmailService).sendPasswordChangedNotification(user.getEmail());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "@Invalid Full Name",
+            "John123",
+            "Іван9",
+            "Test_Name"
+    })
+    void shouldRejectProfileUpdateWhenFullNameContainsInvalidCharacters(String invalidFullName) {
+        User user = fixtures.createUser();
+        String fullName = user.getFullName();
+        MultipartBodyBuilder parts = new MultipartBodyBuilder();
+        parts.part("dto", new RequestUpdateUserProfileDTO(invalidFullName, CurrencyCode.USD), MediaType.APPLICATION_JSON);
+
+        restTestClient.put()
+                .uri("/api/v1/users/me")
+                .header("Authorization", authHeader(user))
+                .body(parts.build())
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.detail").isEqualTo("Request validation failed.");
+
+        assertThat(userRepository.findByEmail(user.getEmail()).orElseThrow().getFullName()).isEqualTo(fullName);
+    }
+
+    @Test
+    void shouldRejectProfileUpdateWhenFullNameIsLongerThan35Characters() {
+        User user = fixtures.createUser();
+        String fullName = user.getFullName();
+        MultipartBodyBuilder parts = new MultipartBodyBuilder();
+        parts.part("dto", new RequestUpdateUserProfileDTO("Abfhkiuytresdfghjkloiuytrewsdfghjkloi", CurrencyCode.USD), MediaType.APPLICATION_JSON);
+
+        restTestClient.put()
+                .uri("/api/v1/users/me")
+                .header("Authorization", authHeader(user))
+                .body(parts.build())
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.detail").isEqualTo("Request validation failed.");
+
+        assertThat(userRepository.findByEmail(user.getEmail()).orElseThrow().getFullName()).isEqualTo(fullName);
+    }
+
+    @Test
+    void shouldRejectProfileUpdateWhenFullNameIsShorterThan3Characters() {
+        User user = fixtures.createUser();
+        String fullName = user.getFullName();
+        MultipartBodyBuilder parts = new MultipartBodyBuilder();
+        parts.part("dto", new RequestUpdateUserProfileDTO("Ab", CurrencyCode.USD), MediaType.APPLICATION_JSON);
+
+        restTestClient.put()
+                .uri("/api/v1/users/me")
+                .header("Authorization", authHeader(user))
+                .body(parts.build())
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.detail").isEqualTo("Request validation failed.");
+
+        assertThat(userRepository.findByEmail(user.getEmail()).orElseThrow().getFullName()).isEqualTo(fullName);
     }
 
     @Test
