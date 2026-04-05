@@ -74,7 +74,7 @@ class UserApiTest extends BaseApiIntegrationTest {
         when(s3Service.generatePresignedUrl(anyString())).thenReturn("https://test-bucket.local/avatar.jpg");
 
         MultipartBodyBuilder parts = new MultipartBodyBuilder();
-        ByteArrayResource avatar = MultipartTestResourceFactory.resource("avatar.jpg", "avatar");
+        ByteArrayResource avatar = MultipartTestResourceFactory.jpegImage("avatar.jpg");
         parts.part("avatar", avatar, MediaType.IMAGE_JPEG);
 
         restTestClient.put()

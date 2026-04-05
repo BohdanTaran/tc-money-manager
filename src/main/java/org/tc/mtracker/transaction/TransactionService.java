@@ -12,6 +12,7 @@ import org.tc.mtracker.category.Category;
 import org.tc.mtracker.category.CategoryService;
 import org.tc.mtracker.category.enums.CategoryStatus;
 import org.tc.mtracker.common.enums.TransactionType;
+import org.tc.mtracker.common.file.ObjectStorageKeys;
 import org.tc.mtracker.transaction.dto.TransactionCreateRequestDTO;
 import org.tc.mtracker.transaction.dto.TransactionMapper;
 import org.tc.mtracker.transaction.dto.TransactionResponseDTO;
@@ -173,7 +174,7 @@ public class TransactionService {
             log.debug("Uploading {} receipt(s) for transaction userId={}", receipts.size(), transaction.getUser().getId());
             for (MultipartFile receipt : receipts) {
                 ReceiptImage receiptImage = new ReceiptImage(UUID.randomUUID(), transaction);
-                s3Service.saveFile(receiptImage.getId().toString(), receipt);
+                s3Service.saveFile(receiptObjectKey(receiptImage), receipt);
                 transaction.addReceipt(receiptImage);
             }
         }
@@ -181,7 +182,7 @@ public class TransactionService {
 
     private void deleteReceipts(Transaction transaction) {
         transaction.getReceipts()
-                .forEach(receipt -> s3Service.deleteFile(receipt.getId().toString()));
+                .forEach(receipt -> s3Service.deleteFile(receiptObjectKey(receipt)));
     }
 
     private List<String> generatePresignedUrlsForReceipts(Transaction saved) {
@@ -190,7 +191,11 @@ public class TransactionService {
             return List.of();
         }
         return receipts.stream()
-                .map(i -> s3Service.generatePresignedUrl(i.getId().toString())).toList();
+                .map(i -> s3Service.generatePresignedUrl(receiptObjectKey(i))).toList();
+    }
+
+    private String receiptObjectKey(ReceiptImage receiptImage) {
+        return ObjectStorageKeys.receiptKey(receiptImage.getId());
     }
 
     private TransactionResponseDTO toResponseDto(Transaction transaction) {
