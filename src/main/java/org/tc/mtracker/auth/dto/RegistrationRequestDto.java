@@ -25,7 +25,7 @@ public record RegistrationRequestDto(
 
         @Schema(description = "User's full name", example = "Abraham Lincoln")
         @NotBlank @Length(min = 3, max = 35)
-        @Pattern(regexp = "^[A-Za-zА-ЯІЄЇҐа-яієїґ'’ʼ]([A-Za-zА-ЯІЄЇҐа-яієїґ'’ʼ\\s-]*[A-Za-zА-ЯІЄЇҐа-яієїґ'’ʼ])?$")
+        @Pattern(regexp = "^[A-Za-zА-ЯІЄЇҐа-яієїґ'’ʼ]([A-Za-zА-ЯІЄЇҐа-яієїґ'’ʼ\\s-]*[A-Za-zА-ЯІЄЇҐа-яієїґ'’ʼ])?$", message = "Invalid full name")
         String fullName,
 
         @Schema(description = "User's main currency (ISO 4217)", example = "USD")
