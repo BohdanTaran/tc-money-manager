@@ -12,7 +12,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Constraint(validatedBy = ReceiptValidator.class)
 public @interface ValidReceiptFile {
-    String message() default "Invalid receipt format";
+    String message() default "Allowed receipt formats: jpg, jpeg, png, webp, pdf.";
 
     Class<?>[] groups() default {};
 

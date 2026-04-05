@@ -6,13 +6,12 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.tc.mtracker.common.file.ObjectStorageKeys;
 import org.tc.mtracker.user.dto.RequestUpdateUserProfileDTO;
 import org.tc.mtracker.user.dto.ResponseUserDTO;
 import org.tc.mtracker.user.dto.UserMapper;
 import org.tc.mtracker.utils.S3Service;
 import org.tc.mtracker.utils.exceptions.UserNotFoundException;
-
-import java.util.UUID;
 
 @Slf4j
 @Service
@@ -75,7 +74,7 @@ public class UserService {
     private void uploadAvatar(MultipartFile avatar, User user) {
         String avatarId = user.getAvatarId();
         if (avatarId == null) {
-            avatarId = UUID.randomUUID().toString();
+            avatarId = ObjectStorageKeys.newAvatarKey();
             user.setAvatarId(avatarId);
         }
         s3Service.saveFile(avatarId, avatar);

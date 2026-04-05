@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 import org.tc.mtracker.common.image.ImageValidator;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Tag("unit")
@@ -25,15 +24,15 @@ class ImageValidatorTest {
     }
 
     @Test
-    void shouldRejectUnsupportedMimeType() {
+    void shouldAcceptWebpImages() {
         MockMultipartFile file = new MockMultipartFile(
                 "avatar",
-                "avatar.jpg",
-                "text/plain",
+                "avatar.webp",
+                "image/webp",
                 "image".getBytes()
         );
 
-        assertThat(validator.isValid(file, null)).isFalse();
+        assertThat(validator.isValid(file, null)).isTrue();
     }
 
     @Test
@@ -42,6 +41,18 @@ class ImageValidatorTest {
                 "avatar",
                 "avatar.txt",
                 "image/jpeg",
+                "image".getBytes()
+        );
+
+        assertThat(validator.isValid(file, null)).isFalse();
+    }
+
+    @Test
+    void shouldRejectUnsupportedMimeType() {
+        MockMultipartFile file = new MockMultipartFile(
+                "avatar",
+                "avatar.jpg",
+                "text/plain",
                 "image".getBytes()
         );
 

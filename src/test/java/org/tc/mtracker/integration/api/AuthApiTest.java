@@ -122,7 +122,7 @@ class AuthApiTest extends BaseApiIntegrationTest {
                     "Avatar User",
                     CurrencyCode.EUR
             ), MediaType.APPLICATION_JSON);
-            ByteArrayResource avatar = MultipartTestResourceFactory.resource("avatar.jpg", "avatar");
+            ByteArrayResource avatar = MultipartTestResourceFactory.jpegImage("avatar.jpg");
             parts.part("avatar", avatar, MediaType.IMAGE_JPEG);
 
             restTestClient.post()

@@ -12,7 +12,10 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.multipart.MultipartFile;
 import org.tc.mtracker.common.image.ValidImage;
 import org.tc.mtracker.user.dto.RequestUpdateUserProfileDTO;
@@ -58,12 +61,15 @@ public interface UserApi {
             @Parameter(
                     name = "avatar",
                     required = false,
+                    description = "Allowed formats: jpg, jpeg, png, gif, webp.",
                     content = {
                             @Content(mediaType = MediaType.IMAGE_JPEG_VALUE, schema = @Schema(type = "string", format = "binary")),
-                            @Content(mediaType = MediaType.IMAGE_PNG_VALUE, schema = @Schema(type = "string", format = "binary"))
+                            @Content(mediaType = MediaType.IMAGE_PNG_VALUE, schema = @Schema(type = "string", format = "binary")),
+                            @Content(mediaType = MediaType.IMAGE_GIF_VALUE, schema = @Schema(type = "string", format = "binary")),
+                            @Content(mediaType = "image/webp", schema = @Schema(type = "string", format = "binary"))
                     }
             )
-            @ValidImage @RequestParam(name = "avatar", required = false) MultipartFile avatar,
+            @ValidImage @RequestPart(name = "avatar", required = false) MultipartFile avatar,
             @Parameter(hidden = true) Authentication auth
     );
 

@@ -79,7 +79,7 @@ class TransactionApiTest extends BaseApiIntegrationTest {
                 "Salary",
                 null
         ), MediaType.APPLICATION_JSON);
-        ByteArrayResource receipt = MultipartTestResourceFactory.resource("receipt.jpg", "receipt");
+        ByteArrayResource receipt = MultipartTestResourceFactory.jpegImage("receipt.jpg");
         parts.part("receipts", receipt, MediaType.IMAGE_JPEG);
 
         restTestClient.post()
@@ -211,6 +211,6 @@ class TransactionApiTest extends BaseApiIntegrationTest {
         assertThat(accountRepository.findById(user.getDefaultAccount().getId()).orElseThrow().getBalance())
                 .isEqualByComparingTo("0.00");
         assertThat(transactionRepository.findById(transaction.getId())).isEmpty();
-        verify(s3Service).deleteFile(receiptId.toString());
+        verify(s3Service).deleteFile("receipts/" + receiptId);
     }
 }

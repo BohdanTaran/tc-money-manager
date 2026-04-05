@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 import org.tc.mtracker.common.receipt.ReceiptValidator;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Tag("unit")
@@ -25,15 +24,15 @@ class ReceiptValidatorTest {
     }
 
     @Test
-    void shouldRejectUnsupportedMimeType() {
+    void shouldAcceptWebpReceiptImages() {
         MockMultipartFile file = new MockMultipartFile(
                 "receipt",
-                "receipt.pdf",
-                "text/plain",
-                "plain".getBytes()
+                "receipt.webp",
+                "image/webp",
+                "image".getBytes()
         );
 
-        assertThat(validator.isValid(file, null)).isFalse();
+        assertThat(validator.isValid(file, null)).isTrue();
     }
 
     @Test
@@ -43,6 +42,18 @@ class ReceiptValidatorTest {
                 "receipt.txt",
                 "application/pdf",
                 "%PDF".getBytes()
+        );
+
+        assertThat(validator.isValid(file, null)).isFalse();
+    }
+
+    @Test
+    void shouldRejectUnsupportedMimeType() {
+        MockMultipartFile file = new MockMultipartFile(
+                "receipt",
+                "receipt.pdf",
+                "text/plain",
+                "plain".getBytes()
         );
 
         assertThat(validator.isValid(file, null)).isFalse();
