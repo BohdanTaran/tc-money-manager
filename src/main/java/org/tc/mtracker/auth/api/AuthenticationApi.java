@@ -60,10 +60,12 @@ public interface AuthenticationApi {
             @Parameter(
                     name = "Avatar",
                     required = false,
+                    description = "Allowed formats: jpg, jpeg, png, gif, webp.",
                     content = {
-                            @Content(mediaType = "image/jpeg", schema = @Schema(type = "string", format = "binary")),
-                            @Content(mediaType = "image/png", schema = @Schema(type = "string", format = "binary")),
-                            @Content(mediaType = "image/webp", schema = @Schema(type = "string", format = "binary"))
+                            @Content(mediaType = MediaType.IMAGE_JPEG_VALUE, schema = @Schema(type = "string", format = "binary")),
+                            @Content(mediaType = MediaType.IMAGE_PNG_VALUE, schema = @Schema(type = "string", format = "binary")),
+                            @Content(mediaType = "image/webp", schema = @Schema(type = "string", format = "binary")),
+                            @Content(mediaType = MediaType.IMAGE_GIF_VALUE, schema = @Schema(type = "string", format = "binary"))
                     }
             )
             @ValidImage

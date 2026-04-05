@@ -79,7 +79,7 @@ class TransactionApiTest extends BaseApiIntegrationTest {
                 "Salary",
                 null
         ), MediaType.APPLICATION_JSON);
-        ByteArrayResource receipt = MultipartTestResourceFactory.resource("receipt.jpg", "receipt");
+        ByteArrayResource receipt = MultipartTestResourceFactory.jpegImage("receipt.jpg");
         parts.part("receipts", receipt, MediaType.IMAGE_JPEG);
 
         restTestClient.post()
@@ -91,6 +91,38 @@ class TransactionApiTest extends BaseApiIntegrationTest {
                 .expectBody()
                 .jsonPath("$.receiptsUrls.length()").isEqualTo(1)
                 .jsonPath("$.receiptsUrls[0]").isEqualTo("https://test-bucket.local/receipt.jpg");
+
+        verify(s3Service).saveFile(anyString(), any());
+        verify(s3Service).generatePresignedUrl(anyString());
+    }
+
+    @Test
+    void shouldCreateTransactionWithWebpReceipt() {
+        User user = fixtures.createUser("receipts-webp@example.com");
+        var category = fixtures.createGlobalCategory("Salary", TransactionType.INCOME);
+        when(s3Service.generatePresignedUrl(anyString())).thenReturn("https://test-bucket.local/receipt.webp");
+
+        MultipartBodyBuilder parts = new MultipartBodyBuilder();
+        parts.part("dto", new TransactionCreateRequestDTO(
+                new BigDecimal("15.00"),
+                TransactionType.INCOME,
+                category.getId(),
+                LocalDate.of(2026, 4, 1),
+                "Salary",
+                null
+        ), MediaType.APPLICATION_JSON);
+        ByteArrayResource receipt = MultipartTestResourceFactory.webpImage("receipt.webp");
+        parts.part("receipts", receipt, MediaType.parseMediaType("image/webp"));
+
+        restTestClient.post()
+                .uri("/api/v1/transactions")
+                .header(HttpHeaders.AUTHORIZATION, authHeader(user))
+                .body(parts.build())
+                .exchange()
+                .expectStatus().isCreated()
+                .expectBody()
+                .jsonPath("$.receiptsUrls.length()").isEqualTo(1)
+                .jsonPath("$.receiptsUrls[0]").isEqualTo("https://test-bucket.local/receipt.webp");
 
         verify(s3Service).saveFile(anyString(), any());
         verify(s3Service).generatePresignedUrl(anyString());
@@ -211,6 +243,6 @@ class TransactionApiTest extends BaseApiIntegrationTest {
         assertThat(accountRepository.findById(user.getDefaultAccount().getId()).orElseThrow().getBalance())
                 .isEqualByComparingTo("0.00");
         assertThat(transactionRepository.findById(transaction.getId())).isEmpty();
-        verify(s3Service).deleteFile(receiptId.toString());
+        verify(s3Service).deleteFile("receipts/" + receiptId);
     }
 }

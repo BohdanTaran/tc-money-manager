@@ -21,4 +21,24 @@ public final class MultipartTestResourceFactory {
             }
         };
     }
+
+    public static ByteArrayResource jpegImage(String filename) {
+        return resource(filename, "image");
+    }
+
+    public static ByteArrayResource pngImage(String filename) {
+        return resource(filename, "image");
+    }
+
+    public static ByteArrayResource gifImage(String filename) {
+        return resource(filename, "image");
+    }
+
+    public static ByteArrayResource webpImage(String filename) {
+        return resource(filename, "image");
+    }
+
+    public static ByteArrayResource pdfDocument(String filename) {
+        return resource(filename, "%PDF");
+    }
 }

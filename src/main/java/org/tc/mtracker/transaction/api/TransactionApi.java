@@ -97,6 +97,7 @@ public interface TransactionApi {
             @Parameter(
                     name = "receipts",
                     required = false,
+                    description = "Allowed formats: jpg, jpeg, png, webp, pdf. Maximum 10 files.",
                     content = {
                             @Content(mediaType = "image/jpeg", schema = @Schema(type = "string", format = "binary")),
                             @Content(mediaType = "image/png", schema = @Schema(type = "string", format = "binary")),

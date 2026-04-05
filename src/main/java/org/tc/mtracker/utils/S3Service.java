@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.tc.mtracker.common.file.UploadValidation;
 import org.tc.mtracker.utils.config.properties.AwsProperties;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -81,7 +82,7 @@ public class S3Service {
         return PutObjectRequest.builder()
                 .bucket(bucketName())
                 .key(objectKey)
-                .contentType(file.getContentType())
+                .contentType(UploadValidation.resolveContentType(file))
                 .build();
     }
 

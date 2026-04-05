@@ -12,6 +12,7 @@ import org.tc.mtracker.auth.dto.RegistrationRequestDto;
 import org.tc.mtracker.auth.dto.RegistrationResponseDto;
 import org.tc.mtracker.auth.mail.AuthEmailService;
 import org.tc.mtracker.auth.mapper.RegistrationMapper;
+import org.tc.mtracker.common.file.ObjectStorageKeys;
 import org.tc.mtracker.security.CustomUserDetails;
 import org.tc.mtracker.security.JwtService;
 import org.tc.mtracker.user.User;
@@ -20,7 +21,6 @@ import org.tc.mtracker.utils.S3Service;
 import org.tc.mtracker.utils.exceptions.UserAlreadyExistsException;
 
 import java.util.Map;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -44,7 +44,7 @@ public class RegistrationService {
             throw new UserAlreadyExistsException("User with this email already exists");
         }
 
-        String imageKey = (avatar == null || avatar.isEmpty()) ? null : UUID.randomUUID().toString();
+        String imageKey = (avatar == null || avatar.isEmpty()) ? null : ObjectStorageKeys.newAvatarKey();
         String avatarUrl = uploadAvatar(imageKey, avatar);
 
         User user = User.builder()
