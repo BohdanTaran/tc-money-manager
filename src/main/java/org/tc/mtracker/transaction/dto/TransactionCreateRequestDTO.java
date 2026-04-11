@@ -4,6 +4,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import org.hibernate.validator.constraints.Length;
 import org.tc.mtracker.common.enums.TransactionType;
+import org.tc.mtracker.transaction.recurring.enums.IntervalUnit;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -26,6 +27,8 @@ public record TransactionCreateRequestDTO(
         @Length(max = 256)
         String description,
 
-        Long accountId
+        Long accountId,
+
+        IntervalUnit recurringIntervalUnit
 ) {
 }

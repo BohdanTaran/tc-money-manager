@@ -21,10 +21,13 @@ import org.tc.mtracker.transaction.TransactionService;
 import org.tc.mtracker.transaction.dto.TransactionCreateRequestDTO;
 import org.tc.mtracker.transaction.dto.TransactionMapper;
 import org.tc.mtracker.transaction.dto.TransactionResponseDTO;
+import org.tc.mtracker.transaction.recurring.RecurringTransactionService;
+import org.tc.mtracker.transaction.recurring.enums.IntervalUnit;
 import org.tc.mtracker.user.User;
 import org.tc.mtracker.user.UserService;
 import org.tc.mtracker.utils.S3Service;
 import org.tc.mtracker.utils.exceptions.CategoryIsNotActiveException;
+import org.tc.mtracker.utils.exceptions.InvalidRecurringTransactionConfigurationException;
 import org.tc.mtracker.utils.exceptions.MoneyFlowTypeMismatchException;
 
 import java.math.BigDecimal;
@@ -61,22 +64,46 @@ class TransactionServiceTest {
     private S3Service s3Service;
 
     @Mock
+    private RecurringTransactionService recurringTransactionService;
+
+    @Mock
     private Authentication authentication;
 
     @InjectMocks
     private TransactionService transactionService;
+
+    private static TransactionCreateRequestDTO createRequest(
+            BigDecimal amount,
+            TransactionType type,
+            Long categoryId,
+            LocalDate date,
+            String description,
+            Long accountId,
+            IntervalUnit recurringIntervalUnit
+    ) {
+        return new TransactionCreateRequestDTO(
+                amount,
+                type,
+                categoryId,
+                date,
+                description,
+                accountId,
+                recurringIntervalUnit
+        );
+    }
 
     @Test
     void shouldUseDefaultAccountAndIncreaseBalanceForIncomeTransaction() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
         Account defaultAccount = EntityTestFactory.account(1L, user, new BigDecimal("10.00"));
         Category category = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
-        TransactionCreateRequestDTO dto = new TransactionCreateRequestDTO(
+        TransactionCreateRequestDTO dto = createRequest(
                 new BigDecimal("15.50"),
                 TransactionType.INCOME,
                 4L,
                 LocalDate.of(2026, 4, 1),
                 "Salary",
+                null,
                 null
         );
         Transaction transaction = EntityTestFactory.transaction(null, user, null, null, dto.type(), dto.amount(), dto.date());
@@ -111,16 +138,80 @@ class TransactionServiceTest {
     }
 
     @Test
-    void shouldUploadReceiptsAndReturnPresignedUrlsDuringCreate() {
+    void shouldCreateRecurringTemplateWhenRecurringConfigurationProvided() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
-        Account defaultAccount = EntityTestFactory.account(1L, user, BigDecimal.ZERO);
+        Account defaultAccount = EntityTestFactory.account(1L, user, new BigDecimal("10.00"));
         Category category = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
-        TransactionCreateRequestDTO dto = new TransactionCreateRequestDTO(
+        TransactionCreateRequestDTO dto = createRequest(
                 new BigDecimal("15.50"),
                 TransactionType.INCOME,
                 4L,
                 LocalDate.of(2026, 4, 1),
                 "Salary",
+                null,
+                IntervalUnit.MONTHLY
+        );
+        Transaction transaction = EntityTestFactory.transaction(null, user, null, null, dto.type(), dto.amount(), dto.date());
+        TransactionResponseDTO response = new TransactionResponseDTO(
+                10L,
+                1L,
+                dto.amount(),
+                null,
+                dto.description(),
+                dto.type(),
+                List.of(),
+                dto.date(),
+                null,
+                null
+        );
+        EntityTestFactory.linkDefaultAccount(user, defaultAccount);
+
+        when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
+        when(transactionMapper.toEntity(dto, user)).thenReturn(transaction);
+        when(categoryService.findAccessibleById(dto.categoryId(), user)).thenReturn(category);
+        when(transactionRepository.save(transaction)).thenReturn(transaction);
+        when(transactionMapper.toDto(transaction, List.of())).thenReturn(response);
+
+        transactionService.createTransaction(authentication, dto, List.of());
+
+        verify(recurringTransactionService).createFromTransaction(transaction, IntervalUnit.MONTHLY);
+    }
+
+    @Test
+    void shouldRejectRecurringConfigurationDuringUpdate() {
+        User user = EntityTestFactory.user(1L, "user@example.com", true);
+        Account account = EntityTestFactory.account(1L, user, BigDecimal.ZERO);
+        TransactionCreateRequestDTO dto = createRequest(
+                new BigDecimal("15.50"),
+                TransactionType.EXPENSE,
+                4L,
+                LocalDate.of(2026, 4, 2),
+                "Updated expense",
+                null,
+                IntervalUnit.MONTHLY
+        );
+        EntityTestFactory.linkDefaultAccount(user, account);
+
+        when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
+        assertThatThrownBy(() -> transactionService.updateTransaction(9L, authentication, dto))
+                .isInstanceOf(InvalidRecurringTransactionConfigurationException.class);
+
+        verify(transactionRepository, never()).save(any(Transaction.class));
+        verifyNoInteractions(recurringTransactionService);
+    }
+
+    @Test
+    void shouldUploadReceiptsAndReturnPresignedUrlsDuringCreate() {
+        User user = EntityTestFactory.user(1L, "user@example.com", true);
+        Account defaultAccount = EntityTestFactory.account(1L, user, BigDecimal.ZERO);
+        Category category = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
+        TransactionCreateRequestDTO dto = createRequest(
+                new BigDecimal("15.50"),
+                TransactionType.INCOME,
+                4L,
+                LocalDate.of(2026, 4, 1),
+                "Salary",
+                null,
                 null
         );
         Transaction transaction = EntityTestFactory.transaction(null, user, null, null, dto.type(), dto.amount(), dto.date());
@@ -159,12 +250,13 @@ class TransactionServiceTest {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
         Account defaultAccount = EntityTestFactory.account(1L, user, BigDecimal.ZERO);
         Category archivedCategory = EntityTestFactory.category(4L, user, "Archived", TransactionType.EXPENSE, CategoryStatus.ARCHIVED);
-        TransactionCreateRequestDTO dto = new TransactionCreateRequestDTO(
+        TransactionCreateRequestDTO dto = createRequest(
                 BigDecimal.ONE,
                 TransactionType.EXPENSE,
                 4L,
                 LocalDate.of(2026, 4, 1),
                 "Expense",
+                null,
                 null
         );
         EntityTestFactory.linkDefaultAccount(user, defaultAccount);
@@ -183,12 +275,13 @@ class TransactionServiceTest {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
         Account defaultAccount = EntityTestFactory.account(1L, user, BigDecimal.ZERO);
         Category category = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
-        TransactionCreateRequestDTO dto = new TransactionCreateRequestDTO(
+        TransactionCreateRequestDTO dto = createRequest(
                 BigDecimal.ONE,
                 TransactionType.EXPENSE,
                 4L,
                 LocalDate.of(2026, 4, 1),
                 "Expense",
+                null,
                 null
         );
         Transaction transaction = EntityTestFactory.transaction(null, user, null, null, dto.type(), dto.amount(), dto.date());
@@ -217,13 +310,14 @@ class TransactionServiceTest {
                 new BigDecimal("30.00"),
                 LocalDate.of(2026, 4, 1)
         );
-        TransactionCreateRequestDTO updateDto = new TransactionCreateRequestDTO(
+        TransactionCreateRequestDTO updateDto = createRequest(
                 new BigDecimal("50.00"),
                 TransactionType.EXPENSE,
                 4L,
                 LocalDate.of(2026, 4, 2),
                 "Updated expense",
-                2L
+                2L,
+                null
         );
         TransactionResponseDTO response = new TransactionResponseDTO(
                 9L,

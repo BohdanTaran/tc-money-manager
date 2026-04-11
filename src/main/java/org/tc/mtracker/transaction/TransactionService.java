@@ -16,13 +16,11 @@ import org.tc.mtracker.common.file.ObjectStorageKeys;
 import org.tc.mtracker.transaction.dto.TransactionCreateRequestDTO;
 import org.tc.mtracker.transaction.dto.TransactionMapper;
 import org.tc.mtracker.transaction.dto.TransactionResponseDTO;
+import org.tc.mtracker.transaction.recurring.RecurringTransactionService;
 import org.tc.mtracker.user.User;
 import org.tc.mtracker.user.UserService;
 import org.tc.mtracker.utils.S3Service;
-import org.tc.mtracker.utils.exceptions.AccountNotFoundException;
-import org.tc.mtracker.utils.exceptions.CategoryIsNotActiveException;
-import org.tc.mtracker.utils.exceptions.MoneyFlowTypeMismatchException;
-import org.tc.mtracker.utils.exceptions.TransactionNotFoundException;
+import org.tc.mtracker.utils.exceptions.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -39,15 +37,14 @@ public class TransactionService {
     private final TransactionMapper transactionMapper;
     private final UserService userService;
     private final S3Service s3Service;
+    private final RecurringTransactionService recurringTransactionService;
 
     @Transactional
     public TransactionResponseDTO createTransaction(Authentication auth, TransactionCreateRequestDTO createRequestDTO, List<MultipartFile> receipts) {
         User user = userService.getCurrentAuthenticatedUser(auth);
         Account account = resolveAccount(user, createRequestDTO.accountId());
-
         Transaction transaction = transactionMapper.toEntity(createRequestDTO, user);
-        Category category = getCategory(createRequestDTO, user);
-
+        Category category = resolveActiveCategory(createRequestDTO, user);
         validateTransactionType(createRequestDTO, category, user);
 
         transaction.setUser(user);
@@ -55,15 +52,25 @@ public class TransactionService {
         transaction.setCategory(category);
         addReceiptsToTransaction(receipts, transaction);
 
-
-        Transaction saved = transactionRepository.save(transaction);
-        applyBalanceDelta(account, saved);
+        Transaction saved = persistTransaction(transaction);
+        createRecurringTemplateIfRequested(createRequestDTO, saved);
         log.info("Transaction created userId={} transactionId={} accountId={} amount={} type={}",
                 user.getId(), saved.getId(), account.getId(), saved.getAmount(), saved.getType());
 
-        List<String> presignedUrls = generatePresignedUrlsForReceipts(saved);
+        return toResponseDto(saved);
+    }
 
-        return transactionMapper.toDto(saved, presignedUrls);
+    @Transactional
+    public Transaction createAutomatedTransaction(Transaction transaction) {
+        Transaction saved = persistTransaction(transaction);
+        log.info("Automated transaction created userId={} transactionId={} accountId={} amount={} type={} date={}",
+                saved.getUser().getId(),
+                saved.getId(),
+                saved.getAccount().getId(),
+                saved.getAmount(),
+                saved.getType(),
+                saved.getDate());
+        return saved;
     }
 
     @Transactional(readOnly = true)
@@ -95,7 +102,7 @@ public class TransactionService {
     @Transactional(readOnly = true)
     public TransactionResponseDTO getTransactionById(Long transactionId, Authentication auth) {
         User user = userService.getCurrentAuthenticatedUser(auth);
-        Transaction transaction = findOwnedTransaction(transactionId, user);
+        Transaction transaction = findActiveOwnedTransaction(transactionId, user);
         log.debug("Transaction returned for userId={} transactionId={}", user.getId(), transactionId);
         return toResponseDto(transaction);
     }
@@ -103,11 +110,12 @@ public class TransactionService {
     @Transactional
     public TransactionResponseDTO updateTransaction(Long transactionId, Authentication auth, TransactionCreateRequestDTO updateRequestDTO) {
         User user = userService.getCurrentAuthenticatedUser(auth);
-        Transaction transaction = findOwnedTransaction(transactionId, user);
+        validateRecurringTransactionUnsupported(updateRequestDTO);
+        Transaction transaction = findActiveOwnedTransaction(transactionId, user);
 
         Account currentAccount = transaction.getAccount();
         Account targetAccount = resolveAccount(user, updateRequestDTO.accountId());
-        Category category = getCategory(updateRequestDTO, user);
+        Category category = resolveActiveCategory(updateRequestDTO, user);
 
         validateTransactionType(updateRequestDTO, category, user);
 
@@ -120,13 +128,13 @@ public class TransactionService {
         Transaction saved = transactionRepository.save(transaction);
         log.info("Transaction updated userId={} transactionId={} accountId={} amount={} type={}",
                 user.getId(), saved.getId(), targetAccount.getId(), saved.getAmount(), saved.getType());
-        return transactionMapper.toDto(saved, generatePresignedUrlsForReceipts(saved));
+        return toResponseDto(saved);
     }
 
     @Transactional
     public void deleteTransaction(Long transactionId, Authentication auth) {
         User user = userService.getCurrentAuthenticatedUser(auth);
-        Transaction transaction = findOwnedTransaction(transactionId, user);
+        Transaction transaction = findActiveOwnedTransaction(transactionId, user);
 
         revertBalanceDelta(transaction.getAccount(), transaction);
         deleteReceipts(transaction);
@@ -151,9 +159,9 @@ public class TransactionService {
                 });
     }
 
-    private Category getCategory(TransactionCreateRequestDTO createRequestDTO, User currentUser) {
+    private Category resolveActiveCategory(TransactionCreateRequestDTO createRequestDTO, User currentUser) {
         Category category = categoryService.findAccessibleById(createRequestDTO.categoryId(), currentUser);
-        if (!category.getStatus().equals(CategoryStatus.ACTIVE)) {
+        if (category.getStatus() != CategoryStatus.ACTIVE) {
             log.warn("Transaction request rejected: category inactive userId={} categoryId={}",
                     currentUser.getId(), category.getId());
             throw new CategoryIsNotActiveException("Category is not active.");
@@ -198,19 +206,44 @@ public class TransactionService {
         return ObjectStorageKeys.receiptKey(receiptImage.getId());
     }
 
+    private Transaction persistTransaction(Transaction transaction) {
+        Transaction saved = transactionRepository.save(transaction);
+        applyBalanceDelta(saved.getAccount(), saved);
+        return saved;
+    }
+
     private TransactionResponseDTO toResponseDto(Transaction transaction) {
         return transactionMapper.toDto(transaction, generatePresignedUrlsForReceipts(transaction));
     }
 
     private void validateTransactionType(TransactionCreateRequestDTO createRequestDTO, Category category, User user) {
-        if (!category.getType().equals(createRequestDTO.type())) {
+        if (category.getType() != createRequestDTO.type()) {
             log.warn("Transaction request rejected: type mismatch userId={} categoryId={} categoryType={} transactionType={}",
                     user.getId(), category.getId(), category.getType(), createRequestDTO.type());
             throw new MoneyFlowTypeMismatchException("Category type does not match transaction type.");
         }
     }
 
-    private Transaction findOwnedTransaction(Long transactionId, User user) {
+    private void validateRecurringTransactionUnsupported(TransactionCreateRequestDTO requestDTO) {
+        if (requestDTO.recurringIntervalUnit() != null) {
+            throw new InvalidRecurringTransactionConfigurationException(
+                    "Recurring transaction settings can only be configured when creating a transaction."
+            );
+        }
+    }
+
+    private void createRecurringTemplateIfRequested(TransactionCreateRequestDTO createRequestDTO, Transaction savedTransaction) {
+        if (createRequestDTO.recurringIntervalUnit() == null) {
+            return;
+        }
+
+        recurringTransactionService.createFromTransaction(
+                savedTransaction,
+                createRequestDTO.recurringIntervalUnit()
+        );
+    }
+
+    private Transaction findActiveOwnedTransaction(Long transactionId, User user) {
         return transactionRepository.findActiveByIdAndUser(transactionId, user)
                 .orElseThrow(() -> {
                     log.warn("Transaction not found userId={} transactionId={}", user.getId(), transactionId);
