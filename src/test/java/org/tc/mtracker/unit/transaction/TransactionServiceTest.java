@@ -9,26 +9,23 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.core.Authentication;
 import org.tc.mtracker.account.Account;
-import org.tc.mtracker.account.AccountRepository;
 import org.tc.mtracker.category.Category;
-import org.tc.mtracker.category.CategoryService;
 import org.tc.mtracker.category.enums.CategoryStatus;
 import org.tc.mtracker.common.enums.TransactionType;
 import org.tc.mtracker.support.factory.EntityTestFactory;
 import org.tc.mtracker.transaction.Transaction;
 import org.tc.mtracker.transaction.TransactionRepository;
 import org.tc.mtracker.transaction.TransactionService;
+import org.tc.mtracker.transaction.TransactionValidationService;
 import org.tc.mtracker.transaction.dto.TransactionCreateRequestDTO;
 import org.tc.mtracker.transaction.dto.TransactionMapper;
 import org.tc.mtracker.transaction.dto.TransactionResponseDTO;
-import org.tc.mtracker.transaction.recurring.RecurringTransactionService;
-import org.tc.mtracker.transaction.recurring.enums.IntervalUnit;
 import org.tc.mtracker.user.User;
 import org.tc.mtracker.user.UserService;
 import org.tc.mtracker.utils.S3Service;
 import org.tc.mtracker.utils.exceptions.CategoryIsNotActiveException;
-import org.tc.mtracker.utils.exceptions.InvalidRecurringTransactionConfigurationException;
 import org.tc.mtracker.utils.exceptions.MoneyFlowTypeMismatchException;
+import org.tc.mtracker.utils.exceptions.TransactionNotFoundException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -38,7 +35,8 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @Tag("unit")
@@ -47,12 +45,6 @@ class TransactionServiceTest {
 
     @Mock
     private TransactionRepository transactionRepository;
-
-    @Mock
-    private AccountRepository accountRepository;
-
-    @Mock
-    private CategoryService categoryService;
 
     @Mock
     private TransactionMapper transactionMapper;
@@ -64,7 +56,7 @@ class TransactionServiceTest {
     private S3Service s3Service;
 
     @Mock
-    private RecurringTransactionService recurringTransactionService;
+    private TransactionValidationService transactionValidationService;
 
     @Mock
     private Authentication authentication;
@@ -78,8 +70,7 @@ class TransactionServiceTest {
             Long categoryId,
             LocalDate date,
             String description,
-            Long accountId,
-            IntervalUnit recurringIntervalUnit
+            Long accountId
     ) {
         return new TransactionCreateRequestDTO(
                 amount,
@@ -87,13 +78,12 @@ class TransactionServiceTest {
                 categoryId,
                 date,
                 description,
-                accountId,
-                recurringIntervalUnit
+                accountId
         );
     }
 
     @Test
-    void shouldUseDefaultAccountAndIncreaseBalanceForIncomeTransaction() {
+    void shouldUseDefaultAccountAndIncreaseBalanceForOneTimeIncomeTransaction() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
         Account defaultAccount = EntityTestFactory.account(1L, user, new BigDecimal("10.00"));
         Category category = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
@@ -103,7 +93,6 @@ class TransactionServiceTest {
                 4L,
                 LocalDate.of(2026, 4, 1),
                 "Salary",
-                null,
                 null
         );
         Transaction transaction = EntityTestFactory.transaction(null, user, null, null, dto.type(), dto.amount(), dto.date());
@@ -122,8 +111,9 @@ class TransactionServiceTest {
         EntityTestFactory.linkDefaultAccount(user, defaultAccount);
 
         when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
+        when(transactionValidationService.resolveAccount(user, dto.accountId())).thenReturn(defaultAccount);
+        when(transactionValidationService.resolveActiveCategory(dto.categoryId(), user)).thenReturn(category);
         when(transactionMapper.toEntity(dto, user)).thenReturn(transaction);
-        when(categoryService.findAccessibleById(dto.categoryId(), user)).thenReturn(category);
         when(transactionRepository.save(transaction)).thenReturn(transaction);
         when(transactionMapper.toDto(transaction, List.of())).thenReturn(response);
 
@@ -134,70 +124,9 @@ class TransactionServiceTest {
         assertThat(transaction.getUser()).isEqualTo(user);
         assertThat(transaction.getAccount()).isEqualTo(defaultAccount);
         assertThat(transaction.getCategory()).isEqualTo(category);
+        verify(transactionValidationService).validateOneTimeTransactionDate(dto.date(), user);
+        verify(transactionValidationService).validateTransactionType(dto.type(), category, user);
         verifyNoInteractions(s3Service);
-    }
-
-    @Test
-    void shouldCreateRecurringTemplateWhenRecurringConfigurationProvided() {
-        User user = EntityTestFactory.user(1L, "user@example.com", true);
-        Account defaultAccount = EntityTestFactory.account(1L, user, new BigDecimal("10.00"));
-        Category category = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
-        TransactionCreateRequestDTO dto = createRequest(
-                new BigDecimal("15.50"),
-                TransactionType.INCOME,
-                4L,
-                LocalDate.of(2026, 4, 1),
-                "Salary",
-                null,
-                IntervalUnit.MONTHLY
-        );
-        Transaction transaction = EntityTestFactory.transaction(null, user, null, null, dto.type(), dto.amount(), dto.date());
-        TransactionResponseDTO response = new TransactionResponseDTO(
-                10L,
-                1L,
-                dto.amount(),
-                null,
-                dto.description(),
-                dto.type(),
-                List.of(),
-                dto.date(),
-                null,
-                null
-        );
-        EntityTestFactory.linkDefaultAccount(user, defaultAccount);
-
-        when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
-        when(transactionMapper.toEntity(dto, user)).thenReturn(transaction);
-        when(categoryService.findAccessibleById(dto.categoryId(), user)).thenReturn(category);
-        when(transactionRepository.save(transaction)).thenReturn(transaction);
-        when(transactionMapper.toDto(transaction, List.of())).thenReturn(response);
-
-        transactionService.createTransaction(authentication, dto, List.of());
-
-        verify(recurringTransactionService).createFromTransaction(transaction, IntervalUnit.MONTHLY);
-    }
-
-    @Test
-    void shouldRejectRecurringConfigurationDuringUpdate() {
-        User user = EntityTestFactory.user(1L, "user@example.com", true);
-        Account account = EntityTestFactory.account(1L, user, BigDecimal.ZERO);
-        TransactionCreateRequestDTO dto = createRequest(
-                new BigDecimal("15.50"),
-                TransactionType.EXPENSE,
-                4L,
-                LocalDate.of(2026, 4, 2),
-                "Updated expense",
-                null,
-                IntervalUnit.MONTHLY
-        );
-        EntityTestFactory.linkDefaultAccount(user, account);
-
-        when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
-        assertThatThrownBy(() -> transactionService.updateTransaction(9L, authentication, dto))
-                .isInstanceOf(InvalidRecurringTransactionConfigurationException.class);
-
-        verify(transactionRepository, never()).save(any(Transaction.class));
-        verifyNoInteractions(recurringTransactionService);
     }
 
     @Test
@@ -211,7 +140,6 @@ class TransactionServiceTest {
                 4L,
                 LocalDate.of(2026, 4, 1),
                 "Salary",
-                null,
                 null
         );
         Transaction transaction = EntityTestFactory.transaction(null, user, null, null, dto.type(), dto.amount(), dto.date());
@@ -231,8 +159,9 @@ class TransactionServiceTest {
         EntityTestFactory.linkDefaultAccount(user, defaultAccount);
 
         when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
+        when(transactionValidationService.resolveAccount(user, dto.accountId())).thenReturn(defaultAccount);
+        when(transactionValidationService.resolveActiveCategory(dto.categoryId(), user)).thenReturn(category);
         when(transactionMapper.toEntity(dto, user)).thenReturn(transaction);
-        when(categoryService.findAccessibleById(dto.categoryId(), user)).thenReturn(category);
         when(transactionRepository.save(transaction)).thenReturn(transaction);
         when(s3Service.generatePresignedUrl(anyString())).thenReturn("https://test-bucket.local/receipt-1");
         when(transactionMapper.toDto(eq(transaction), eq(List.of("https://test-bucket.local/receipt-1")))).thenReturn(response);
@@ -241,28 +170,25 @@ class TransactionServiceTest {
 
         assertThat(result).isEqualTo(response);
         assertThat(transaction.getReceipts()).hasSize(1);
-        verify(s3Service).saveFile(anyString(), same(receipt));
+        verify(s3Service).saveFile(anyString(), eq(receipt));
         verify(s3Service).generatePresignedUrl(anyString());
     }
 
     @Test
-    void shouldRejectArchivedCategoryDuringCreate() {
+    void shouldPropagateCategoryInactiveValidationDuringCreate() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
-        Account defaultAccount = EntityTestFactory.account(1L, user, BigDecimal.ZERO);
-        Category archivedCategory = EntityTestFactory.category(4L, user, "Archived", TransactionType.EXPENSE, CategoryStatus.ARCHIVED);
         TransactionCreateRequestDTO dto = createRequest(
                 BigDecimal.ONE,
                 TransactionType.EXPENSE,
                 4L,
                 LocalDate.of(2026, 4, 1),
                 "Expense",
-                null,
                 null
         );
-        EntityTestFactory.linkDefaultAccount(user, defaultAccount);
 
         when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
-        when(categoryService.findAccessibleById(dto.categoryId(), user)).thenReturn(archivedCategory);
+        doThrow(new CategoryIsNotActiveException("Category is not active."))
+                .when(transactionValidationService).resolveActiveCategory(dto.categoryId(), user);
 
         assertThatThrownBy(() -> transactionService.createTransaction(authentication, dto, List.of()))
                 .isInstanceOf(CategoryIsNotActiveException.class);
@@ -271,7 +197,7 @@ class TransactionServiceTest {
     }
 
     @Test
-    void shouldRejectMismatchedTransactionAndCategoryTypes() {
+    void shouldPropagateTypeMismatchValidationDuringCreate() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
         Account defaultAccount = EntityTestFactory.account(1L, user, BigDecimal.ZERO);
         Category category = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
@@ -281,18 +207,21 @@ class TransactionServiceTest {
                 4L,
                 LocalDate.of(2026, 4, 1),
                 "Expense",
-                null,
                 null
         );
         Transaction transaction = EntityTestFactory.transaction(null, user, null, null, dto.type(), dto.amount(), dto.date());
-        EntityTestFactory.linkDefaultAccount(user, defaultAccount);
 
         when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
+        when(transactionValidationService.resolveAccount(user, dto.accountId())).thenReturn(defaultAccount);
+        when(transactionValidationService.resolveActiveCategory(dto.categoryId(), user)).thenReturn(category);
         when(transactionMapper.toEntity(dto, user)).thenReturn(transaction);
-        when(categoryService.findAccessibleById(dto.categoryId(), user)).thenReturn(category);
+        doThrow(new MoneyFlowTypeMismatchException("Category type does not match transaction type."))
+                .when(transactionValidationService).validateTransactionType(dto.type(), category, user);
 
         assertThatThrownBy(() -> transactionService.createTransaction(authentication, dto, List.of()))
                 .isInstanceOf(MoneyFlowTypeMismatchException.class);
+
+        verify(transactionRepository, never()).save(any(Transaction.class));
     }
 
     @Test
@@ -316,8 +245,7 @@ class TransactionServiceTest {
                 4L,
                 LocalDate.of(2026, 4, 2),
                 "Updated expense",
-                2L,
-                null
+                2L
         );
         TransactionResponseDTO response = new TransactionResponseDTO(
                 9L,
@@ -334,8 +262,8 @@ class TransactionServiceTest {
 
         when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
         when(transactionRepository.findActiveByIdAndUser(9L, user)).thenReturn(Optional.of(existingTransaction));
-        when(accountRepository.findByIdAndUser(2L, user)).thenReturn(Optional.of(targetAccount));
-        when(categoryService.findAccessibleById(4L, user)).thenReturn(expenseCategory);
+        when(transactionValidationService.resolveAccount(user, 2L)).thenReturn(targetAccount);
+        when(transactionValidationService.resolveActiveCategory(4L, user)).thenReturn(expenseCategory);
         doAnswer(invocation -> {
             TransactionCreateRequestDTO dto = invocation.getArgument(0);
             Transaction transaction = invocation.getArgument(1);
@@ -354,10 +282,12 @@ class TransactionServiceTest {
         assertThat(sourceAccount.getBalance()).isEqualByComparingTo("100.00");
         assertThat(targetAccount.getBalance()).isEqualByComparingTo("-30.00");
         assertThat(existingTransaction.getAccount()).isEqualTo(targetAccount);
+        verify(transactionValidationService).validateOneTimeTransactionDate(updateDto.date(), user);
+        verify(transactionValidationService).validateTransactionType(updateDto.type(), expenseCategory, user);
     }
 
     @Test
-    void shouldRollbackBalanceAndDeleteReceiptsWhenDeletingTransaction() {
+    void shouldDeleteTransactionAndRollbackBalance() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
         Account account = EntityTestFactory.account(1L, user, new BigDecimal("30.00"));
         Category category = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
@@ -381,5 +311,16 @@ class TransactionServiceTest {
         assertThat(account.getBalance()).isEqualByComparingTo("0.00");
         verify(s3Service).deleteFile("receipts/" + receiptId);
         verify(transactionRepository).delete(transaction);
+    }
+
+    @Test
+    void shouldThrowWhenOwnedTransactionIsMissing() {
+        User user = EntityTestFactory.user(1L, "user@example.com", true);
+
+        when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
+        when(transactionRepository.findActiveByIdAndUser(99L, user)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> transactionService.getTransactionById(99L, authentication))
+                .isInstanceOf(TransactionNotFoundException.class);
     }
 }

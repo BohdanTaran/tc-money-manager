@@ -1,6 +1,7 @@
 SET FOREIGN_KEY_CHECKS = 0;
 TRUNCATE TABLE receipt_images;
 TRUNCATE TABLE transactions;
+TRUNCATE TABLE recurring_transactions;
 TRUNCATE TABLE refresh_tokens;
 TRUNCATE TABLE categories;
 TRUNCATE TABLE accounts;

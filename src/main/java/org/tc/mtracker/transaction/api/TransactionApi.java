@@ -72,13 +72,19 @@ public interface TransactionApi {
 
     @Operation(
             summary = "Create transaction",
-            description = "Creates a transaction for the authenticated user and optionally uploads receipt files."
+            description = "Creates a one-time transaction for the authenticated user and optionally uploads receipt files. One-time transaction date can be in the past or today, but not in the future."
     )
     @ApiResponse(
             responseCode = "201",
             description = "Transaction created successfully",
             content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
                     schema = @Schema(implementation = TransactionResponseDTO.class))
+    )
+    @ApiResponse(
+            responseCode = "400",
+            description = "Invalid input data or transaction date is in the future",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                    schema = @Schema(implementation = ProblemDetail.class))
     )
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     ResponseEntity<TransactionResponseDTO> createTransaction(
@@ -112,13 +118,19 @@ public interface TransactionApi {
 
     @Operation(
             summary = "Update transaction",
-            description = "Updates a transaction and recalculates related balances."
+            description = "Updates a one-time transaction and recalculates related balances. One-time transaction date can be in the past or today, but not in the future."
     )
     @ApiResponse(
             responseCode = "200",
             description = "Transaction updated successfully",
             content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
                     schema = @Schema(implementation = TransactionResponseDTO.class))
+    )
+    @ApiResponse(
+            responseCode = "400",
+            description = "Invalid input data or transaction date is in the future",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                    schema = @Schema(implementation = ProblemDetail.class))
     )
     @PutMapping("/{transactionId}")
     ResponseEntity<TransactionResponseDTO> updateTransaction(

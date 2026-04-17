@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.tc.mtracker.transaction.Transaction;
 import org.tc.mtracker.transaction.TransactionService;
 
 import java.time.LocalDate;
@@ -23,37 +22,31 @@ public class RecurringTransactionExecutionService {
     void executeDueTransactions(LocalDate executionDate) {
         List<RecurringTransaction> dueRecurringTransactions =
                 recurringTransactionRepository.findDueTransactions(executionDate);
+        int createdTransactions = 0;
 
         for (RecurringTransaction recurringTransaction : dueRecurringTransactions) {
-            executeRecurringTransaction(recurringTransaction, executionDate);
+            createdTransactions += executeRecurringTransaction(recurringTransaction, executionDate);
         }
 
         if (!dueRecurringTransactions.isEmpty()) {
-            log.info("Executed {} recurring transaction template(s) up to {}", dueRecurringTransactions.size(), executionDate);
+            log.info("Executed {} recurring transaction template(s) and created {} transaction(s) up to {}",
+                    dueRecurringTransactions.size(), createdTransactions, executionDate);
         }
     }
 
-    private void executeRecurringTransaction(RecurringTransaction recurringTransaction, LocalDate executionDate) {
+    private int executeRecurringTransaction(RecurringTransaction recurringTransaction, LocalDate executionDate) {
+        int createdTransactions = 0;
         while (!recurringTransaction.getNextExecutionDate().isAfter(executionDate)) {
-            transactionService.createAutomatedTransaction(toTransaction(recurringTransaction));
+            LocalDate transactionDate = recurringTransaction.getNextExecutionDate();
+            transactionService.createAutomatedTransaction(RecurringTransactionService.toTransaction(recurringTransaction, transactionDate));
             recurringTransaction.setNextExecutionDate(
                     recurringTransactionService.nextExecutionDateAfter(
-                            recurringTransaction.getNextExecutionDate(),
+                            transactionDate,
                             recurringTransaction.getIntervalUnit()
                     )
             );
+            createdTransactions++;
         }
-    }
-
-    private static Transaction toTransaction(RecurringTransaction recurringTransaction) {
-        return Transaction.builder()
-                .user(recurringTransaction.getUser())
-                .account(recurringTransaction.getAccount())
-                .category(recurringTransaction.getCategory())
-                .type(recurringTransaction.getType())
-                .amount(recurringTransaction.getAmount())
-                .description(recurringTransaction.getDescription())
-                .date(recurringTransaction.getNextExecutionDate())
-                .build();
+        return createdTransactions;
     }
 }

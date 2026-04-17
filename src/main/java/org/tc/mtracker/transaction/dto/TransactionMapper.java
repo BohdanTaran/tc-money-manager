@@ -14,26 +14,26 @@ import java.util.List;
 public interface TransactionMapper {
 
     @Mappings({
-            @Mapping(target = Transaction.Fields.id, ignore = true),
-            @Mapping(target = Transaction.Fields.user, source = "user"),
-            @Mapping(target = Transaction.Fields.account, ignore = true),
-            @Mapping(target = Transaction.Fields.category, ignore = true),
-            @Mapping(target = Transaction.Fields.createdAt, ignore = true),
-            @Mapping(target = Transaction.Fields.updatedAt, ignore = true),
-            @Mapping(target = Transaction.Fields.deletedAt, ignore = true),
-            @Mapping(target = Transaction.Fields.receipts, ignore = true)
+            @Mapping(target = "id", ignore = true),
+            @Mapping(target = "user", source = "user"),
+            @Mapping(target = "account", ignore = true),
+            @Mapping(target = "category", ignore = true),
+            @Mapping(target = "createdAt", ignore = true),
+            @Mapping(target = "updatedAt", ignore = true),
+            @Mapping(target = "deletedAt", ignore = true),
+            @Mapping(target = "receipts", ignore = true)
     })
     Transaction toEntity(TransactionCreateRequestDTO dto, User user);
 
     @Mappings({
-            @Mapping(target = Transaction.Fields.id, ignore = true),
-            @Mapping(target = Transaction.Fields.user, ignore = true),
-            @Mapping(target = Transaction.Fields.account, ignore = true),
-            @Mapping(target = Transaction.Fields.category, ignore = true),
-            @Mapping(target = Transaction.Fields.createdAt, ignore = true),
-            @Mapping(target = Transaction.Fields.updatedAt, ignore = true),
-            @Mapping(target = Transaction.Fields.deletedAt, ignore = true),
-            @Mapping(target = Transaction.Fields.receipts, ignore = true)
+            @Mapping(target = "id", ignore = true),
+            @Mapping(target = "user", ignore = true),
+            @Mapping(target = "account", ignore = true),
+            @Mapping(target = "category", ignore = true),
+            @Mapping(target = "createdAt", ignore = true),
+            @Mapping(target = "updatedAt", ignore = true),
+            @Mapping(target = "deletedAt", ignore = true),
+            @Mapping(target = "receipts", ignore = true)
     })
     void updateEntity(TransactionCreateRequestDTO dto, @MappingTarget Transaction transaction);
 

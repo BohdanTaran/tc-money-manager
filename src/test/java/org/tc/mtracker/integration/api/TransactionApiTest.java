@@ -16,8 +16,6 @@ import org.tc.mtracker.transaction.ReceiptImage;
 import org.tc.mtracker.transaction.Transaction;
 import org.tc.mtracker.transaction.TransactionRepository;
 import org.tc.mtracker.transaction.dto.TransactionCreateRequestDTO;
-import org.tc.mtracker.transaction.recurring.RecurringTransactionRepository;
-import org.tc.mtracker.transaction.recurring.enums.IntervalUnit;
 import org.tc.mtracker.user.User;
 
 import java.math.BigDecimal;
@@ -37,17 +35,13 @@ class TransactionApiTest extends BaseApiIntegrationTest {
     @Autowired
     private TransactionRepository transactionRepository;
 
-    @Autowired
-    private RecurringTransactionRepository recurringTransactionRepository;
-
     private static TransactionCreateRequestDTO createRequest(
             BigDecimal amount,
             TransactionType type,
             Long categoryId,
             LocalDate date,
             String description,
-            Long accountId,
-            IntervalUnit recurringIntervalUnit
+            Long accountId
     ) {
         return new TransactionCreateRequestDTO(
                 amount,
@@ -55,8 +49,7 @@ class TransactionApiTest extends BaseApiIntegrationTest {
                 categoryId,
                 date,
                 description,
-                accountId,
-                recurringIntervalUnit
+                accountId
         );
     }
 
@@ -86,7 +79,6 @@ class TransactionApiTest extends BaseApiIntegrationTest {
                 category.getId(),
                 LocalDate.of(2026, 4, 1),
                 "Salary",
-                null,
                 null
         ));
 
@@ -113,13 +105,12 @@ class TransactionApiTest extends BaseApiIntegrationTest {
 
         MultipartBodyBuilder parts = createMultipartRequest(
                 createRequest(
-                new BigDecimal("15.00"),
-                TransactionType.INCOME,
-                category.getId(),
-                LocalDate.of(2026, 4, 1),
-                "Salary",
-                        null,
-                null
+                        new BigDecimal("15.00"),
+                        TransactionType.INCOME,
+                        category.getId(),
+                        LocalDate.of(2026, 4, 1),
+                        "Salary",
+                        null
                 ),
                 MultipartTestResourceFactory.jpegImage("receipt.jpg"),
                 MediaType.IMAGE_JPEG
@@ -147,13 +138,12 @@ class TransactionApiTest extends BaseApiIntegrationTest {
 
         MultipartBodyBuilder parts = createMultipartRequest(
                 createRequest(
-                new BigDecimal("15.00"),
-                TransactionType.INCOME,
-                category.getId(),
-                LocalDate.of(2026, 4, 1),
-                "Salary",
-                        null,
-                null
+                        new BigDecimal("15.00"),
+                        TransactionType.INCOME,
+                        category.getId(),
+                        LocalDate.of(2026, 4, 1),
+                        "Salary",
+                        null
                 ),
                 MultipartTestResourceFactory.webpImage("receipt.webp"),
                 MediaType.parseMediaType("image/webp")
@@ -183,7 +173,6 @@ class TransactionApiTest extends BaseApiIntegrationTest {
                 category.getId(),
                 LocalDate.of(2026, 4, 1),
                 "Salary",
-                null,
                 null
         ));
 
@@ -226,17 +215,16 @@ class TransactionApiTest extends BaseApiIntegrationTest {
     }
 
     @Test
-    void shouldCreateRecurringTemplateWhenRecurringConfigurationProvided() {
+    void shouldRejectFutureOneTimeTransactionCreate() {
         User user = fixtures.createUser("recurring@example.com");
         var category = fixtures.createGlobalCategory("Salary", TransactionType.INCOME);
         MultipartBodyBuilder parts = createMultipartRequest(createRequest(
                 new BigDecimal("15.00"),
                 TransactionType.INCOME,
                 category.getId(),
-                LocalDate.of(2026, 4, 1),
+                LocalDate.now().plusDays(1),
                 "Salary",
-                null,
-                IntervalUnit.MONTHLY
+                null
         ));
 
         restTestClient.post()
@@ -244,21 +232,14 @@ class TransactionApiTest extends BaseApiIntegrationTest {
                 .header(HttpHeaders.AUTHORIZATION, authHeader(user))
                 .body(parts.build())
                 .exchange()
-                .expectStatus().isCreated();
-
-        var recurringTransactions = recurringTransactionRepository.findAll();
-        assertThat(recurringTransactions).hasSize(1);
-        assertThat(recurringTransactions.getFirst().getUser().getId()).isEqualTo(user.getId());
-        assertThat(recurringTransactions.getFirst().getAccount().getId()).isEqualTo(user.getDefaultAccount().getId());
-        assertThat(recurringTransactions.getFirst().getCategory().getId()).isEqualTo(category.getId());
-        assertThat(recurringTransactions.getFirst().getStartDate()).isEqualTo(LocalDate.of(2026, 4, 1));
-        assertThat(recurringTransactions.getFirst().getNextExecutionDate()).isEqualTo(LocalDate.of(2026, 5, 1));
-        assertThat(recurringTransactions.getFirst().getIntervalUnit()).isEqualTo(IntervalUnit.MONTHLY);
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("invalid_transaction_date");
     }
 
     @Test
-    void shouldRejectRecurringConfigurationDuringUpdate() {
-        User user = fixtures.createUser("update-recurring@example.com", true, new BigDecimal("100.00"));
+    void shouldRejectFutureOneTimeTransactionUpdate() {
+        User user = fixtures.createUser("update-future-transaction@example.com", true, new BigDecimal("100.00"));
         var category = fixtures.createUserCategory(user, "Groceries", TransactionType.EXPENSE);
         Transaction transaction = fixtures.createTransaction(
                 user,
@@ -277,15 +258,14 @@ class TransactionApiTest extends BaseApiIntegrationTest {
                         new BigDecimal("50.00"),
                         TransactionType.EXPENSE,
                         category.getId(),
-                        LocalDate.of(2026, 4, 2),
+                        LocalDate.now().plusDays(1),
                         "Updated groceries",
-                        user.getDefaultAccount().getId(),
-                        IntervalUnit.MONTHLY
+                        user.getDefaultAccount().getId()
                 ))
                 .exchange()
                 .expectStatus().isBadRequest()
                 .expectBody()
-                .jsonPath("$.code").isEqualTo("invalid_recurring_transaction_configuration");
+                .jsonPath("$.code").isEqualTo("invalid_transaction_date");
     }
 
     @Test
@@ -312,8 +292,8 @@ class TransactionApiTest extends BaseApiIntegrationTest {
                         category.getId(),
                         LocalDate.of(2026, 4, 2),
                         "Updated groceries",
-                        savings.getId(),
-                        null
+                        savings.getId()
+                        
                 ))
                 .exchange()
                 .expectStatus().isOk()

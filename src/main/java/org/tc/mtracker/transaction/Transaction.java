@@ -2,7 +2,6 @@ package org.tc.mtracker.transaction;
 
 import jakarta.persistence.*;
 import lombok.*;
-import lombok.experimental.FieldNameConstants;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.tc.mtracker.account.Account;
@@ -23,7 +22,6 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-@FieldNameConstants
 public class Transaction {
 
     @Id
