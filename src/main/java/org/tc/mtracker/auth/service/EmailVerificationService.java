@@ -26,6 +26,7 @@ import java.util.Map;
 public class EmailVerificationService {
     private static final String EMAIL_VERIFICATION_PURPOSE = "email_verification";
     private static final String EMAIL_UPDATE_VERIFICATION_PURPOSE = "email_update_verification";
+    public static final String CLAIM_NAME_PURPOSE = "purpose";
 
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
@@ -33,7 +34,7 @@ public class EmailVerificationService {
     private final AuthEmailService authEmailService;
 
     public JwtResponseDTO verifyToken(String token) {
-        String purpose = jwtService.extractClaim(token, claims -> claims.get("purpose", String.class));
+        String purpose = jwtService.extractClaim(token, claims -> claims.get(CLAIM_NAME_PURPOSE, String.class));
         if (!EMAIL_VERIFICATION_PURPOSE.equals(purpose)) {
             log.warn("Email verification rejected: invalid token purpose={}", purpose);
             throw new JwtException("Invalid token purpose");
@@ -68,7 +69,7 @@ public class EmailVerificationService {
 
         user.setPendingEmail(dto.email());
         String generatedToken = jwtService.generateToken(
-                Map.of("purpose", EMAIL_UPDATE_VERIFICATION_PURPOSE),
+                Map.of(CLAIM_NAME_PURPOSE, EMAIL_UPDATE_VERIFICATION_PURPOSE),
                 new CustomUserDetails(user)
         );
 
@@ -82,7 +83,7 @@ public class EmailVerificationService {
 
     @Transactional
     public void verifyEmailUpdate(String token) {
-        String purpose = jwtService.extractClaim(token, claims -> claims.get("purpose", String.class));
+        String purpose = jwtService.extractClaim(token, claims -> claims.get(CLAIM_NAME_PURPOSE, String.class));
         if (!EMAIL_UPDATE_VERIFICATION_PURPOSE.equals(purpose)) {
             log.warn("Email update verification rejected: invalid token purpose={}", purpose);
             throw new JwtException("Invalid token purpose");

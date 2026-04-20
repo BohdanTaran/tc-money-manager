@@ -44,8 +44,8 @@ public class TransactionController implements TransactionApi {
             Authentication auth,
             TransactionCreateRequestDTO createRequestDTO,
             List<MultipartFile> receipts) {
-        TransactionResponseDTO transactionResponseDTO = transactionService.createTransaction(auth, createRequestDTO, receipts);
-        return ResponseEntity.status(HttpStatus.CREATED).body(transactionResponseDTO);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(transactionService.createTransaction(auth, createRequestDTO, receipts));
     }
 
     @Override

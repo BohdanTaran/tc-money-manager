@@ -35,19 +35,52 @@ class TransactionApiTest extends BaseApiIntegrationTest {
     @Autowired
     private TransactionRepository transactionRepository;
 
+    private static TransactionCreateRequestDTO createRequest(
+            BigDecimal amount,
+            TransactionType type,
+            Long categoryId,
+            LocalDate date,
+            String description,
+            Long accountId
+    ) {
+        return new TransactionCreateRequestDTO(
+                amount,
+                type,
+                categoryId,
+                date,
+                description,
+                accountId
+        );
+    }
+
+    private static MultipartBodyBuilder createMultipartRequest(TransactionCreateRequestDTO request) {
+        MultipartBodyBuilder parts = new MultipartBodyBuilder();
+        parts.part("dto", request, MediaType.APPLICATION_JSON);
+        return parts;
+    }
+
+    private static MultipartBodyBuilder createMultipartRequest(
+            TransactionCreateRequestDTO request,
+            ByteArrayResource receipt,
+            MediaType receiptMediaType
+    ) {
+        MultipartBodyBuilder parts = createMultipartRequest(request);
+        parts.part("receipts", receipt, receiptMediaType);
+        return parts;
+    }
+
     @Test
     void shouldCreateTransactionWithoutReceiptsAndUpdateBalance() {
         User user = fixtures.createUser("transactions@example.com");
         var category = fixtures.createGlobalCategory("Salary", TransactionType.INCOME);
-        MultipartBodyBuilder parts = new MultipartBodyBuilder();
-        parts.part("dto", new TransactionCreateRequestDTO(
+        MultipartBodyBuilder parts = createMultipartRequest(createRequest(
                 new BigDecimal("15.00"),
                 TransactionType.INCOME,
                 category.getId(),
                 LocalDate.of(2026, 4, 1),
                 "Salary",
                 null
-        ), MediaType.APPLICATION_JSON);
+        ));
 
         restTestClient.post()
                 .uri("/api/v1/transactions")
@@ -70,17 +103,18 @@ class TransactionApiTest extends BaseApiIntegrationTest {
         var category = fixtures.createGlobalCategory("Salary", TransactionType.INCOME);
         when(s3Service.generatePresignedUrl(anyString())).thenReturn("https://test-bucket.local/receipt.jpg");
 
-        MultipartBodyBuilder parts = new MultipartBodyBuilder();
-        parts.part("dto", new TransactionCreateRequestDTO(
-                new BigDecimal("15.00"),
-                TransactionType.INCOME,
-                category.getId(),
-                LocalDate.of(2026, 4, 1),
-                "Salary",
-                null
-        ), MediaType.APPLICATION_JSON);
-        ByteArrayResource receipt = MultipartTestResourceFactory.jpegImage("receipt.jpg");
-        parts.part("receipts", receipt, MediaType.IMAGE_JPEG);
+        MultipartBodyBuilder parts = createMultipartRequest(
+                createRequest(
+                        new BigDecimal("15.00"),
+                        TransactionType.INCOME,
+                        category.getId(),
+                        LocalDate.of(2026, 4, 1),
+                        "Salary",
+                        null
+                ),
+                MultipartTestResourceFactory.jpegImage("receipt.jpg"),
+                MediaType.IMAGE_JPEG
+        );
 
         restTestClient.post()
                 .uri("/api/v1/transactions")
@@ -102,17 +136,18 @@ class TransactionApiTest extends BaseApiIntegrationTest {
         var category = fixtures.createGlobalCategory("Salary", TransactionType.INCOME);
         when(s3Service.generatePresignedUrl(anyString())).thenReturn("https://test-bucket.local/receipt.webp");
 
-        MultipartBodyBuilder parts = new MultipartBodyBuilder();
-        parts.part("dto", new TransactionCreateRequestDTO(
-                new BigDecimal("15.00"),
-                TransactionType.INCOME,
-                category.getId(),
-                LocalDate.of(2026, 4, 1),
-                "Salary",
-                null
-        ), MediaType.APPLICATION_JSON);
-        ByteArrayResource receipt = MultipartTestResourceFactory.webpImage("receipt.webp");
-        parts.part("receipts", receipt, MediaType.parseMediaType("image/webp"));
+        MultipartBodyBuilder parts = createMultipartRequest(
+                createRequest(
+                        new BigDecimal("15.00"),
+                        TransactionType.INCOME,
+                        category.getId(),
+                        LocalDate.of(2026, 4, 1),
+                        "Salary",
+                        null
+                ),
+                MultipartTestResourceFactory.webpImage("receipt.webp"),
+                MediaType.parseMediaType("image/webp")
+        );
 
         restTestClient.post()
                 .uri("/api/v1/transactions")
@@ -132,15 +167,14 @@ class TransactionApiTest extends BaseApiIntegrationTest {
     void shouldRejectArchivedCategory() {
         User user = fixtures.createUser("archived-category@example.com");
         var category = fixtures.createCategory(user, "Archived", TransactionType.INCOME, CategoryStatus.ARCHIVED, "archive");
-        MultipartBodyBuilder parts = new MultipartBodyBuilder();
-        parts.part("dto", new TransactionCreateRequestDTO(
+        MultipartBodyBuilder parts = createMultipartRequest(createRequest(
                 new BigDecimal("15.00"),
                 TransactionType.INCOME,
                 category.getId(),
                 LocalDate.of(2026, 4, 1),
                 "Salary",
                 null
-        ), MediaType.APPLICATION_JSON);
+        ));
 
         restTestClient.post()
                 .uri("/api/v1/transactions")
@@ -181,6 +215,60 @@ class TransactionApiTest extends BaseApiIntegrationTest {
     }
 
     @Test
+    void shouldRejectFutureOneTimeTransactionCreate() {
+        User user = fixtures.createUser("recurring@example.com");
+        var category = fixtures.createGlobalCategory("Salary", TransactionType.INCOME);
+        MultipartBodyBuilder parts = createMultipartRequest(createRequest(
+                new BigDecimal("15.00"),
+                TransactionType.INCOME,
+                category.getId(),
+                LocalDate.now().plusDays(1),
+                "Salary",
+                null
+        ));
+
+        restTestClient.post()
+                .uri("/api/v1/transactions")
+                .header(HttpHeaders.AUTHORIZATION, authHeader(user))
+                .body(parts.build())
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("invalid_transaction_date");
+    }
+
+    @Test
+    void shouldRejectFutureOneTimeTransactionUpdate() {
+        User user = fixtures.createUser("update-future-transaction@example.com", true, new BigDecimal("100.00"));
+        var category = fixtures.createUserCategory(user, "Groceries", TransactionType.EXPENSE);
+        Transaction transaction = fixtures.createTransaction(
+                user,
+                user.getDefaultAccount(),
+                category,
+                new BigDecimal("30.00"),
+                TransactionType.EXPENSE,
+                LocalDate.of(2026, 4, 1),
+                "Groceries"
+        );
+
+        restTestClient.put()
+                .uri("/api/v1/transactions/{id}", transaction.getId())
+                .header(HttpHeaders.AUTHORIZATION, authHeader(user))
+                .body(createRequest(
+                        new BigDecimal("50.00"),
+                        TransactionType.EXPENSE,
+                        category.getId(),
+                        LocalDate.now().plusDays(1),
+                        "Updated groceries",
+                        user.getDefaultAccount().getId()
+                ))
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("invalid_transaction_date");
+    }
+
+    @Test
     void shouldUpdateTransactionAndRecalculateBalances() {
         User user = fixtures.createUser("update-transaction@example.com", true, new BigDecimal("100.00"));
         var category = fixtures.createUserCategory(user, "Groceries", TransactionType.EXPENSE);
@@ -198,13 +286,14 @@ class TransactionApiTest extends BaseApiIntegrationTest {
         restTestClient.put()
                 .uri("/api/v1/transactions/{id}", transaction.getId())
                 .header(HttpHeaders.AUTHORIZATION, authHeader(user))
-                .body(new TransactionCreateRequestDTO(
+                .body(createRequest(
                         new BigDecimal("50.00"),
                         TransactionType.EXPENSE,
                         category.getId(),
                         LocalDate.of(2026, 4, 2),
                         "Updated groceries",
                         savings.getId()
+                        
                 ))
                 .exchange()
                 .expectStatus().isOk()
