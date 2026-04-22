@@ -215,6 +215,34 @@ class TransactionApiTest extends BaseApiIntegrationTest {
     }
 
     @Test
+    void shouldFilterTransactionsByArchivedCategory() {
+        User user = fixtures.createUser("filters-archived@example.com");
+        var archivedCategory = fixtures.createCategory(user, "Archived Groceries", TransactionType.EXPENSE, CategoryStatus.ARCHIVED, "archive");
+        Transaction expected = fixtures.createTransaction(
+                user,
+                user.getDefaultAccount(),
+                archivedCategory,
+                new BigDecimal("25.00"),
+                TransactionType.EXPENSE,
+                LocalDate.of(2026, 4, 10),
+                "Groceries"
+        );
+
+        restTestClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/transactions")
+                        .queryParam("categoryId", archivedCategory.getId())
+                        .build())
+                .header(HttpHeaders.AUTHORIZATION, authHeader(user))
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.length()").isEqualTo(1)
+                .jsonPath("$[0].id").isEqualTo(expected.getId())
+                .jsonPath("$[0].amount").isEqualTo(25.00);
+    }
+
+    @Test
     void shouldRejectFutureOneTimeTransactionCreate() {
         User user = fixtures.createUser("recurring@example.com");
         var category = fixtures.createGlobalCategory("Salary", TransactionType.INCOME);

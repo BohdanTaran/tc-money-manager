@@ -59,11 +59,30 @@ public class CategoryController implements CategoryApi {
     }
 
     @Override
-    public ResponseEntity<Void> deleteCategory(
+    public ResponseEntity<Void> archiveCategory(
             Long categoryId,
             Authentication auth
     ) {
         categoryService.archiveCategory(categoryId, auth);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    public ResponseEntity<Void> unarchiveCategory(
+            Long categoryId,
+            Authentication auth
+    ) {
+        categoryService.unarchiveCategory(categoryId, auth);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    public ResponseEntity<Void> deleteCategory(
+            Long categoryId,
+            Long replacementCategoryId,
+            Authentication auth
+    ) {
+        categoryService.deleteCategory(categoryId, replacementCategoryId, auth);
         return ResponseEntity.noContent().build();
     }
 }

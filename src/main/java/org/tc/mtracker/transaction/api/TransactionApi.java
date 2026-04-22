@@ -30,7 +30,7 @@ public interface TransactionApi {
 
     @Operation(
             summary = "Get transactions",
-            description = "Returns the authenticated user's transactions filtered by account, category, type, and date range."
+            description = "Returns the authenticated user's transactions filtered by account, category, type, and date range. Category filters can reference both active and archived categories that still exist in historical transactions."
     )
     @ApiResponse(
             responseCode = "200",
