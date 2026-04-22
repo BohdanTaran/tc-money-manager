@@ -17,6 +17,7 @@ import org.tc.mtracker.user.dto.ResponseUserDTO;
 import org.tc.mtracker.user.dto.UserMapper;
 import org.tc.mtracker.utils.S3Service;
 import org.tc.mtracker.utils.exceptions.UserNotFoundException;
+import org.tc.mtracker.utils.exceptions.UserUpdateProfileException;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -98,6 +99,17 @@ class UserServiceTest {
         ResponseUserDTO result = userService.getUser(user.getEmail());
 
         assertThat(result).isEqualTo(response);
+    }
+
+    @Test
+    void shouldThrowWhenUpdatingProfileWithSameFullNameAsCurrent() {
+        User user = EntityTestFactory.user(1L, "user@example.com", true);
+        RequestUpdateUserProfileDTO dto = new RequestUpdateUserProfileDTO(user.getFullName(), CurrencyCode.EUR);
+
+        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> userService.updateProfile(dto, null, user.getEmail()))
+                .isInstanceOf(UserUpdateProfileException.class);
     }
 
     @Test

@@ -12,6 +12,7 @@ import org.tc.mtracker.user.dto.ResponseUserDTO;
 import org.tc.mtracker.user.dto.UserMapper;
 import org.tc.mtracker.utils.S3Service;
 import org.tc.mtracker.utils.exceptions.UserNotFoundException;
+import org.tc.mtracker.utils.exceptions.UserUpdateProfileException;
 
 @Slf4j
 @Service
@@ -52,6 +53,11 @@ public class UserService {
     @Transactional
     public ResponseUserDTO updateProfile(RequestUpdateUserProfileDTO dto, MultipartFile avatar, String currentUserEmail) {
         User user = getCurrentAuthenticatedUser(currentUserEmail);
+
+        if (dto != null && user.getFullName().equals(dto.fullName())) {
+            log.warn("User update rejected: new full name is the same as the current one");
+            throw new UserUpdateProfileException("New full name is the same as the current one.");
+        }
 
         if (avatar != null) {
             uploadAvatar(avatar, user);
