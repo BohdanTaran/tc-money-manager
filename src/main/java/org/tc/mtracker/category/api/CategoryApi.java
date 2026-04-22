@@ -119,7 +119,7 @@ public interface CategoryApi {
 
     @Operation(
             summary = "Update category",
-            description = "Updates a user-owned category."
+            description = "Updates a user-owned category name, type, and icon."
     )
     @ApiResponse(
             responseCode = "200",
@@ -142,7 +142,7 @@ public interface CategoryApi {
 
     @Operation(
             summary = "Archive category",
-            description = "Archives a user-owned category instead of physically deleting it."
+            description = "Archives a user-owned category. Archived categories stay in existing transactions but cannot be used for new ones."
     )
     @ApiResponse(responseCode = "204", description = "Category archived successfully")
     @ApiResponse(
@@ -151,9 +151,52 @@ public interface CategoryApi {
             content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
                     schema = @Schema(implementation = ProblemDetail.class))
     )
+    @PatchMapping("/{categoryId}/archive")
+    ResponseEntity<Void> archiveCategory(
+            @PathVariable("categoryId") Long categoryId,
+            @Parameter(hidden = true) Authentication auth
+    );
+
+    @Operation(
+            summary = "Unarchive category",
+            description = "Restores an archived user-owned category back to the active state."
+    )
+    @ApiResponse(responseCode = "204", description = "Category restored successfully")
+    @ApiResponse(
+            responseCode = "404",
+            description = "Category not found",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                    schema = @Schema(implementation = ProblemDetail.class))
+    )
+    @PatchMapping("/{categoryId}/unarchive")
+    ResponseEntity<Void> unarchiveCategory(
+            @PathVariable("categoryId") Long categoryId,
+            @Parameter(hidden = true) Authentication auth
+    );
+
+    @Operation(
+            summary = "Delete category",
+            description = "Deletes a user-owned category. If transactions or recurring transactions already use it, provide replacementCategoryId to move those references first."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Category deleted successfully"),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Replacement category is missing or invalid",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ProblemDetail.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Category not found",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ProblemDetail.class))
+            )
+    })
     @DeleteMapping("/{categoryId}")
     ResponseEntity<Void> deleteCategory(
             @PathVariable("categoryId") Long categoryId,
+            @RequestParam(value = "replacementCategoryId", required = false) Long replacementCategoryId,
             @Parameter(hidden = true) Authentication auth
     );
 }

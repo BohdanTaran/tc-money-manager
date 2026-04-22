@@ -84,7 +84,7 @@ public class TransactionService {
             transactionValidationService.resolveAccount(user, accountId);
         }
         if (categoryId != null) {
-            transactionValidationService.resolveActiveCategory(categoryId, user);
+            transactionValidationService.resolveAccessibleCategory(categoryId, user);
         }
 
         return transactionRepository.findAllByUserAndFilters(user, accountId, categoryId, type, dateFrom, dateTo)

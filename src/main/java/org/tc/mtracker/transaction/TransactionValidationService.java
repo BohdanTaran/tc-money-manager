@@ -45,13 +45,17 @@ public class TransactionValidationService {
     }
 
     public Category resolveActiveCategory(Long categoryId, User user) {
-        Category category = categoryService.findAccessibleById(categoryId, user);
+        Category category = resolveAccessibleCategory(categoryId, user);
         if (category.getStatus() != CategoryStatus.ACTIVE) {
             log.warn("Transaction request rejected: category inactive userId={} categoryId={}",
                     user.getId(), category.getId());
             throw new CategoryIsNotActiveException("Category is not active.");
         }
         return category;
+    }
+
+    public Category resolveAccessibleCategory(Long categoryId, User user) {
+        return categoryService.findAccessibleById(categoryId, user);
     }
 
     public void validateTransactionType(TransactionType type, Category category, User user) {

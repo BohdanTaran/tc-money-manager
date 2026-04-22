@@ -1,8 +1,10 @@
 package org.tc.mtracker.transaction;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.tc.mtracker.category.Category;
 import org.tc.mtracker.common.enums.TransactionType;
 import org.tc.mtracker.user.User;
 
@@ -37,5 +39,20 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
             @Param("type") TransactionType type,
             @Param("dateFrom") LocalDate dateFrom,
             @Param("dateTo") LocalDate dateTo
+    );
+
+    long countByUserAndCategory(User user, Category category);
+
+    @Modifying
+    @Query("""
+                UPDATE Transaction t
+                SET t.category = :replacementCategory
+                WHERE t.user = :user
+                AND t.category = :sourceCategory
+            """)
+    int reassignCategory(
+            @Param("user") User user,
+            @Param("sourceCategory") Category sourceCategory,
+            @Param("replacementCategory") Category replacementCategory
     );
 }

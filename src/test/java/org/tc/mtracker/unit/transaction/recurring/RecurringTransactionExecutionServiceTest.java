@@ -1,4 +1,4 @@
-package org.tc.mtracker.transaction.recurring;
+package org.tc.mtracker.unit.transaction.recurring;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -14,6 +14,10 @@ import org.tc.mtracker.common.enums.TransactionType;
 import org.tc.mtracker.support.factory.EntityTestFactory;
 import org.tc.mtracker.transaction.Transaction;
 import org.tc.mtracker.transaction.TransactionService;
+import org.tc.mtracker.transaction.recurring.RecurringTransaction;
+import org.tc.mtracker.transaction.recurring.RecurringTransactionExecutionService;
+import org.tc.mtracker.transaction.recurring.RecurringTransactionRepository;
+import org.tc.mtracker.transaction.recurring.RecurringTransactionService;
 import org.tc.mtracker.transaction.recurring.enums.IntervalUnit;
 import org.tc.mtracker.user.User;
 
@@ -76,7 +80,7 @@ class RecurringTransactionExecutionServiceTest {
                 IntervalUnit.MONTHLY
         );
 
-        when(recurringTransactionRepository.findDueTransactions(LocalDate.of(2026, 4, 15)))
+        when(recurringTransactionRepository.findDueTransactions(LocalDate.of(2026, 4, 15), CategoryStatus.ACTIVE))
                 .thenReturn(List.of(recurringTransaction));
         when(recurringTransactionService.nextExecutionDateAfter(any(LocalDate.class), eq(IntervalUnit.MONTHLY)))
                 .thenAnswer(invocation -> invocation.<LocalDate>getArgument(0).plusMonths(1));
@@ -93,5 +97,16 @@ class RecurringTransactionExecutionServiceTest {
                         LocalDate.of(2026, 4, 1)
                 );
         assertThat(recurringTransaction.getNextExecutionDate()).isEqualTo(LocalDate.of(2026, 5, 1));
+    }
+
+    @Test
+    void shouldSkipArchivedRecurringCategoriesWhenLookingUpDueTransactions() {
+        when(recurringTransactionRepository.findDueTransactions(LocalDate.of(2026, 4, 15), CategoryStatus.ACTIVE))
+                .thenReturn(List.of());
+
+        recurringTransactionExecutionService.executeDueTransactions(LocalDate.of(2026, 4, 15));
+
+        verify(recurringTransactionRepository).findDueTransactions(LocalDate.of(2026, 4, 15), CategoryStatus.ACTIVE);
+        verifyNoInteractions(transactionService);
     }
 }
