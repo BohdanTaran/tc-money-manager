@@ -127,6 +127,11 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(UserUpdateProfileException.class)
+    public ProblemDetail handleUserUpdateProfileException(UserUpdateProfileException ex, HttpServletRequest request) {
+        return buildProblem(HttpStatus.BAD_REQUEST, ex.getMessage(), "user_update_profile_failed", request);
+    }
+
     private ProblemDetail buildProblem(HttpStatus status, String detail, String code, HttpServletRequest request) {
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(status, detail);
         problemDetail.setTitle(status.getReasonPhrase());
