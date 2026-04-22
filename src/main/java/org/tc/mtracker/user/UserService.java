@@ -54,7 +54,7 @@ public class UserService {
     public ResponseUserDTO updateProfile(RequestUpdateUserProfileDTO dto, MultipartFile avatar, String currentUserEmail) {
         User user = getCurrentAuthenticatedUser(currentUserEmail);
 
-        if (user.getFullName().equals(dto.fullName())) {
+        if (dto != null && user.getFullName().equals(dto.fullName())) {
             log.warn("User update rejected: new full name is the same as the current one");
             throw new UserUpdateProfileException("New full name is the same as the current one.");
         }
