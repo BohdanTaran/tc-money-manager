@@ -159,6 +159,29 @@ class UserApiTest extends BaseApiIntegrationTest {
         verify(authEmailService).sendPasswordChangedNotification(user.getEmail());
     }
 
+    @Test
+    void shouldRejectUpdatePasswordWhenNewPasswordIsSameAsCurrentPassword() {
+        User user = fixtures.createUser("password@example.com");
+
+        restTestClient.put()
+                .uri("/api/v1/users/me/update-password")
+                .header("Authorization", authHeader(user))
+                .body(new UpdatePasswordRequestDto(
+                        DatabaseTestDataFactory.DEFAULT_PASSWORD,
+                        DatabaseTestDataFactory.DEFAULT_PASSWORD,
+                        DatabaseTestDataFactory.DEFAULT_PASSWORD
+                ))
+                .exchange()
+                .expectStatus().isBadRequest();
+
+        assertThat(passwordEncoder.matches(
+                DatabaseTestDataFactory.DEFAULT_PASSWORD,
+                userRepository.findByEmail(user.getEmail()).orElseThrow().getPassword()
+        )).isTrue();
+
+        verify(authEmailService, never()).sendPasswordChangedNotification(user.getEmail());
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {
             "@Invalid Full Name",

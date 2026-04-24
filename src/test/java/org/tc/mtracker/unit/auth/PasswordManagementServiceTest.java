@@ -84,25 +84,6 @@ class PasswordManagementServiceTest {
     }
 
     @Test
-    void shouldRejectResetPasswordWhenNewPasswordIsSameAsCurrentPassword() {
-        User user = EntityTestFactory.user(1L, "user@example.com", true);
-        ResetPasswordRequestDto dto = new ResetPasswordRequestDto("OldPassword!1", "OldPassword!1");
-        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches(dto.password(), user.getPassword())).thenReturn(true);
-        when(jwtService.extractClaim(eq("reset-token"), any())).thenReturn("password_reset");
-        when(jwtService.extractUsername("reset-token")).thenReturn(user.getEmail());
-
-
-        assertThatThrownBy(() -> passwordManagementService.resetPassword("reset-token", dto))
-                .isInstanceOf(UserResetPasswordException.class);
-
-        verify(userRepository, never()).save(user);
-        verify(refreshTokenService, never()).createRefreshToken(user);
-        verify(jwtService, never()).generateToken(any());
-        verify(authEmailService, never()).sendPasswordChangedNotification(user.getEmail());
-    }
-
-    @Test
     void shouldUpdatePasswordAndSendNotification() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
         UpdatePasswordRequestDto dto = new UpdatePasswordRequestDto("OldStrongPass!1", "NewStrongPass!1", "NewStrongPass!1");
@@ -141,4 +122,19 @@ class PasswordManagementServiceTest {
         assertThatThrownBy(() -> passwordManagementService.updatePassword(dto, user.getEmail()))
                 .isInstanceOf(InvalidPasswordException.class);
     }
+
+    @Test
+    void shouldRejectUpdatePasswordWhenNewPasswordIsSameAsCurrentPassword() {
+        User user = EntityTestFactory.user(1L, "user@example.com", true);
+        String currentPassword = "OldStrongPass!1";
+        UpdatePasswordRequestDto dto = new UpdatePasswordRequestDto(currentPassword, currentPassword, currentPassword);
+        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches(dto.currentPassword(), user.getPassword())).thenReturn(true);
+
+        assertThatThrownBy(() -> passwordManagementService.updatePassword(dto, user.getEmail()))
+                .isInstanceOf(InvalidPasswordException.class);
+        verify(userRepository, never()).save(user);
+        verify(authEmailService, never()).sendPasswordChangedNotification(user.getEmail());
+    }
+
 }

@@ -19,6 +19,7 @@ import org.springframework.validation.ObjectError;
 import org.springframework.validation.method.ParameterErrors;
 import org.springframework.validation.method.ParameterValidationResult;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
@@ -65,7 +66,7 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleConstraintViolation(ConstraintViolationException ex, HttpServletRequest request) {
         Map<String, String> errors = new LinkedHashMap<>();
         for (ConstraintViolation<?> violation : ex.getConstraintViolations()) {
-            errors.put(resolveConstraintViolationPath(violation), violation.getMessage());
+            errors.put(resolveConstraintViolationName(violation), violation.getMessage());
         }
         return buildValidationProblem(request, errors);
     }
@@ -74,21 +75,13 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleHandlerMethodValidation(HandlerMethodValidationException ex, HttpServletRequest request) {
         Map<String, String> errors = new LinkedHashMap<>();
 
-        for (ParameterValidationResult validationResult : ex.getParameterValidationResults()) {
-            if (validationResult instanceof ParameterErrors parameterErrors) {
-                for (FieldError fieldError : parameterErrors.getFieldErrors()) {
-                    errors.put(fieldError.getField(), fieldError.getDefaultMessage());
-                }
-                for (ObjectError globalError : parameterErrors.getGlobalErrors()) {
-                    errors.put(resolveParameterPath(validationResult), globalError.getDefaultMessage());
-                }
-                continue;
-            }
+        for (ParameterErrors beanResult : ex.getBeanResults()) {
+            addFieldErrors(errors, beanResult.getFieldErrors());
+            addGlobalErrors(errors, resolveParameterName(beanResult), beanResult.getGlobalErrors());
+        }
 
-            String parameterPath = resolveParameterPath(validationResult);
-            for (MessageSourceResolvable resolvableError : validationResult.getResolvableErrors()) {
-                errors.put(parameterPath, resolvableError.getDefaultMessage());
-            }
+        for (ParameterValidationResult valueResult : ex.getValueResults()) {
+            addResolvableErrors(errors, resolveParameterName(valueResult), valueResult.getResolvableErrors());
         }
 
         for (MessageSourceResolvable crossParameterError : ex.getCrossParameterValidationResults()) {
@@ -101,7 +94,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({
             HttpMessageNotReadableException.class,
             MethodArgumentTypeMismatchException.class,
-            MissingServletRequestPartException.class
+            MissingServletRequestPartException.class,
+            MissingServletRequestParameterException.class
     })
     public ProblemDetail handleMalformedRequest(Exception ex, HttpServletRequest request) {
         return buildProblem(HttpStatus.BAD_REQUEST, "Malformed request.", "malformed_request", request);
@@ -161,63 +155,50 @@ public class GlobalExceptionHandler {
         return problemDetail;
     }
 
-    private String resolveConstraintViolationPath(ConstraintViolation<?> violation) {
-        StringBuilder path = new StringBuilder();
-
+    private String resolveConstraintViolationName(ConstraintViolation<?> violation) {
+        String name = "request";
         for (Path.Node node : violation.getPropertyPath()) {
-            if (!isValidationPathNode(node)) {
-                continue;
+            if (isNamedNode(node)) {
+                name = node.getName();
             }
-
-            appendPathSegment(path, node.getName());
-            appendContainerReference(path, node);
         }
-
-        return !path.isEmpty() ? path.toString() : "request";
+        return name;
     }
 
-    private boolean isValidationPathNode(Path.Node node) {
-        return switch (node.getKind()) {
-            case PARAMETER, PROPERTY, CONTAINER_ELEMENT, CROSS_PARAMETER, RETURN_VALUE -> true;
-            default -> false;
-        };
+    private void addFieldErrors(Map<String, String> errors, Iterable<FieldError> fieldErrors) {
+        for (FieldError fieldError : fieldErrors) {
+            errors.put(fieldError.getField(), fieldError.getDefaultMessage());
+        }
     }
 
-    private String resolveParameterPath(ParameterValidationResult validationResult) {
+    private void addGlobalErrors(Map<String, String> errors, String key, Iterable<ObjectError> globalErrors) {
+        for (ObjectError globalError : globalErrors) {
+            errors.put(key, globalError.getDefaultMessage());
+        }
+    }
+
+    private void addResolvableErrors(
+            Map<String, String> errors,
+            String key,
+            Iterable<? extends MessageSourceResolvable> resolvableErrors
+    ) {
+        for (MessageSourceResolvable resolvableError : resolvableErrors) {
+            errors.put(key, resolvableError.getDefaultMessage());
+        }
+    }
+
+    private String resolveParameterName(ParameterValidationResult validationResult) {
         String parameterName = validationResult.getMethodParameter().getParameterName();
         if (parameterName == null || parameterName.isBlank()) {
-            parameterName = "arg" + validationResult.getMethodParameter().getParameterIndex();
+            return "arg" + validationResult.getMethodParameter().getParameterIndex();
         }
-
-        StringBuilder path = new StringBuilder(parameterName);
-        appendIndexedReference(path, validationResult.getContainerKey(), validationResult.getContainerIndex());
-        return path.toString();
+        return parameterName;
     }
 
-    private void appendPathSegment(StringBuilder path, String segment) {
-        if (segment == null || segment.isBlank() || segment.startsWith("<")) {
-            return;
-        }
-
-        if (!path.isEmpty()) {
-            path.append('.');
-        }
-        path.append(segment);
-    }
-
-    private void appendContainerReference(StringBuilder path, Path.Node node) {
-        appendIndexedReference(path, node.getKey(), node.getIndex());
-    }
-
-    private void appendIndexedReference(StringBuilder path, Object key, Integer index) {
-        if (index != null) {
-            path.append('[').append(index).append(']');
-            return;
-        }
-
-        if (key != null) {
-            path.append('[').append(key).append(']');
-        }
+    private boolean isNamedNode(Path.Node node) {
+        return node.getName() != null
+                && !node.getName().isBlank()
+                && !node.getName().startsWith("<");
     }
 
     private ProblemDetail buildProblem(HttpStatus status, String detail, String code, HttpServletRequest request) {

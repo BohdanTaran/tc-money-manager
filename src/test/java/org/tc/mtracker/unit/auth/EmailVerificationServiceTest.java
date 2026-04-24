@@ -135,4 +135,10 @@ class EmailVerificationServiceTest {
         assertThatThrownBy(() -> emailVerificationService.verifyToken("wrong-token"))
                 .isInstanceOf(JwtException.class);
     }
+
+    @Test
+    void shouldRejectVerificationWhenTokenIsNull() {
+        assertThatThrownBy(() -> emailVerificationService.verifyToken(null))
+                .isInstanceOf(JwtException.class);
+    }
 }

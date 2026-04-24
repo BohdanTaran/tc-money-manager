@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -363,6 +364,22 @@ class AuthApiTest extends BaseApiIntegrationTest {
 
             assertThat(response).isNotNull();
             assertThat(userRepository.findByEmail(user.getEmail()).orElseThrow().isActivated()).isTrue();
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"invalid", "", " "})
+        @NullSource
+        void shouldRejectEmailConfirmationWhenTokenIsInvalid(String token) {
+            User user = fixtures.createUser("verify@example.com", false);
+            restTestClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/api/v1/auth/verify")
+                            .queryParam("token", token)
+                            .build())
+                    .exchange()
+                    .expectStatus().isUnauthorized();
+
+            assertThat(userRepository.findByEmail(user.getEmail()).orElseThrow().isActivated()).isFalse();
         }
 
         @Test

@@ -85,6 +85,11 @@ public class PasswordManagementService {
     public void updatePassword(UpdatePasswordRequestDto dto, String currentUserEmail) {
         User user = findUserByEmail(currentUserEmail);
 
+        if (passwordEncoder.matches(dto.newPassword(), user.getPassword())) {
+            log.warn("Password update rejected: new password is the same as the current one");
+            throw new InvalidPasswordException("New password cannot be the same as the current one.");
+        }
+
         if (!passwordEncoder.matches(dto.currentPassword(), user.getPassword())) {
             log.warn("Password update rejected: current password mismatch for userId={}", user.getId());
             throw new InvalidPasswordException("Current password is incorrect.");
