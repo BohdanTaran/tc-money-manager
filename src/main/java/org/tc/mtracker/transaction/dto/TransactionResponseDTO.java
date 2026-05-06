@@ -17,6 +17,9 @@ public record TransactionResponseDTO(
         @Schema(description = "Account ID", example = "1")
         Long accountId,
 
+        @Schema(description = "Recurring transaction ID if this transaction was generated from a recurring rule", example = "1")
+        Long recurringTransactionId,
+
         @Schema(description = "Transaction amount", example = "125.50")
         BigDecimal amount,
 

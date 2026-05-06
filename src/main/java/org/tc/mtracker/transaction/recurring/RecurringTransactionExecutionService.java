@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.tc.mtracker.category.enums.CategoryStatus;
-import org.tc.mtracker.transaction.TransactionService;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -17,7 +16,6 @@ public class RecurringTransactionExecutionService {
 
     private final RecurringTransactionRepository recurringTransactionRepository;
     private final RecurringTransactionService recurringTransactionService;
-    private final TransactionService transactionService;
 
     @Transactional
     public void executeDueTransactions(LocalDate executionDate) {
@@ -39,7 +37,7 @@ public class RecurringTransactionExecutionService {
         int createdTransactions = 0;
         while (!recurringTransaction.getNextExecutionDate().isAfter(executionDate)) {
             LocalDate transactionDate = recurringTransaction.getNextExecutionDate();
-            transactionService.createAutomatedTransaction(RecurringTransactionService.toTransaction(recurringTransaction, transactionDate));
+            recurringTransactionService.createAutomatedTransaction(RecurringTransactionService.toTransaction(recurringTransaction, transactionDate));
             recurringTransaction.setNextExecutionDate(
                     recurringTransactionService.nextExecutionDateAfter(
                             transactionDate,

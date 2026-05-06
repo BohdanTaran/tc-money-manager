@@ -7,6 +7,7 @@ CREATE TABLE transactions
     type        VARCHAR(16)    NOT NULL,
     date        DATE           NOT NULL,
     description VARCHAR(255),
+    recurring_transaction_id BIGINT NULL,
     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP,
