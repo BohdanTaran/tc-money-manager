@@ -10,6 +10,7 @@ import org.tc.mtracker.common.enums.TransactionType;
 import org.tc.mtracker.transaction.TransactionService;
 import org.tc.mtracker.transaction.dto.TransactionCreateRequestDTO;
 import org.tc.mtracker.transaction.dto.TransactionResponseDTO;
+import org.tc.mtracker.transaction.recurring.enums.RecurringTransactionChangeScope;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -51,18 +52,20 @@ public class TransactionController implements TransactionApi {
     @Override
     public ResponseEntity<TransactionResponseDTO> updateTransaction(
             Long transactionId,
+            RecurringTransactionChangeScope recurringScope,
             TransactionCreateRequestDTO updateRequestDTO,
             Authentication auth
     ) {
-        return ResponseEntity.ok(transactionService.updateTransaction(transactionId, auth, updateRequestDTO));
+        return ResponseEntity.ok(transactionService.updateTransaction(transactionId, auth, updateRequestDTO, recurringScope));
     }
 
     @Override
     public ResponseEntity<Void> deleteTransaction(
             Long transactionId,
+            RecurringTransactionChangeScope recurringScope,
             Authentication auth
     ) {
-        transactionService.deleteTransaction(transactionId, auth);
+        transactionService.deleteTransaction(transactionId, auth, recurringScope);
         return ResponseEntity.noContent().build();
     }
 }

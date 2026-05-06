@@ -16,3 +16,8 @@ CREATE TABLE recurring_transactions
     CONSTRAINT fk_recurring_transaction_account FOREIGN KEY (account_id) REFERENCES accounts (id),
     CONSTRAINT fk_recurring_transaction_category FOREIGN KEY (category_id) REFERENCES categories (id)
 );
+
+ALTER TABLE transactions
+    ADD CONSTRAINT fk_transaction_recurring_transaction
+        FOREIGN KEY (recurring_transaction_id) REFERENCES recurring_transactions (id)
+            ON DELETE SET NULL;

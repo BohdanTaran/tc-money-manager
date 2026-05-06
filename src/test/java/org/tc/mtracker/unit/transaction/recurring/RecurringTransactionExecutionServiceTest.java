@@ -13,7 +13,6 @@ import org.tc.mtracker.category.enums.CategoryStatus;
 import org.tc.mtracker.common.enums.TransactionType;
 import org.tc.mtracker.support.factory.EntityTestFactory;
 import org.tc.mtracker.transaction.Transaction;
-import org.tc.mtracker.transaction.TransactionService;
 import org.tc.mtracker.transaction.recurring.RecurringTransaction;
 import org.tc.mtracker.transaction.recurring.RecurringTransactionExecutionService;
 import org.tc.mtracker.transaction.recurring.RecurringTransactionRepository;
@@ -37,9 +36,6 @@ class RecurringTransactionExecutionServiceTest {
 
     @Mock
     private RecurringTransactionService recurringTransactionService;
-
-    @Mock
-    private TransactionService transactionService;
 
     @InjectMocks
     private RecurringTransactionExecutionService recurringTransactionExecutionService;
@@ -88,7 +84,7 @@ class RecurringTransactionExecutionServiceTest {
         recurringTransactionExecutionService.executeDueTransactions(LocalDate.of(2026, 4, 15));
 
         ArgumentCaptor<Transaction> transactionCaptor = ArgumentCaptor.forClass(Transaction.class);
-        verify(transactionService, times(3)).createAutomatedTransaction(transactionCaptor.capture());
+        verify(recurringTransactionService, times(3)).createAutomatedTransaction(transactionCaptor.capture());
         assertThat(transactionCaptor.getAllValues())
                 .extracting(Transaction::getDate)
                 .containsExactly(
@@ -96,6 +92,9 @@ class RecurringTransactionExecutionServiceTest {
                         LocalDate.of(2026, 3, 1),
                         LocalDate.of(2026, 4, 1)
                 );
+        assertThat(transactionCaptor.getAllValues())
+                .extracting(Transaction::getRecurringTransaction)
+                .containsOnly(recurringTransaction);
         assertThat(recurringTransaction.getNextExecutionDate()).isEqualTo(LocalDate.of(2026, 5, 1));
     }
 
@@ -107,6 +106,6 @@ class RecurringTransactionExecutionServiceTest {
         recurringTransactionExecutionService.executeDueTransactions(LocalDate.of(2026, 4, 15));
 
         verify(recurringTransactionRepository).findDueTransactions(LocalDate.of(2026, 4, 15), CategoryStatus.ACTIVE);
-        verifyNoInteractions(transactionService);
+        verify(recurringTransactionService, never()).createAutomatedTransaction(any(Transaction.class));
     }
 }
