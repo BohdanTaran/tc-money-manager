@@ -10,6 +10,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.MultipartBodyBuilder;
 import org.tc.mtracker.account.AccountRepository;
+import org.tc.mtracker.category.Category;
 import org.tc.mtracker.category.enums.CategoryStatus;
 import org.tc.mtracker.common.enums.TransactionType;
 import org.tc.mtracker.support.base.BaseApiIntegrationTest;
@@ -18,6 +19,9 @@ import org.tc.mtracker.transaction.ReceiptImage;
 import org.tc.mtracker.transaction.Transaction;
 import org.tc.mtracker.transaction.TransactionRepository;
 import org.tc.mtracker.transaction.dto.TransactionCreateRequestDTO;
+import org.tc.mtracker.transaction.recurring.RecurringTransactionRepository;
+import org.tc.mtracker.transaction.recurring.dto.RecurringTransactionCreateRequestDTO;
+import org.tc.mtracker.transaction.recurring.enums.IntervalUnit;
 import org.tc.mtracker.user.User;
 
 import java.math.BigDecimal;
@@ -36,6 +40,9 @@ class TransactionApiTest extends BaseApiIntegrationTest {
 
     @Autowired
     private TransactionRepository transactionRepository;
+
+    @Autowired
+    private RecurringTransactionRepository recurringTransactionRepository;
 
     private static TransactionCreateRequestDTO createRequest(
             BigDecimal amount,
@@ -69,6 +76,69 @@ class TransactionApiTest extends BaseApiIntegrationTest {
         MultipartBodyBuilder parts = createMultipartRequest(request);
         parts.part("receipts", receipt, receiptMediaType);
         return parts;
+    }
+
+    private static RecurringTransactionCreateRequestDTO createRecurringRequest(
+            BigDecimal amount,
+            TransactionType type,
+            Long categoryId,
+            LocalDate date,
+            String description,
+            Long accountId,
+            IntervalUnit intervalUnit
+    ) {
+        return new RecurringTransactionCreateRequestDTO(
+                amount,
+                type,
+                categoryId,
+                date,
+                description,
+                accountId,
+                intervalUnit
+        );
+    }
+
+    private Transaction createRecurringIncomeForToday(
+            User user,
+            Category category,
+            BigDecimal amount,
+            String description
+    ) {
+        restTestClient.post()
+                .uri("/api/v1/recurring-transactions")
+                .header(HttpHeaders.AUTHORIZATION, authHeader(user))
+                .body(createRecurringRequest(
+                        amount,
+                        TransactionType.INCOME,
+                        category.getId(),
+                        LocalDate.now(),
+                        description,
+                        null,
+                        IntervalUnit.MONTHLY
+                ))
+                .exchange()
+                .expectStatus().isCreated();
+
+        return transactionRepository.findAll().getFirst();
+    }
+
+    private Transaction createLinkedOccurrence(
+            User user,
+            Transaction seedTransaction,
+            LocalDate date
+    ) {
+        var account = accountRepository.findById(user.getDefaultAccount().getId()).orElseThrow();
+        Transaction occurrence = fixtures.createTransaction(
+                user,
+                account,
+                seedTransaction.getCategory(),
+                seedTransaction.getAmount(),
+                seedTransaction.getType(),
+                date,
+                seedTransaction.getDescription()
+        );
+        occurrence.setRecurringTransaction(seedTransaction.getRecurringTransaction());
+        return transactionRepository.saveAndFlush(occurrence);
     }
 
     @ParameterizedTest
@@ -381,6 +451,158 @@ class TransactionApiTest extends BaseApiIntegrationTest {
                 .isEqualByComparingTo("100.00");
         assertThat(accountRepository.findById(savings.getId()).orElseThrow().getBalance())
                 .isEqualByComparingTo("-30.00");
+    }
+
+    @Test
+    void shouldUpdateRecurringTransactionCurrentAndFutureScope() {
+        User user = fixtures.createUser("update-recurring-transaction@example.com");
+        var salary = fixtures.createUserCategory(user, "Salary", TransactionType.INCOME);
+        var bonus = fixtures.createUserCategory(user, "Bonus", TransactionType.INCOME);
+        Transaction transaction = createRecurringIncomeForToday(user, salary, new BigDecimal("100.00"), "Salary");
+        LocalDate updatedDate = LocalDate.now().minusDays(1);
+
+        Long recurringTransactionId = transaction.getRecurringTransaction().getId();
+
+        restTestClient.put()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/transactions/{id}")
+                        .queryParam("recurringScope", "THIS_AND_FUTURE")
+                        .build(transaction.getId()))
+                .header(HttpHeaders.AUTHORIZATION, authHeader(user))
+                .body(createRequest(
+                        new BigDecimal("150.00"),
+                        TransactionType.INCOME,
+                        bonus.getId(),
+                        updatedDate,
+                        "Updated salary",
+                        user.getDefaultAccount().getId()
+                ))
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.recurringTransactionId").isEqualTo(recurringTransactionId)
+                .jsonPath("$.amount").isEqualTo(150.00)
+                .jsonPath("$.category.id").isEqualTo(bonus.getId());
+
+        var recurringTransaction = recurringTransactionRepository.findById(recurringTransactionId).orElseThrow();
+        assertThat(recurringTransaction.getAmount()).isEqualByComparingTo("150.00");
+        assertThat(recurringTransaction.getCategory().getId()).isEqualTo(bonus.getId());
+        assertThat(recurringTransaction.getDescription()).isEqualTo("Updated salary");
+        assertThat(recurringTransaction.getStartDate()).isEqualTo(updatedDate);
+        assertThat(recurringTransaction.getNextExecutionDate()).isEqualTo(updatedDate.plusMonths(1));
+
+        assertThat(accountRepository.findById(user.getDefaultAccount().getId()).orElseThrow().getBalance())
+                .isEqualByComparingTo("150.00");
+    }
+
+    @Test
+    void shouldUpdateOnlyCurrentRecurringTransactionOccurrenceByDefault() {
+        User user = fixtures.createUser("update-recurring-current-only@example.com");
+        var salary = fixtures.createUserCategory(user, "Salary", TransactionType.INCOME);
+        Transaction transaction = createRecurringIncomeForToday(user, salary, new BigDecimal("100.00"), "Salary");
+        Long recurringTransactionId = transaction.getRecurringTransaction().getId();
+
+        restTestClient.put()
+                .uri("/api/v1/transactions/{id}", transaction.getId())
+                .header(HttpHeaders.AUTHORIZATION, authHeader(user))
+                .body(createRequest(
+                        new BigDecimal("150.00"),
+                        TransactionType.INCOME,
+                        salary.getId(),
+                        LocalDate.now(),
+                        "One changed salary",
+                        user.getDefaultAccount().getId()
+                ))
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.recurringTransactionId").isEqualTo(recurringTransactionId)
+                .jsonPath("$.amount").isEqualTo(150.00)
+                .jsonPath("$.description").isEqualTo("One changed salary");
+
+        var recurringTransaction = recurringTransactionRepository.findById(recurringTransactionId).orElseThrow();
+        assertThat(recurringTransaction.getAmount()).isEqualByComparingTo("100.00");
+        assertThat(recurringTransaction.getDescription()).isEqualTo("Salary");
+        assertThat(accountRepository.findById(user.getDefaultAccount().getId()).orElseThrow().getBalance())
+                .isEqualByComparingTo("150.00");
+    }
+
+    @Test
+    void shouldRejectRecurringFutureScopeForOneTimeTransaction() {
+        User user = fixtures.createUser("reject-recurring-scope-one-time@example.com");
+        var salary = fixtures.createUserCategory(user, "Salary", TransactionType.INCOME);
+        Transaction transaction = fixtures.createTransaction(
+                user,
+                user.getDefaultAccount(),
+                salary,
+                new BigDecimal("100.00"),
+                TransactionType.INCOME,
+                LocalDate.now(),
+                "Salary"
+        );
+
+        restTestClient.put()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/transactions/{id}")
+                        .queryParam("recurringScope", "THIS_AND_FUTURE")
+                        .build(transaction.getId()))
+                .header(HttpHeaders.AUTHORIZATION, authHeader(user))
+                .body(createRequest(
+                        new BigDecimal("150.00"),
+                        TransactionType.INCOME,
+                        salary.getId(),
+                        LocalDate.now(),
+                        "Updated salary",
+                        user.getDefaultAccount().getId()
+                ))
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("invalid_recurring_transaction_scope");
+    }
+
+    @Test
+    void shouldDeleteOnlyCurrentRecurringTransactionOccurrenceByDefault() {
+        User user = fixtures.createUser("delete-recurring-current-only@example.com");
+        var salary = fixtures.createUserCategory(user, "Salary", TransactionType.INCOME);
+        Transaction transaction = createRecurringIncomeForToday(user, salary, new BigDecimal("100.00"), "Salary");
+
+        restTestClient.delete()
+                .uri("/api/v1/transactions/{id}", transaction.getId())
+                .header(HttpHeaders.AUTHORIZATION, authHeader(user))
+                .exchange()
+                .expectStatus().isNoContent();
+
+        assertThat(transactionRepository.findAll()).isEmpty();
+        assertThat(recurringTransactionRepository.findAll()).hasSize(1);
+        assertThat(accountRepository.findById(user.getDefaultAccount().getId()).orElseThrow().getBalance())
+                .isEqualByComparingTo("0.00");
+    }
+
+    @Test
+    void shouldDeleteRecurringTransactionCurrentAndFutureScope() {
+        User user = fixtures.createUser("delete-recurring-future@example.com");
+        var salary = fixtures.createUserCategory(user, "Salary", TransactionType.INCOME);
+        Transaction transaction = createRecurringIncomeForToday(user, salary, new BigDecimal("100.00"), "Salary");
+        Transaction pastOccurrence = createLinkedOccurrence(user, transaction, LocalDate.now().minusMonths(1));
+
+        restTestClient.delete()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/transactions/{id}")
+                        .queryParam("recurringScope", "THIS_AND_FUTURE")
+                        .build(transaction.getId()))
+                .header(HttpHeaders.AUTHORIZATION, authHeader(user))
+                .exchange()
+                .expectStatus().isNoContent();
+
+        assertThat(transactionRepository.findAll()).singleElement()
+                .satisfies(remainingTransaction -> {
+                    assertThat(remainingTransaction.getId()).isEqualTo(pastOccurrence.getId());
+                    assertThat(remainingTransaction.getRecurringTransaction()).isNull();
+                });
+        assertThat(recurringTransactionRepository.findAll()).isEmpty();
+        assertThat(accountRepository.findById(user.getDefaultAccount().getId()).orElseThrow().getBalance())
+                .isEqualByComparingTo("100.00");
     }
 
     @Test

@@ -80,6 +80,41 @@ class RecurringTransactionApiTest extends BaseApiIntegrationTest {
     }
 
     @Test
+    void shouldDeleteRecurringRuleAndKeepGeneratedTransactions() {
+        User user = fixtures.createUser("delete-recurring-rule@example.com");
+        var category = fixtures.createGlobalCategory("Salary", TransactionType.INCOME);
+
+        restTestClient.post()
+                .uri("/api/v1/recurring-transactions")
+                .header(HttpHeaders.AUTHORIZATION, authHeader(user))
+                .body(createRequest(
+                        new BigDecimal("100.00"),
+                        TransactionType.INCOME,
+                        category.getId(),
+                        LocalDate.now(),
+                        "Recurring salary",
+                        null,
+                        IntervalUnit.MONTHLY
+                ))
+                .exchange()
+                .expectStatus().isCreated();
+
+        var recurringTransaction = recurringTransactionRepository.findAll().getFirst();
+
+        restTestClient.delete()
+                .uri("/api/v1/recurring-transactions/{id}", recurringTransaction.getId())
+                .header(HttpHeaders.AUTHORIZATION, authHeader(user))
+                .exchange()
+                .expectStatus().isNoContent();
+
+        assertThat(recurringTransactionRepository.findAll()).isEmpty();
+        assertThat(transactionRepository.findAll()).singleElement()
+                .satisfies(transaction -> assertThat(transaction.getRecurringTransaction()).isNull());
+        assertThat(accountRepository.findById(user.getDefaultAccount().getId()).orElseThrow().getBalance())
+                .isEqualByComparingTo("100.00");
+    }
+
+    @Test
     void shouldCreateRecurringTransactionForFutureWithoutImmediateExecution() {
         User user = fixtures.createUser("recurring-future@example.com");
         var category = fixtures.createGlobalCategory("Salary", TransactionType.INCOME);
