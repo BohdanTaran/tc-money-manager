@@ -98,7 +98,7 @@ public class RecurringTransactionService {
             Category category,
             User user
     ) {
-        RecurringTransaction recurringTransaction = requireRecurringTransaction(transaction, user);
+        RecurringTransaction recurringTransaction = getRecurringTransaction(transaction, user);
 
         transactionMutationService.updateTransactionValues(transaction, updateRequestDTO, targetAccount, category);
 
@@ -115,13 +115,13 @@ public class RecurringTransactionService {
     }
 
     public void deleteCurrentAndFutureOccurrences(Transaction transaction, User user) {
-        RecurringTransaction recurringTransaction = requireRecurringTransaction(transaction, user);
+        RecurringTransaction recurringTransaction = getRecurringTransaction(transaction, user);
 
         transactionMutationService.deleteSingleTransaction(transaction);
         recurringTransactionRepository.delete(recurringTransaction);
     }
 
-    public Transaction createAutomatedTransaction(Transaction transaction) {
+    public void createAutomatedTransaction(Transaction transaction) {
         Transaction saved = transactionMutationService.persistTransaction(transaction);
         log.info("Automated transaction created userId={} transactionId={} accountId={} amount={} type={} date={}",
                 saved.getUser().getId(),
@@ -130,7 +130,6 @@ public class RecurringTransactionService {
                 saved.getAmount(),
                 saved.getType(),
                 saved.getDate());
-        return saved;
     }
 
     public LocalDate nextExecutionDateAfter(LocalDate baseDate, IntervalUnit intervalUnit) {
@@ -159,7 +158,7 @@ public class RecurringTransactionService {
                 });
     }
 
-    private RecurringTransaction requireRecurringTransaction(Transaction transaction, User user) {
+    private RecurringTransaction getRecurringTransaction(Transaction transaction, User user) {
         RecurringTransaction recurringTransaction = transaction.getRecurringTransaction();
         if (recurringTransaction == null) {
             log.warn("Recurring scope rejected userId={} transactionId={} reason=not_recurring",

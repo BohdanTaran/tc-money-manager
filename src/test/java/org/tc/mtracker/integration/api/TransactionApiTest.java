@@ -19,6 +19,7 @@ import org.tc.mtracker.transaction.ReceiptImage;
 import org.tc.mtracker.transaction.Transaction;
 import org.tc.mtracker.transaction.TransactionRepository;
 import org.tc.mtracker.transaction.dto.TransactionCreateRequestDTO;
+import org.tc.mtracker.transaction.recurring.RecurringTransaction;
 import org.tc.mtracker.transaction.recurring.RecurringTransactionRepository;
 import org.tc.mtracker.transaction.recurring.dto.RecurringTransactionCreateRequestDTO;
 import org.tc.mtracker.transaction.recurring.enums.IntervalUnit;
@@ -398,7 +399,7 @@ class TransactionApiTest extends BaseApiIntegrationTest {
                 "Groceries"
         );
 
-        restTestClient.put()
+        restTestClient.patch()
                 .uri("/api/v1/transactions/{id}", transaction.getId())
                 .header(HttpHeaders.AUTHORIZATION, authHeader(user))
                 .body(createRequest(
@@ -430,7 +431,7 @@ class TransactionApiTest extends BaseApiIntegrationTest {
                 "Groceries"
         );
 
-        restTestClient.put()
+        restTestClient.patch()
                 .uri("/api/v1/transactions/{id}", transaction.getId())
                 .header(HttpHeaders.AUTHORIZATION, authHeader(user))
                 .body(createRequest(
@@ -463,7 +464,7 @@ class TransactionApiTest extends BaseApiIntegrationTest {
 
         Long recurringTransactionId = transaction.getRecurringTransaction().getId();
 
-        restTestClient.put()
+        restTestClient.patch()
                 .uri(uriBuilder -> uriBuilder
                         .path("/api/v1/transactions/{id}")
                         .queryParam("recurringScope", "THIS_AND_FUTURE")
@@ -480,7 +481,7 @@ class TransactionApiTest extends BaseApiIntegrationTest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.recurringTransactionId").isEqualTo(recurringTransactionId)
+                .jsonPath("$.intervalUnit").isEqualTo(IntervalUnit.MONTHLY.name())
                 .jsonPath("$.amount").isEqualTo(150.00)
                 .jsonPath("$.category.id").isEqualTo(bonus.getId());
 
@@ -500,9 +501,11 @@ class TransactionApiTest extends BaseApiIntegrationTest {
         User user = fixtures.createUser("update-recurring-current-only@example.com");
         var salary = fixtures.createUserCategory(user, "Salary", TransactionType.INCOME);
         Transaction transaction = createRecurringIncomeForToday(user, salary, new BigDecimal("100.00"), "Salary");
-        Long recurringTransactionId = transaction.getRecurringTransaction().getId();
+        RecurringTransaction transactionOccurrence = transaction.getRecurringTransaction();
+        Long recurringTransactionId = transactionOccurrence.getId();
 
-        restTestClient.put()
+
+        restTestClient.patch()
                 .uri("/api/v1/transactions/{id}", transaction.getId())
                 .header(HttpHeaders.AUTHORIZATION, authHeader(user))
                 .body(createRequest(
@@ -516,7 +519,7 @@ class TransactionApiTest extends BaseApiIntegrationTest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.recurringTransactionId").isEqualTo(recurringTransactionId)
+                .jsonPath("$.intervalUnit").isEqualTo(IntervalUnit.MONTHLY.name())
                 .jsonPath("$.amount").isEqualTo(150.00)
                 .jsonPath("$.description").isEqualTo("One changed salary");
 
@@ -541,7 +544,7 @@ class TransactionApiTest extends BaseApiIntegrationTest {
                 "Salary"
         );
 
-        restTestClient.put()
+        restTestClient.patch()
                 .uri(uriBuilder -> uriBuilder
                         .path("/api/v1/transactions/{id}")
                         .queryParam("recurringScope", "THIS_AND_FUTURE")

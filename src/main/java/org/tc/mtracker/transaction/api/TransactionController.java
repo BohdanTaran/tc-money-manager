@@ -34,10 +34,10 @@ public class TransactionController implements TransactionApi {
 
     @Override
     public ResponseEntity<TransactionResponseDTO> getTransactionById(
-            Long transactionId,
+            Long id,
             Authentication auth
     ) {
-        return ResponseEntity.ok(transactionService.getTransactionById(transactionId, auth));
+        return ResponseEntity.ok(transactionService.getTransactionById(id, auth));
     }
 
     @Override
@@ -51,21 +51,21 @@ public class TransactionController implements TransactionApi {
 
     @Override
     public ResponseEntity<TransactionResponseDTO> updateTransaction(
-            Long transactionId,
+            Long id,
             RecurringTransactionChangeScope recurringScope,
             TransactionCreateRequestDTO updateRequestDTO,
             Authentication auth
     ) {
-        return ResponseEntity.ok(transactionService.updateTransaction(transactionId, auth, updateRequestDTO, recurringScope));
+        return ResponseEntity.ok(transactionService.updateTransaction(id, auth, updateRequestDTO, recurringScope));
     }
 
     @Override
     public ResponseEntity<Void> deleteTransaction(
-            Long transactionId,
+            Long id,
             RecurringTransactionChangeScope recurringScope,
             Authentication auth
     ) {
-        transactionService.deleteTransaction(transactionId, auth, recurringScope);
+        transactionService.deleteTransaction(id, auth, recurringScope);
         return ResponseEntity.noContent().build();
     }
 }

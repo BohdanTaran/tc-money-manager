@@ -9,6 +9,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.tc.mtracker.account.Account;
+import org.tc.mtracker.account.AccountRepository;
 import org.tc.mtracker.category.Category;
 import org.tc.mtracker.category.enums.CategoryStatus;
 import org.tc.mtracker.common.enums.TransactionType;
@@ -39,6 +40,9 @@ class TransactionMutationServiceTest {
     private TransactionRepository transactionRepository;
 
     @Mock
+    private AccountRepository accountRepository;
+
+    @Mock
     private TransactionMapper transactionMapper;
 
     @Mock
@@ -63,6 +67,7 @@ class TransactionMutationServiceTest {
         );
 
         when(transactionRepository.save(transaction)).thenReturn(transaction);
+        when(accountRepository.save(account)).thenReturn(account);
 
         Transaction result = transactionMutationService.persistTransaction(transaction);
 

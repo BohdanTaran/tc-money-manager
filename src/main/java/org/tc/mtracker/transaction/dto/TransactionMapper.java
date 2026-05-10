@@ -13,33 +13,29 @@ import java.util.List;
         unmappedTargetPolicy = ReportingPolicy.ERROR)
 public interface TransactionMapper {
 
-    @Mappings({
-            @Mapping(target = "id", ignore = true),
-            @Mapping(target = "user", source = "user"),
-            @Mapping(target = "account", ignore = true),
-            @Mapping(target = "category", ignore = true),
-            @Mapping(target = "createdAt", ignore = true),
-            @Mapping(target = "updatedAt", ignore = true),
-            @Mapping(target = "deletedAt", ignore = true),
-            @Mapping(target = "receipts", ignore = true),
-            @Mapping(target = "recurringTransaction", ignore = true)
-    })
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "user", source = "user")
+    @Mapping(target = "account", ignore = true)
+    @Mapping(target = "category", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "deletedAt", ignore = true)
+    @Mapping(target = "receipts", ignore = true)
+    @Mapping(target = "recurringTransaction", ignore = true)
     Transaction toEntity(TransactionCreateRequestDTO dto, User user);
 
-    @Mappings({
-            @Mapping(target = "id", ignore = true),
-            @Mapping(target = "user", ignore = true),
-            @Mapping(target = "account", ignore = true),
-            @Mapping(target = "category", ignore = true),
-            @Mapping(target = "createdAt", ignore = true),
-            @Mapping(target = "updatedAt", ignore = true),
-            @Mapping(target = "deletedAt", ignore = true),
-            @Mapping(target = "receipts", ignore = true),
-            @Mapping(target = "recurringTransaction", ignore = true)
-    })
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "user", ignore = true)
+    @Mapping(target = "account", ignore = true)
+    @Mapping(target = "category", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "deletedAt", ignore = true)
+    @Mapping(target = "receipts", ignore = true)
+    @Mapping(target = "recurringTransaction", ignore = true)
     void updateEntity(TransactionCreateRequestDTO dto, @MappingTarget Transaction transaction);
 
     @Mapping(target = "accountId", source = "transaction.account.id")
-    @Mapping(target = "recurringTransactionId", source = "transaction.recurringTransaction.id")
+    @Mapping(target = "intervalUnit", source = "transaction.recurringTransaction.intervalUnit")
     TransactionResponseDTO toDto(Transaction transaction, List<String> receiptsUrls);
 }

@@ -41,7 +41,6 @@ public class TransactionService {
         Category category = transactionValidationService.resolveActiveCategory(createRequestDTO.categoryId(), user);
         transactionValidationService.validateTransactionType(createRequestDTO.type(), category, user);
 
-        transaction.setUser(user);
         transaction.setAccount(account);
         transaction.setCategory(category);
         transactionMutationService.addReceiptsToTransaction(receipts, transaction);

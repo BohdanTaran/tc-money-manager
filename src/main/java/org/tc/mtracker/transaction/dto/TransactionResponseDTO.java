@@ -3,6 +3,7 @@ package org.tc.mtracker.transaction.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import org.tc.mtracker.category.dto.CategoryResponseDTO;
 import org.tc.mtracker.common.enums.TransactionType;
+import org.tc.mtracker.transaction.recurring.enums.IntervalUnit;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -17,8 +18,8 @@ public record TransactionResponseDTO(
         @Schema(description = "Account ID", example = "1")
         Long accountId,
 
-        @Schema(description = "Recurring transaction ID if this transaction was generated from a recurring rule", example = "1")
-        Long recurringTransactionId,
+        @Schema(description = "Recurring transaction interval unit", example = "MONTHLY")
+        IntervalUnit intervalUnit,
 
         @Schema(description = "Transaction amount", example = "125.50")
         BigDecimal amount,

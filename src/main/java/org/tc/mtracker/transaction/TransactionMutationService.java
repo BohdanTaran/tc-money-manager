@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.tc.mtracker.account.Account;
+import org.tc.mtracker.account.AccountRepository;
 import org.tc.mtracker.category.Category;
 import org.tc.mtracker.common.enums.TransactionType;
 import org.tc.mtracker.common.file.ObjectStorageKeys;
@@ -23,10 +24,15 @@ public class TransactionMutationService {
     private final TransactionRepository transactionRepository;
     private final TransactionMapper transactionMapper;
     private final S3Service s3Service;
+    private final AccountRepository accountRepository;
 
     public Transaction persistTransaction(Transaction transaction) {
         Transaction saved = transactionRepository.save(transaction);
-        applyBalanceDelta(saved.getAccount(), saved);
+        Account account = saved.getAccount();
+
+        applyBalanceDelta(account, saved);
+        accountRepository.save(account);
+
         return saved;
     }
 
