@@ -55,16 +55,19 @@ public class TransactionMutationService {
         Account currentAccount = transaction.getAccount();
 
         revertBalanceDelta(currentAccount, transaction);
+        accountRepository.save(currentAccount);
         transactionMapper.updateEntity(updateRequestDTO, transaction);
         transaction.setAccount(targetAccount);
         transaction.setCategory(category);
         applyBalanceDelta(targetAccount, transaction);
+        accountRepository.save(targetAccount);
     }
 
     public void deleteSingleTransaction(Transaction transaction) {
         revertBalanceDelta(transaction.getAccount(), transaction);
         deleteReceipts(transaction);
         transactionRepository.delete(transaction);
+        accountRepository.save(transaction.getAccount());
     }
 
     public TransactionResponseDTO toResponseDto(Transaction transaction) {
