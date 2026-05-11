@@ -1,6 +1,8 @@
 package org.tc.mtracker.security;
 
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +21,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 import org.tc.mtracker.utils.exceptions.JwtAuthenticationException;
 
-import java.util.List;
+import java.io.IOException;
 
 @Slf4j
 @Component
@@ -30,40 +32,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
 
-    private static final List<String> PUBLIC_AUTH_PATHS = List.of(
-            "/api/v1/auth/login",
-            "/api/v1/auth/sign-up",
-            "/api/v1/auth/refresh",
-            "/api/v1/auth/verify",
-            "/api/v1/auth/reset-token",
-            "/api/v1/auth/getTokenToResetPassword",
-            "/api/v1/auth/reset-password/confirm",
-            "/api/v1/users/verify-email"
-    );
 
-    @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
-        String path = request.getRequestURI();
-        return PUBLIC_AUTH_PATHS.stream().anyMatch(path::startsWith);
-    }
 
     @Override
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain
-    ) {
+    )throws ServletException, IOException {
 
         final String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            handlerExceptionResolver.resolveException(
-                    request, response, null,
-                    new JwtAuthenticationException(
-                            "Missing or invalid Authorization header. Please provide Bearer token.",
-                            "missing_token"
-                    )
-            );
+            filterChain.doFilter(request, response);
             return;
         }
 
@@ -79,7 +60,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 if (!jwtService.isTokenValid(jwt, userDetails)) {
                     handleInvalidToken(request, response, jwt);
-                    return;
                 }
 
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
@@ -100,7 +80,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     request, response, null,
                     new JwtAuthenticationException("Invalid token", "invalid_token")
             );
-        } catch (io.jsonwebtoken.JwtException e) {
+        } catch (JwtException e) {
             log.debug("JWT processing error: {}", e.getMessage());
             SecurityContextHolder.clearContext();
             handlerExceptionResolver.resolveException(

@@ -31,7 +31,7 @@ Content-Type: application/json
 
 ###Profile
 GET {{baseUrl}}/users/me
-Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJwdXJwb3NlIjoiZW1haWxfdmVyaWZpY2F0aW9uIiwic3ViIjoiZXhhbXBsZUBtYWlsLmNvbSIsImlhdCI6MTc3ODQyMTk0MywiZXhwIjoxNzc4NDIyODQzfQ.oswUNGzeO_DHWqF3Vt8WudcZjknT6eCuoUTqya3MOzEXZgfqK7dtb-4rTtrQVQ7m
+Authorization: Bearer {{accessToken}}
 
 
 
