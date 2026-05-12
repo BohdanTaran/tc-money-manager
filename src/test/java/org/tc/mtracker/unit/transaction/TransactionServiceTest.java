@@ -14,12 +14,15 @@ import org.tc.mtracker.category.enums.CategoryStatus;
 import org.tc.mtracker.common.enums.TransactionType;
 import org.tc.mtracker.support.factory.EntityTestFactory;
 import org.tc.mtracker.transaction.Transaction;
+import org.tc.mtracker.transaction.TransactionMutationService;
 import org.tc.mtracker.transaction.TransactionRepository;
 import org.tc.mtracker.transaction.TransactionService;
 import org.tc.mtracker.transaction.TransactionValidationService;
 import org.tc.mtracker.transaction.dto.TransactionCreateRequestDTO;
 import org.tc.mtracker.transaction.dto.TransactionMapper;
 import org.tc.mtracker.transaction.dto.TransactionResponseDTO;
+import org.tc.mtracker.transaction.recurring.RecurringTransactionService;
+import org.tc.mtracker.transaction.recurring.enums.RecurringTransactionChangeScope;
 import org.tc.mtracker.user.User;
 import org.tc.mtracker.user.UserService;
 import org.tc.mtracker.utils.S3Service;
@@ -57,6 +60,12 @@ class TransactionServiceTest {
 
     @Mock
     private TransactionValidationService transactionValidationService;
+
+    @Mock
+    private RecurringTransactionService recurringTransactionService;
+
+    @Mock
+    private TransactionMutationService transactionMutationService;
 
     @Mock
     private Authentication authentication;
@@ -99,6 +108,7 @@ class TransactionServiceTest {
         TransactionResponseDTO response = new TransactionResponseDTO(
                 10L,
                 1L,
+                null,
                 dto.amount(),
                 null,
                 dto.description(),
@@ -114,19 +124,19 @@ class TransactionServiceTest {
         when(transactionValidationService.resolveAccount(user, dto.accountId())).thenReturn(defaultAccount);
         when(transactionValidationService.resolveActiveCategory(dto.categoryId(), user)).thenReturn(category);
         when(transactionMapper.toEntity(dto, user)).thenReturn(transaction);
-        when(transactionRepository.save(transaction)).thenReturn(transaction);
-        when(transactionMapper.toDto(transaction, List.of())).thenReturn(response);
+        when(transactionMutationService.persistTransaction(transaction)).thenReturn(transaction);
+        when(transactionMutationService.toResponseDto(transaction)).thenReturn(response);
 
         TransactionResponseDTO result = transactionService.createTransaction(authentication, dto, List.of());
 
         assertThat(result).isEqualTo(response);
-        assertThat(defaultAccount.getBalance()).isEqualByComparingTo("25.50");
         assertThat(transaction.getUser()).isEqualTo(user);
         assertThat(transaction.getAccount()).isEqualTo(defaultAccount);
         assertThat(transaction.getCategory()).isEqualTo(category);
         verify(transactionValidationService).validateOneTimeTransactionDate(dto.date(), user);
         verify(transactionValidationService).validateTransactionType(dto.type(), category, user);
-        verifyNoInteractions(s3Service);
+        verify(transactionMutationService).addReceiptsToTransaction(List.of(), transaction);
+        verify(transactionMutationService).persistTransaction(transaction);
     }
 
     @Test
@@ -147,6 +157,7 @@ class TransactionServiceTest {
         TransactionResponseDTO response = new TransactionResponseDTO(
                 10L,
                 1L,
+                null,
                 dto.amount(),
                 null,
                 dto.description(),
@@ -162,16 +173,13 @@ class TransactionServiceTest {
         when(transactionValidationService.resolveAccount(user, dto.accountId())).thenReturn(defaultAccount);
         when(transactionValidationService.resolveActiveCategory(dto.categoryId(), user)).thenReturn(category);
         when(transactionMapper.toEntity(dto, user)).thenReturn(transaction);
-        when(transactionRepository.save(transaction)).thenReturn(transaction);
-        when(s3Service.generatePresignedUrl(anyString())).thenReturn("https://test-bucket.local/receipt-1");
-        when(transactionMapper.toDto(eq(transaction), eq(List.of("https://test-bucket.local/receipt-1")))).thenReturn(response);
+        when(transactionMutationService.persistTransaction(transaction)).thenReturn(transaction);
+        when(transactionMutationService.toResponseDto(transaction)).thenReturn(response);
 
         TransactionResponseDTO result = transactionService.createTransaction(authentication, dto, List.of(receipt));
 
         assertThat(result).isEqualTo(response);
-        assertThat(transaction.getReceipts()).hasSize(1);
-        verify(s3Service).saveFile(anyString(), eq(receipt));
-        verify(s3Service).generatePresignedUrl(anyString());
+        verify(transactionMutationService).addReceiptsToTransaction(List.of(receipt), transaction);
     }
 
     @Test
@@ -250,6 +258,7 @@ class TransactionServiceTest {
         TransactionResponseDTO response = new TransactionResponseDTO(
                 9L,
                 2L,
+                null,
                 updateDto.amount(),
                 null,
                 updateDto.description(),
@@ -264,26 +273,75 @@ class TransactionServiceTest {
         when(transactionRepository.findActiveByIdAndUser(9L, user)).thenReturn(Optional.of(existingTransaction));
         when(transactionValidationService.resolveAccount(user, 2L)).thenReturn(targetAccount);
         when(transactionValidationService.resolveActiveCategory(4L, user)).thenReturn(expenseCategory);
-        doAnswer(invocation -> {
-            TransactionCreateRequestDTO dto = invocation.getArgument(0);
-            Transaction transaction = invocation.getArgument(1);
-            transaction.setAmount(dto.amount());
-            transaction.setType(dto.type());
-            transaction.setDescription(dto.description());
-            transaction.setDate(dto.date());
-            return null;
-        }).when(transactionMapper).updateEntity(eq(updateDto), eq(existingTransaction));
         when(transactionRepository.save(existingTransaction)).thenReturn(existingTransaction);
-        when(transactionMapper.toDto(existingTransaction, List.of())).thenReturn(response);
+        when(transactionMutationService.toResponseDto(existingTransaction)).thenReturn(response);
 
-        TransactionResponseDTO result = transactionService.updateTransaction(9L, authentication, updateDto);
+        TransactionResponseDTO result = transactionService.updateTransaction(
+                9L,
+                authentication,
+                updateDto,
+                RecurringTransactionChangeScope.ONLY_THIS
+        );
 
         assertThat(result).isEqualTo(response);
-        assertThat(sourceAccount.getBalance()).isEqualByComparingTo("100.00");
-        assertThat(targetAccount.getBalance()).isEqualByComparingTo("-30.00");
-        assertThat(existingTransaction.getAccount()).isEqualTo(targetAccount);
+        verify(transactionMutationService).updateTransactionValues(existingTransaction, updateDto, targetAccount, expenseCategory);
         verify(transactionValidationService).validateOneTimeTransactionDate(updateDto.date(), user);
         verify(transactionValidationService).validateTransactionType(updateDto.type(), expenseCategory, user);
+    }
+
+    @Test
+    void shouldDelegateRecurringCurrentAndFutureUpdateToRecurringService() {
+        User user = EntityTestFactory.user(1L, "user@example.com", true);
+        Account account = EntityTestFactory.account(1L, user, BigDecimal.ZERO);
+        Category salaryCategory = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
+        Transaction transaction = EntityTestFactory.transaction(
+                9L,
+                user,
+                account,
+                salaryCategory,
+                TransactionType.INCOME,
+                new BigDecimal("100.00"),
+                LocalDate.of(2026, 4, 1)
+        );
+        TransactionCreateRequestDTO updateDto = createRequest(
+                new BigDecimal("150.00"),
+                TransactionType.INCOME,
+                4L,
+                LocalDate.of(2026, 4, 2),
+                "Updated salary",
+                1L
+        );
+        TransactionResponseDTO response = new TransactionResponseDTO(
+                9L,
+                1L,
+                null,
+                updateDto.amount(),
+                null,
+                updateDto.description(),
+                updateDto.type(),
+                List.of(),
+                updateDto.date(),
+                null,
+                null
+        );
+
+        when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
+        when(transactionRepository.findActiveByIdAndUser(9L, user)).thenReturn(Optional.of(transaction));
+        when(transactionValidationService.resolveAccount(user, 1L)).thenReturn(account);
+        when(transactionValidationService.resolveActiveCategory(4L, user)).thenReturn(salaryCategory);
+        when(transactionRepository.save(transaction)).thenReturn(transaction);
+        when(transactionMutationService.toResponseDto(transaction)).thenReturn(response);
+
+        TransactionResponseDTO result = transactionService.updateTransaction(
+                9L,
+                authentication,
+                updateDto,
+                RecurringTransactionChangeScope.THIS_AND_FUTURE
+        );
+
+        assertThat(result).isEqualTo(response);
+        verify(recurringTransactionService).updateCurrentAndFutureOccurrences(transaction, updateDto, account, salaryCategory, user);
+        verify(transactionMutationService, never()).updateTransactionValues(any(), any(), any(), any());
     }
 
     @Test
@@ -306,11 +364,37 @@ class TransactionServiceTest {
         when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
         when(transactionRepository.findActiveByIdAndUser(9L, user)).thenReturn(Optional.of(transaction));
 
-        transactionService.deleteTransaction(9L, authentication);
+        transactionService.deleteTransaction(9L, authentication, RecurringTransactionChangeScope.ONLY_THIS);
 
-        assertThat(account.getBalance()).isEqualByComparingTo("0.00");
-        verify(s3Service).deleteFile("receipts/" + receiptId);
-        verify(transactionRepository).delete(transaction);
+        verify(transactionMutationService).deleteSingleTransaction(transaction);
+    }
+
+    @Test
+    void shouldDelegateRecurringCurrentAndFutureDeleteToRecurringService() {
+        User user = EntityTestFactory.user(1L, "user@example.com", true);
+        Account account = EntityTestFactory.account(1L, user, new BigDecimal("30.00"));
+        Category category = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
+        Transaction transaction = EntityTestFactory.transaction(
+                9L,
+                user,
+                account,
+                category,
+                TransactionType.INCOME,
+                new BigDecimal("30.00"),
+                LocalDate.of(2026, 4, 1)
+        );
+
+        when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
+        when(transactionRepository.findActiveByIdAndUser(9L, user)).thenReturn(Optional.of(transaction));
+
+        transactionService.deleteTransaction(
+                9L,
+                authentication,
+                RecurringTransactionChangeScope.THIS_AND_FUTURE
+        );
+
+        verify(recurringTransactionService).deleteCurrentAndFutureOccurrences(transaction, user);
+        verify(transactionMutationService, never()).deleteSingleTransaction(any(Transaction.class));
     }
 
     @Test

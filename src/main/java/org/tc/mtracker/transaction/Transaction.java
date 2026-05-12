@@ -7,6 +7,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import org.tc.mtracker.account.Account;
 import org.tc.mtracker.category.Category;
 import org.tc.mtracker.common.enums.TransactionType;
+import org.tc.mtracker.transaction.recurring.RecurringTransaction;
 import org.tc.mtracker.user.User;
 
 import java.math.BigDecimal;
@@ -53,6 +54,10 @@ public class Transaction {
     @OneToMany(mappedBy = "transaction", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<ReceiptImage> receipts = new ArrayList<>();
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "recurring_transaction_id")
+    private RecurringTransaction recurringTransaction;
 
     @Column(nullable = false)
     private LocalDate date;
