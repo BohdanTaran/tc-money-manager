@@ -1,6 +1,5 @@
 package org.tc.mtracker.utils.exceptions;
 
-import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
@@ -43,14 +42,24 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(BadCredentialsException.class)
-    public ProblemDetail handleBadCredentials(BadCredentialsException ex, HttpServletRequest request) {
+    public ProblemDetail handleBadCredentials(HttpServletRequest request) {
         return buildProblem(HttpStatus.UNAUTHORIZED, "Invalid email or password.", "bad_credentials", request);
     }
 
-    @ExceptionHandler({JwtException.class, UsernameNotFoundException.class})
-    public ProblemDetail handleJwtException(Exception ex, HttpServletRequest request) {
-        log.warn("Token processing failed for {} {}: {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
-        return buildProblem(HttpStatus.UNAUTHORIZED, "Invalid or expired token.", "invalid_token", request);
+    @ExceptionHandler(JwtAuthenticationException.class)
+    public ProblemDetail handleJwtAuthenticationException(JwtAuthenticationException ex, HttpServletRequest request) {
+        log.warn("JWT authentication failed: {} - {}", ex.getErrorCode(), ex.getMessage());
+        return buildProblem(
+                HttpStatus.UNAUTHORIZED,
+                ex.getMessage(),
+                ex.getErrorCode(),
+                request
+        );
+    }
+
+    @ExceptionHandler(UsernameNotFoundException.class)
+    public ProblemDetail handleUsernameNotFound(HttpServletRequest request) {
+        return buildProblem(HttpStatus.UNAUTHORIZED, "Invalid email or password.", "bad_credentials", request);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -105,12 +114,12 @@ public class GlobalExceptionHandler {
             MissingServletRequestPartException.class,
             MissingServletRequestParameterException.class
     })
-    public ProblemDetail handleMalformedRequest(Exception ex, HttpServletRequest request) {
+    public ProblemDetail handleMalformedRequest(HttpServletRequest request) {
         return buildProblem(HttpStatus.BAD_REQUEST, "Malformed request.", "malformed_request", request);
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
-    public ProblemDetail handleMaxUploadSizeExceeded(MaxUploadSizeExceededException ex, HttpServletRequest request) {
+    public ProblemDetail handleMaxUploadSizeExceeded(HttpServletRequest request) {
         return buildProblem(
                 HttpStatus.CONTENT_TOO_LARGE,
                 "Uploaded file is too large.",
@@ -120,7 +129,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MultipartException.class)
-    public ProblemDetail handleMultipartException(MultipartException ex, HttpServletRequest request) {
+    public ProblemDetail handleMultipartException(HttpServletRequest request) {
         return buildProblem(HttpStatus.BAD_REQUEST, "Invalid multipart request.", "invalid_multipart_request", request);
     }
 
@@ -132,7 +141,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ProblemDetail handleAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
+    public ProblemDetail handleAccessDenied(HttpServletRequest request) {
         return buildProblem(HttpStatus.FORBIDDEN, "Access denied.", "access_denied", request);
     }
 

@@ -271,6 +271,6 @@ class UserApiTest extends BaseApiIntegrationTest {
         restTestClient.get()
                 .uri("/api/v1/users/me")
                 .exchange()
-                .expectStatus().isForbidden();
+                .expectStatus().isUnauthorized();
     }
 }

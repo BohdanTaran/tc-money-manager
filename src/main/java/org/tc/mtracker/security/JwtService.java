@@ -39,10 +39,6 @@ public class JwtService {
         return buildToken(extraClaims, userDetails, jwtProperties.accessTokenExpiration());
     }
 
-    public long getExpirationTime() {
-        return jwtProperties.accessTokenExpiration();
-    }
-
     public long getRefreshExpiration() {
         return jwtProperties.refreshTokenExpiration();
     }
@@ -67,7 +63,7 @@ public class JwtService {
         return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
     }
 
-    private boolean isTokenExpired(String token) {
+    boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());
     }
 
