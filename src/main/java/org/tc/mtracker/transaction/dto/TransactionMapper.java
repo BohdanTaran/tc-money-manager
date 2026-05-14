@@ -33,7 +33,7 @@ public interface TransactionMapper {
     @Mapping(target = "deletedAt", ignore = true)
     @Mapping(target = "receipts", ignore = true)
     @Mapping(target = "recurringTransaction", ignore = true)
-    void updateEntity(TransactionCreateRequestDTO dto, @MappingTarget Transaction transaction);
+    void updateEntity(TransactionUpdateRequestDTO dto, @MappingTarget Transaction transaction);
 
     @Mapping(target = "accountId", source = "transaction.account.id")
     @Mapping(target = "intervalUnit", source = "transaction.recurringTransaction.intervalUnit")

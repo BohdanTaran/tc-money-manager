@@ -19,10 +19,11 @@ import org.tc.mtracker.transaction.ReceiptImage;
 import org.tc.mtracker.transaction.Transaction;
 import org.tc.mtracker.transaction.TransactionRepository;
 import org.tc.mtracker.transaction.dto.TransactionCreateRequestDTO;
+import org.tc.mtracker.transaction.dto.TransactionUpdateRequestDTO;
 import org.tc.mtracker.transaction.recurring.RecurringTransaction;
 import org.tc.mtracker.transaction.recurring.RecurringTransactionRepository;
-import org.tc.mtracker.transaction.recurring.dto.RecurringTransactionCreateRequestDTO;
 import org.tc.mtracker.transaction.recurring.enums.IntervalUnit;
+import org.tc.mtracker.transaction.recurring.enums.RecurringTransactionChangeScope;
 import org.tc.mtracker.user.User;
 
 import java.math.BigDecimal;
@@ -59,7 +60,28 @@ class TransactionApiTest extends BaseApiIntegrationTest {
                 categoryId,
                 date,
                 description,
-                accountId
+                accountId,
+                IntervalUnit.ONCE
+        );
+    }
+
+    private static TransactionCreateRequestDTO createRecurringRequest(
+            BigDecimal amount,
+            TransactionType type,
+            Long categoryId,
+            LocalDate date,
+            String description,
+            Long accountId,
+            IntervalUnit intervalUnit
+    ) {
+        return new TransactionCreateRequestDTO(
+                amount,
+                type,
+                categoryId,
+                date,
+                description,
+                accountId,
+                intervalUnit
         );
     }
 
@@ -79,44 +101,26 @@ class TransactionApiTest extends BaseApiIntegrationTest {
         return parts;
     }
 
-    private static RecurringTransactionCreateRequestDTO createRecurringRequest(
-            BigDecimal amount,
-            TransactionType type,
-            Long categoryId,
-            LocalDate date,
-            String description,
-            Long accountId,
-            IntervalUnit intervalUnit
-    ) {
-        return new RecurringTransactionCreateRequestDTO(
-                amount,
-                type,
-                categoryId,
-                date,
-                description,
-                accountId,
-                intervalUnit
-        );
-    }
-
     private Transaction createRecurringIncomeForToday(
             User user,
             Category category,
             BigDecimal amount,
             String description
     ) {
+        TransactionCreateRequestDTO recurringRequest = createRecurringRequest(
+                amount,
+                TransactionType.INCOME,
+                category.getId(),
+                LocalDate.now(),
+                description,
+                1L,
+                IntervalUnit.MONTHLY
+        );
+        MultipartBodyBuilder multipartRequest = createMultipartRequest(recurringRequest);
         restTestClient.post()
-                .uri("/api/v1/recurring-transactions")
+                .uri("/api/v1/transactions")
                 .header(HttpHeaders.AUTHORIZATION, authHeader(user))
-                .body(createRecurringRequest(
-                        amount,
-                        TransactionType.INCOME,
-                        category.getId(),
-                        LocalDate.now(),
-                        description,
-                        null,
-                        IntervalUnit.MONTHLY
-                ))
+                .body(multipartRequest.build())
                 .exchange()
                 .expectStatus().isCreated();
 
@@ -434,13 +438,15 @@ class TransactionApiTest extends BaseApiIntegrationTest {
         restTestClient.patch()
                 .uri("/api/v1/transactions/{id}", transaction.getId())
                 .header(HttpHeaders.AUTHORIZATION, authHeader(user))
-                .body(createRequest(
+                .body(new TransactionUpdateRequestDTO(
                         new BigDecimal("50.00"),
                         TransactionType.EXPENSE,
                         category.getId(),
                         LocalDate.of(2026, 4, 2),
                         "Updated groceries",
-                        savings.getId()
+                        savings.getId(),
+                        IntervalUnit.ONCE,
+                        RecurringTransactionChangeScope.ONLY_THIS
                         
                 ))
                 .exchange()
@@ -465,23 +471,22 @@ class TransactionApiTest extends BaseApiIntegrationTest {
         Long recurringTransactionId = transaction.getRecurringTransaction().getId();
 
         restTestClient.patch()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/api/v1/transactions/{id}")
-                        .queryParam("recurringScope", "THIS_AND_FUTURE")
-                        .build(transaction.getId()))
+                .uri("/api/v1/transactions/{id}", transaction.getId())
                 .header(HttpHeaders.AUTHORIZATION, authHeader(user))
-                .body(createRequest(
+                .body(new TransactionUpdateRequestDTO(
                         new BigDecimal("150.00"),
                         TransactionType.INCOME,
                         bonus.getId(),
                         updatedDate,
                         "Updated salary",
-                        user.getDefaultAccount().getId()
+                        user.getDefaultAccount().getId(),
+                        IntervalUnit.YEARLY,
+                        RecurringTransactionChangeScope.THIS_AND_FUTURE
                 ))
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.intervalUnit").isEqualTo(IntervalUnit.MONTHLY.name())
+                .jsonPath("$.intervalUnit").isEqualTo(IntervalUnit.YEARLY.name())
                 .jsonPath("$.amount").isEqualTo(150.00)
                 .jsonPath("$.category.id").isEqualTo(bonus.getId());
 
@@ -490,7 +495,8 @@ class TransactionApiTest extends BaseApiIntegrationTest {
         assertThat(recurringTransaction.getCategory().getId()).isEqualTo(bonus.getId());
         assertThat(recurringTransaction.getDescription()).isEqualTo("Updated salary");
         assertThat(recurringTransaction.getStartDate()).isEqualTo(updatedDate);
-        assertThat(recurringTransaction.getNextExecutionDate()).isEqualTo(updatedDate.plusMonths(1));
+        assertThat(recurringTransaction.getIntervalUnit()).isEqualTo(IntervalUnit.YEARLY);
+        assertThat(recurringTransaction.getNextExecutionDate()).isEqualTo(updatedDate.plusYears(1));
 
         assertThat(accountRepository.findById(user.getDefaultAccount().getId()).orElseThrow().getBalance())
                 .isEqualByComparingTo("150.00");
@@ -508,13 +514,15 @@ class TransactionApiTest extends BaseApiIntegrationTest {
         restTestClient.patch()
                 .uri("/api/v1/transactions/{id}", transaction.getId())
                 .header(HttpHeaders.AUTHORIZATION, authHeader(user))
-                .body(createRequest(
+                .body(new TransactionUpdateRequestDTO(
                         new BigDecimal("150.00"),
                         TransactionType.INCOME,
                         salary.getId(),
                         LocalDate.now(),
                         "One changed salary",
-                        user.getDefaultAccount().getId()
+                        user.getDefaultAccount().getId(),
+                        IntervalUnit.MONTHLY,
+                        null
                 ))
                 .exchange()
                 .expectStatus().isOk()
@@ -547,16 +555,17 @@ class TransactionApiTest extends BaseApiIntegrationTest {
         restTestClient.patch()
                 .uri(uriBuilder -> uriBuilder
                         .path("/api/v1/transactions/{id}")
-                        .queryParam("recurringScope", "THIS_AND_FUTURE")
                         .build(transaction.getId()))
                 .header(HttpHeaders.AUTHORIZATION, authHeader(user))
-                .body(createRequest(
+                .body(new TransactionUpdateRequestDTO(
                         new BigDecimal("150.00"),
                         TransactionType.INCOME,
                         salary.getId(),
                         LocalDate.now(),
                         "Updated salary",
-                        user.getDefaultAccount().getId()
+                        user.getDefaultAccount().getId(),
+                        IntervalUnit.ONCE,
+                        RecurringTransactionChangeScope.THIS_AND_FUTURE
                 ))
                 .exchange()
                 .expectStatus().isBadRequest()

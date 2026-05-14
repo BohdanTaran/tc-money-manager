@@ -20,6 +20,7 @@ import org.tc.mtracker.common.enums.TransactionType;
 import org.tc.mtracker.common.receipt.ValidReceiptFile;
 import org.tc.mtracker.transaction.dto.TransactionCreateRequestDTO;
 import org.tc.mtracker.transaction.dto.TransactionResponseDTO;
+import org.tc.mtracker.transaction.dto.TransactionUpdateRequestDTO;
 import org.tc.mtracker.transaction.recurring.enums.RecurringTransactionChangeScope;
 
 import java.time.LocalDate;
@@ -143,9 +144,7 @@ public interface TransactionApi {
     ResponseEntity<TransactionResponseDTO> updateTransaction(
             @PathVariable Long id,
             @Parameter(description = "How to apply changes when the transaction belongs to a recurring rule.")
-            @RequestParam(name = "recurringScope", defaultValue = "ONLY_THIS")
-            RecurringTransactionChangeScope recurringScope,
-            @Valid @RequestBody TransactionCreateRequestDTO updateRequestDTO,
+            @Valid @RequestBody TransactionUpdateRequestDTO updateRequestDTO,
             @Parameter(hidden = true) Authentication auth
     );
 

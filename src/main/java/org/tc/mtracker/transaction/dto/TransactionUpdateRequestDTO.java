@@ -7,12 +7,13 @@ import jakarta.validation.constraints.NotNull;
 import org.hibernate.validator.constraints.Length;
 import org.tc.mtracker.common.enums.TransactionType;
 import org.tc.mtracker.transaction.recurring.enums.IntervalUnit;
+import org.tc.mtracker.transaction.recurring.enums.RecurringTransactionChangeScope;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Schema(description = "Create or update a one-time transaction. Date can be in the past or today, but not in the future.")
-public record TransactionCreateRequestDTO(
+public record TransactionUpdateRequestDTO(
 
         @NotNull
         @DecimalMin(value = "0.01")
@@ -40,6 +41,9 @@ public record TransactionCreateRequestDTO(
         Long accountId,
 
         @Schema(description = "Interval unit for recurring transaction", example = "MONTHLY")
-        IntervalUnit intervalUnit
+        IntervalUnit intervalUnit,
+
+        @Schema(description = "Transaction recurring scope", example = "ONLY_THIS")
+        RecurringTransactionChangeScope transactionChangeScope
 ) {
 }

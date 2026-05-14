@@ -12,10 +12,15 @@ import org.tc.mtracker.common.enums.TransactionType;
 import org.tc.mtracker.transaction.dto.TransactionCreateRequestDTO;
 import org.tc.mtracker.transaction.dto.TransactionMapper;
 import org.tc.mtracker.transaction.dto.TransactionResponseDTO;
+import org.tc.mtracker.transaction.dto.TransactionUpdateRequestDTO;
+import org.tc.mtracker.transaction.recurring.RecurringTransaction;
 import org.tc.mtracker.transaction.recurring.RecurringTransactionService;
+import org.tc.mtracker.transaction.recurring.enums.IntervalUnit;
 import org.tc.mtracker.transaction.recurring.enums.RecurringTransactionChangeScope;
 import org.tc.mtracker.user.User;
 import org.tc.mtracker.user.UserService;
+import org.tc.mtracker.utils.exceptions.InvalidReceiptAttachmentException;
+import org.tc.mtracker.utils.exceptions.RecurringTransactionScopeException;
 import org.tc.mtracker.utils.exceptions.TransactionNotFoundException;
 
 import java.time.LocalDate;
@@ -35,21 +40,47 @@ public class TransactionService {
     @Transactional
     public TransactionResponseDTO createTransaction(Authentication auth, TransactionCreateRequestDTO createRequestDTO, List<MultipartFile> receipts) {
         User user = userService.getCurrentAuthenticatedUser(auth);
-        transactionValidationService.validateOneTimeTransactionDate(createRequestDTO.date(), user);
         Account account = transactionValidationService.resolveAccount(user, createRequestDTO.accountId());
-        Transaction transaction = transactionMapper.toEntity(createRequestDTO, user);
         Category category = transactionValidationService.resolveActiveCategory(createRequestDTO.categoryId(), user);
+        IntervalUnit intervalUnit = createRequestDTO.intervalUnit();
         transactionValidationService.validateTransactionType(createRequestDTO.type(), category, user);
 
-        transaction.setAccount(account);
-        transaction.setCategory(category);
-        transactionMutationService.addReceiptsToTransaction(receipts, transaction);
+        if (intervalUnit == null || intervalUnit.equals(IntervalUnit.ONCE)) {
+            Transaction transaction = transactionMapper.toEntity(createRequestDTO, user);
+            transactionValidationService.validateOneTimeTransactionDate(createRequestDTO.date(), user);
+            transaction.setAccount(account);
+            transaction.setCategory(category);
+            transactionMutationService.addReceiptsToTransaction(receipts, transaction);
 
-        Transaction saved = transactionMutationService.persistTransaction(transaction);
-        log.info("Transaction created userId={} transactionId={} accountId={} amount={} type={}",
-                user.getId(), saved.getId(), account.getId(), saved.getAmount(), saved.getType());
+            Transaction saved = transactionMutationService.persistTransaction(transaction);
+            log.info("Transaction created userId={} transactionId={} accountId={} amount={} type={}",
+                    user.getId(), saved.getId(), account.getId(), saved.getAmount(), saved.getType());
 
-        return transactionMutationService.toResponseDto(saved);
+            return transactionMutationService.toResponseDto(saved);
+        }
+
+        RecurringTransaction recurringTransaction = recurringTransactionService.createRecurringTransaction(
+                user,
+                account,
+                category,
+                createRequestDTO
+        );
+        Transaction occurrence = RecurringTransactionService.toTransaction(recurringTransaction, createRequestDTO.date());
+
+        if (createRequestDTO.date().isEqual(transactionValidationService.today())) {
+            transactionMutationService.addReceiptsToTransaction(receipts, occurrence);
+            Transaction saved = transactionMutationService.persistTransaction(occurrence);
+            log.info("Recurring transaction occurrence created userId={} transactionId={} recurringTransactionId={} accountId={} amount={} type={}",
+                    user.getId(), saved.getId(), recurringTransaction.getId(), account.getId(), saved.getAmount(), saved.getType());
+
+            return transactionMutationService.toResponseDto(saved);
+        }
+
+        if (hasReceipts(receipts)) {
+            throw new InvalidReceiptAttachmentException("Receipts can be attached only when a transaction occurrence is created.");
+        }
+
+        return transactionMutationService.toResponseDto(occurrence);
     }
 
     @Transactional(readOnly = true)
@@ -90,8 +121,7 @@ public class TransactionService {
     public TransactionResponseDTO updateTransaction(
             Long transactionId,
             Authentication auth,
-            TransactionCreateRequestDTO updateRequestDTO,
-            RecurringTransactionChangeScope recurringScope
+            TransactionUpdateRequestDTO updateRequestDTO
     ) {
         User user = userService.getCurrentAuthenticatedUser(auth);
         transactionValidationService.validateOneTimeTransactionDate(updateRequestDTO.date(), user);
@@ -100,9 +130,15 @@ public class TransactionService {
         Account targetAccount = transactionValidationService.resolveAccount(user, updateRequestDTO.accountId());
         Category category = transactionValidationService.resolveActiveCategory(updateRequestDTO.categoryId(), user);
 
+        RecurringTransactionChangeScope recurringScope = updateRequestDTO.transactionChangeScope() == null
+                ? RecurringTransactionChangeScope.ONLY_THIS
+                : updateRequestDTO.transactionChangeScope();
+        IntervalUnit intervalUnit = updateRequestDTO.intervalUnit() == null
+                ? IntervalUnit.ONCE
+                : updateRequestDTO.intervalUnit();
         transactionValidationService.validateTransactionType(updateRequestDTO.type(), category, user);
 
-        if (recurringScope == RecurringTransactionChangeScope.THIS_AND_FUTURE) {
+        if (recurringScope == RecurringTransactionChangeScope.THIS_AND_FUTURE && intervalUnit != IntervalUnit.ONCE) {
             recurringTransactionService.updateCurrentAndFutureOccurrences(
                     transaction,
                     updateRequestDTO,
@@ -110,8 +146,10 @@ public class TransactionService {
                     category,
                     user
             );
-        } else {
+        } else if (recurringScope == RecurringTransactionChangeScope.ONLY_THIS) {
             transactionMutationService.updateTransactionValues(transaction, updateRequestDTO, targetAccount, category);
+        } else {
+            throw new RecurringTransactionScopeException("invalid");
         }
 
         Transaction saved = transactionRepository.save(transaction);
@@ -140,6 +178,10 @@ public class TransactionService {
                     log.warn("Transaction not found userId={} transactionId={}", user.getId(), transactionId);
                     return new TransactionNotFoundException("Transaction with id %d not found".formatted(transactionId));
                 });
+    }
+
+    private boolean hasReceipts(List<MultipartFile> receipts) {
+        return receipts != null && !receipts.isEmpty();
     }
 
 }

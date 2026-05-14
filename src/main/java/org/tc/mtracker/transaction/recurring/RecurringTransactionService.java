@@ -11,7 +11,7 @@ import org.tc.mtracker.transaction.Transaction;
 import org.tc.mtracker.transaction.TransactionMutationService;
 import org.tc.mtracker.transaction.TransactionValidationService;
 import org.tc.mtracker.transaction.dto.TransactionCreateRequestDTO;
-import org.tc.mtracker.transaction.recurring.dto.RecurringTransactionCreateRequestDTO;
+import org.tc.mtracker.transaction.dto.TransactionUpdateRequestDTO;
 import org.tc.mtracker.transaction.recurring.dto.RecurringTransactionMapper;
 import org.tc.mtracker.transaction.recurring.dto.RecurringTransactionResponseDTO;
 import org.tc.mtracker.transaction.recurring.enums.IntervalUnit;
@@ -49,21 +49,17 @@ public class RecurringTransactionService {
         return recurringTransactionMapper.toDto(findOwnedRecurringTransaction(recurringTransactionId, user));
     }
 
-    public RecurringTransactionResponseDTO createRecurringTransaction(
-            Authentication auth,
-            RecurringTransactionCreateRequestDTO requestDTO
+    public RecurringTransaction createRecurringTransaction(
+            User user,
+            Account account,
+            Category category,
+            TransactionCreateRequestDTO requestDTO
     ) {
-        User user = userService.getCurrentAuthenticatedUser(auth);
         transactionValidationService.validateRecurringStartDate(requestDTO.date(), user);
         LocalDate today = transactionValidationService.today();
-
-        Account account = transactionValidationService.resolveAccount(user, requestDTO.accountId());
-        Category category = transactionValidationService.resolveActiveCategory(requestDTO.categoryId(), user);
         transactionValidationService.validateTransactionType(requestDTO.type(), category, user);
-
-        RecurringTransaction recurringTransaction = recurringTransactionMapper.toEntity(requestDTO, user);
-        recurringTransaction.setAccount(account);
-        recurringTransaction.setCategory(category);
+        RecurringTransaction recurringTransaction = recurringTransactionMapper
+                .toEntity(requestDTO, user, category, account);
 
         boolean startToday = requestDTO.date().isEqual(today);
         recurringTransaction.setNextExecutionDate(startToday
@@ -72,16 +68,9 @@ public class RecurringTransactionService {
 
         RecurringTransaction saved = recurringTransactionRepository.save(recurringTransaction);
 
-        if (startToday) {
-            createAutomatedTransaction(toTransaction(saved, requestDTO.date()));
-            log.info("Recurring transaction created and executed immediately userId={} recurringTransactionId={} startDate={} intervalUnit={}",
-                    user.getId(), saved.getId(), saved.getStartDate(), saved.getIntervalUnit());
-        } else {
-            log.info("Recurring transaction created userId={} recurringTransactionId={} startDate={} firstExecutionDate={} intervalUnit={}",
-                    user.getId(), saved.getId(), saved.getStartDate(), saved.getNextExecutionDate(), saved.getIntervalUnit());
-        }
-
-        return recurringTransactionMapper.toDto(saved);
+        log.info("Recurring transaction created userId={} recurringTransactionId={} startDate={} firstExecutionDate={} intervalUnit={}",
+                user.getId(), saved.getId(), saved.getStartDate(), saved.getNextExecutionDate(), saved.getIntervalUnit());
+        return saved;
     }
 
     public void deleteRecurringTransaction(Long recurringTransactionId, Authentication auth) {
@@ -93,7 +82,7 @@ public class RecurringTransactionService {
 
     public void updateCurrentAndFutureOccurrences(
             Transaction transaction,
-            TransactionCreateRequestDTO updateRequestDTO,
+            TransactionUpdateRequestDTO updateRequestDTO,
             Account targetAccount,
             Category category,
             User user
@@ -108,9 +97,10 @@ public class RecurringTransactionService {
         recurringTransaction.setType(updateRequestDTO.type());
         recurringTransaction.setDescription(updateRequestDTO.description());
         recurringTransaction.setStartDate(updateRequestDTO.date());
+        recurringTransaction.setIntervalUnit(updateRequestDTO.intervalUnit());
         recurringTransaction.setNextExecutionDate(nextExecutionDateAfterToday(
                 updateRequestDTO.date(),
-                recurringTransaction.getIntervalUnit()
+                updateRequestDTO.intervalUnit()
         ));
     }
 
@@ -136,6 +126,7 @@ public class RecurringTransactionService {
         return switch (intervalUnit) {
             case MONTHLY -> baseDate.plusMonths(1);
             case YEARLY -> baseDate.plusYears(1);
+            default -> throw new IllegalArgumentException("Invalid interval unit");
         };
     }
 
@@ -171,7 +162,7 @@ public class RecurringTransactionService {
         return recurringTransaction;
     }
 
-    static Transaction toTransaction(RecurringTransaction recurringTransaction, LocalDate transactionDate) {
+    public static Transaction toTransaction(RecurringTransaction recurringTransaction, LocalDate transactionDate) {
         return Transaction.builder()
                 .user(recurringTransaction.getUser())
                 .account(recurringTransaction.getAccount())

@@ -13,15 +13,14 @@ import org.tc.mtracker.category.Category;
 import org.tc.mtracker.category.enums.CategoryStatus;
 import org.tc.mtracker.common.enums.TransactionType;
 import org.tc.mtracker.support.factory.EntityTestFactory;
-import org.tc.mtracker.transaction.Transaction;
-import org.tc.mtracker.transaction.TransactionMutationService;
-import org.tc.mtracker.transaction.TransactionRepository;
-import org.tc.mtracker.transaction.TransactionService;
-import org.tc.mtracker.transaction.TransactionValidationService;
+import org.tc.mtracker.transaction.*;
 import org.tc.mtracker.transaction.dto.TransactionCreateRequestDTO;
 import org.tc.mtracker.transaction.dto.TransactionMapper;
 import org.tc.mtracker.transaction.dto.TransactionResponseDTO;
+import org.tc.mtracker.transaction.dto.TransactionUpdateRequestDTO;
+import org.tc.mtracker.transaction.recurring.RecurringTransaction;
 import org.tc.mtracker.transaction.recurring.RecurringTransactionService;
+import org.tc.mtracker.transaction.recurring.enums.IntervalUnit;
 import org.tc.mtracker.transaction.recurring.enums.RecurringTransactionChangeScope;
 import org.tc.mtracker.user.User;
 import org.tc.mtracker.user.UserService;
@@ -38,7 +37,6 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -87,7 +85,50 @@ class TransactionServiceTest {
                 categoryId,
                 date,
                 description,
-                accountId
+                accountId,
+                IntervalUnit.ONCE
+        );
+    }
+
+    private static TransactionCreateRequestDTO createRequest(
+            BigDecimal amount,
+            TransactionType type,
+            Long categoryId,
+            LocalDate date,
+            String description,
+            Long accountId,
+            IntervalUnit intervalUnit
+    ) {
+        return new TransactionCreateRequestDTO(
+                amount,
+                type,
+                categoryId,
+                date,
+                description,
+                accountId,
+                intervalUnit
+        );
+    }
+
+    private static TransactionUpdateRequestDTO createUpdateRequest(
+            BigDecimal amount,
+            TransactionType type,
+            Long categoryId,
+            LocalDate date,
+            String description,
+            Long accountId,
+            IntervalUnit intervalUnit,
+            RecurringTransactionChangeScope recurringTransactionChangeScope
+    ) {
+        return new TransactionUpdateRequestDTO(
+                amount,
+                type,
+                categoryId,
+                date,
+                description,
+                accountId,
+                intervalUnit,
+                recurringTransactionChangeScope
         );
     }
 
@@ -183,6 +224,74 @@ class TransactionServiceTest {
     }
 
     @Test
+    void shouldCreateRecurringTransactionForTodayAndReturnGeneratedOccurrence() {
+        User user = EntityTestFactory.user(1L, "user@example.com", true);
+        Account defaultAccount = EntityTestFactory.account(1L, user, BigDecimal.ZERO);
+        Category category = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
+        TransactionCreateRequestDTO dto = createRequest(
+                new BigDecimal("2000.00"),
+                TransactionType.INCOME,
+                4L,
+                LocalDate.of(2026, 4, 17),
+                "Salary",
+                null,
+                IntervalUnit.MONTHLY
+        );
+        RecurringTransaction recurringTransaction = RecurringTransaction.builder()
+                .id(10L)
+                .user(user)
+                .account(defaultAccount)
+                .category(category)
+                .amount(dto.amount())
+                .type(dto.type())
+                .description(dto.description())
+                .startDate(dto.date())
+                .nextExecutionDate(LocalDate.of(2026, 5, 17))
+                .intervalUnit(dto.intervalUnit())
+                .build();
+        MockMultipartFile receipt = new MockMultipartFile("receipts", "receipt.jpg", "image/jpeg", "receipt".getBytes());
+        TransactionResponseDTO response = new TransactionResponseDTO(
+                11L,
+                1L,
+                IntervalUnit.MONTHLY,
+                dto.amount(),
+                null,
+                dto.description(),
+                dto.type(),
+                List.of("https://test-bucket.local/receipt-1"),
+                dto.date(),
+                null,
+                null
+        );
+
+        when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
+        when(transactionValidationService.resolveAccount(user, dto.accountId())).thenReturn(defaultAccount);
+        when(transactionValidationService.resolveActiveCategory(dto.categoryId(), user)).thenReturn(category);
+        when(transactionValidationService.today()).thenReturn(LocalDate.of(2026, 4, 17));
+        when(recurringTransactionService.createRecurringTransaction(user, defaultAccount, category, dto))
+                .thenReturn(recurringTransaction);
+        when(transactionMutationService.persistTransaction(any(Transaction.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(transactionMutationService.toResponseDto(any(Transaction.class))).thenReturn(response);
+
+        TransactionResponseDTO result = transactionService.createTransaction(authentication, dto, List.of(receipt));
+
+        assertThat(result).isEqualTo(response);
+        verify(transactionMutationService).addReceiptsToTransaction(eq(List.of(receipt)), argThat(transaction ->
+                transaction.getRecurringTransaction() == recurringTransaction
+                        && transaction.getAccount() == defaultAccount
+                        && transaction.getCategory() == category
+                        && transaction.getDate().equals(dto.date())
+        ));
+        verify(transactionMutationService).persistTransaction(argThat(transaction ->
+                transaction.getRecurringTransaction() == recurringTransaction
+                        && transaction.getAmount().compareTo(dto.amount()) == 0
+                        && transaction.getType() == dto.type()
+        ));
+        verify(transactionMapper, never()).toEntity(any(), any());
+    }
+
+    @Test
     void shouldPropagateCategoryInactiveValidationDuringCreate() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
         TransactionCreateRequestDTO dto = createRequest(
@@ -217,12 +326,10 @@ class TransactionServiceTest {
                 "Expense",
                 null
         );
-        Transaction transaction = EntityTestFactory.transaction(null, user, null, null, dto.type(), dto.amount(), dto.date());
 
         when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
         when(transactionValidationService.resolveAccount(user, dto.accountId())).thenReturn(defaultAccount);
         when(transactionValidationService.resolveActiveCategory(dto.categoryId(), user)).thenReturn(category);
-        when(transactionMapper.toEntity(dto, user)).thenReturn(transaction);
         doThrow(new MoneyFlowTypeMismatchException("Category type does not match transaction type."))
                 .when(transactionValidationService).validateTransactionType(dto.type(), category, user);
 
@@ -247,13 +354,15 @@ class TransactionServiceTest {
                 new BigDecimal("30.00"),
                 LocalDate.of(2026, 4, 1)
         );
-        TransactionCreateRequestDTO updateDto = createRequest(
+        TransactionUpdateRequestDTO updateDto = createUpdateRequest(
                 new BigDecimal("50.00"),
                 TransactionType.EXPENSE,
                 4L,
                 LocalDate.of(2026, 4, 2),
                 "Updated expense",
-                2L
+                2L,
+                IntervalUnit.ONCE,
+                RecurringTransactionChangeScope.ONLY_THIS
         );
         TransactionResponseDTO response = new TransactionResponseDTO(
                 9L,
@@ -279,8 +388,7 @@ class TransactionServiceTest {
         TransactionResponseDTO result = transactionService.updateTransaction(
                 9L,
                 authentication,
-                updateDto,
-                RecurringTransactionChangeScope.ONLY_THIS
+                updateDto
         );
 
         assertThat(result).isEqualTo(response);
@@ -303,13 +411,15 @@ class TransactionServiceTest {
                 new BigDecimal("100.00"),
                 LocalDate.of(2026, 4, 1)
         );
-        TransactionCreateRequestDTO updateDto = createRequest(
+        TransactionUpdateRequestDTO updateDto = createUpdateRequest(
                 new BigDecimal("150.00"),
                 TransactionType.INCOME,
                 4L,
                 LocalDate.of(2026, 4, 2),
                 "Updated salary",
-                1L
+                1L,
+                IntervalUnit.MONTHLY,
+                RecurringTransactionChangeScope.THIS_AND_FUTURE
         );
         TransactionResponseDTO response = new TransactionResponseDTO(
                 9L,
@@ -335,8 +445,7 @@ class TransactionServiceTest {
         TransactionResponseDTO result = transactionService.updateTransaction(
                 9L,
                 authentication,
-                updateDto,
-                RecurringTransactionChangeScope.THIS_AND_FUTURE
+                updateDto
         );
 
         assertThat(result).isEqualTo(response);
