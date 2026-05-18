@@ -122,7 +122,7 @@ class CategoryApiTest extends BaseApiIntegrationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"a", "salary", "salary!", "salary", "SALARY", "https://www.aws.s3/ioi.txt"})
+    @ValueSource(strings = {"a", "salary", "salary!", "salary", "SALARY", "sklajhdklfhlaksdjfh"})
     void shouldUpdateOwnedCategory(String categoryName) {
         User user = fixtures.createUser("update-category@example.com");
         var category = fixtures.createUserCategory(user, "Freelance", TransactionType.INCOME);
