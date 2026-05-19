@@ -12,6 +12,7 @@ import org.tc.mtracker.category.CategoryRepository;
 import org.tc.mtracker.category.dto.CreateCategoryDTO;
 import org.tc.mtracker.category.dto.UpdateCategoryDTO;
 import org.tc.mtracker.category.enums.CategoryStatus;
+import org.tc.mtracker.category.enums.IconIds;
 import org.tc.mtracker.common.enums.TransactionType;
 import org.tc.mtracker.support.base.BaseApiIntegrationTest;
 import org.tc.mtracker.transaction.TransactionRepository;
@@ -35,7 +36,13 @@ class CategoryApiTest extends BaseApiIntegrationTest {
         fixtures.createGlobalCategory("Salary", TransactionType.INCOME);
         fixtures.createGlobalCategory("Rent", TransactionType.EXPENSE);
         fixtures.createUserCategory(currentUser, "Side Project", TransactionType.INCOME);
-        fixtures.createCategory(currentUser, "Archived Food", TransactionType.EXPENSE, CategoryStatus.ARCHIVED, "archive");
+        fixtures.createCategory(
+                currentUser,
+                "Archived Food",
+                TransactionType.EXPENSE,
+                CategoryStatus.ARCHIVED,
+                IconIds.AWARD.getId()
+        );
         fixtures.createUserCategory(otherUser, "Hidden", TransactionType.EXPENSE);
 
         restTestClient.get()
@@ -54,7 +61,12 @@ class CategoryApiTest extends BaseApiIntegrationTest {
     void shouldFilterArchivedCategories() {
         User currentUser = fixtures.createUser("categories@example.com");
         fixtures.createUserCategory(currentUser, "Active", TransactionType.EXPENSE);
-        fixtures.createCategory(currentUser, "Archived Food", TransactionType.EXPENSE, CategoryStatus.ARCHIVED, "archive");
+        fixtures.createCategory(
+                currentUser,
+                "Archived Food",
+                TransactionType.EXPENSE,
+                CategoryStatus.ARCHIVED,
+                "archive");
 
         restTestClient.get()
                 .uri(uriBuilder -> uriBuilder
@@ -71,14 +83,14 @@ class CategoryApiTest extends BaseApiIntegrationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"a", "salary", "salary!", "salary", "SALARY", "hafjykoyawewrryqbtuqgvdsg"})
+    @ValueSource(strings = {"a", "salary", "salary!", "Salary", "SALARY", "hafjykoyawewrryqbtuqgvdsg"})
     void shouldCreateCategory(String categoryName) {
         User user = fixtures.createUser("create-category@example.com");
 
         restTestClient.post()
                 .uri("/api/v1/categories")
                 .header(HttpHeaders.AUTHORIZATION, authHeader(user))
-                .body(new CreateCategoryDTO(categoryName, TransactionType.EXPENSE, "heart"))
+                .body(new CreateCategoryDTO(categoryName, TransactionType.EXPENSE, IconIds.TROPHY.getId()))
                 .exchange()
                 .expectStatus().isCreated()
                 .expectBody()
@@ -99,7 +111,7 @@ class CategoryApiTest extends BaseApiIntegrationTest {
         restTestClient.post()
                 .uri("/api/v1/categories")
                 .header(HttpHeaders.AUTHORIZATION, authHeader(user))
-                .body(new CreateCategoryDTO(invalidName, TransactionType.EXPENSE, "heart"))
+                .body(new CreateCategoryDTO(invalidName, TransactionType.EXPENSE, "https://www.aws.s3/ioi.txt"))
                 .exchange()
                 .expectStatus().isBadRequest();
 
@@ -116,13 +128,13 @@ class CategoryApiTest extends BaseApiIntegrationTest {
         restTestClient.post()
                 .uri("/api/v1/categories")
                 .header(HttpHeaders.AUTHORIZATION, authHeader(user))
-                .body(new CreateCategoryDTO("Salary", TransactionType.INCOME, "coin"))
+                .body(new CreateCategoryDTO("Salary", TransactionType.INCOME, IconIds.TROPHY.getId()))
                 .exchange()
                 .expectStatus().isEqualTo(HttpStatus.CONFLICT);
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"a", "salary", "salary!", "salary", "SALARY", "hafjykoyawewrryqbtuqgvdsg"})
+    @ValueSource(strings = {"a", "salary", "salary!", "Salary", "SALARY", "sklajhdklfhlaksdjfh"})
     void shouldUpdateOwnedCategory(String categoryName) {
         User user = fixtures.createUser("update-category@example.com");
         var category = fixtures.createUserCategory(user, "Freelance", TransactionType.INCOME);
@@ -156,7 +168,7 @@ class CategoryApiTest extends BaseApiIntegrationTest {
     @Test
     void shouldUnarchiveCategory() {
         User user = fixtures.createUser("unarchive-category@example.com");
-        var category = fixtures.createCategory(user, "Travel", TransactionType.EXPENSE, CategoryStatus.ARCHIVED, "icon");
+        var category = fixtures.createCategory(user, "Travel", TransactionType.EXPENSE, CategoryStatus.ARCHIVED, "https://www.aws.s3/ioi.txt");
 
         restTestClient.patch()
                 .uri("/api/v1/categories/{id}/unarchive", category.getId())

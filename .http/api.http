@@ -33,6 +33,17 @@ Content-Type: application/json
 GET {{baseUrl}}/users/me
 Authorization: Bearer {{accessToken}}
 
+###Create category
+POST {{baseUrl}}/categories
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "Salary",
+  "type": "INCOME",
+  "icon": "coins"
+}
+
 
 
 
