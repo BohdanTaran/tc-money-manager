@@ -1,4 +1,4 @@
-package org.tc.mtracker.category.dto;
+package org.tc.mtracker.unit.category;
 
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
@@ -8,6 +8,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.tc.mtracker.category.dto.CreateCategoryDTO;
 import org.tc.mtracker.common.enums.TransactionType;
 
 import java.util.Set;
