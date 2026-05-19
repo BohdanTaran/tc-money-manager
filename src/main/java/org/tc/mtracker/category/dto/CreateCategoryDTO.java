@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import org.hibernate.validator.constraints.Length;
-import org.hibernate.validator.constraints.URL;
+import org.tc.mtracker.category.validator.IconId;
 import org.tc.mtracker.common.enums.TransactionType;
 
 @Schema(description = "Create a new category")
@@ -21,8 +21,8 @@ public record CreateCategoryDTO(
         TransactionType type,
 
         @Schema(description = "Icon", example = "coin")
-        @NotBlank(message = "Category's icon URL should not be null or empty")
-        @URL(message = "Category's icon URL must be an URL")
+        @NotBlank(message = "Category's icon should not be null or empty")
+        @IconId(message = "Incorrect category icon id")
         String icon
 ) {
 }
