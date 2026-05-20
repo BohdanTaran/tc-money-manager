@@ -187,12 +187,12 @@ class CategoryServiceTest {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
         Category category = EntityTestFactory.category(3L, user, "Rent", TransactionType.EXPENSE, CategoryStatus.ACTIVE);
 
-        when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
+        when(userService.getUserById(1L)).thenReturn(user);
         when(categoryRepository.findOwnedById(3L, user)).thenReturn(Optional.of(category));
         when(transactionRepository.countByUserAndCategory(user, category)).thenReturn(0L);
         when(recurringTransactionRepository.countByUserAndCategory(user, category)).thenReturn(0L);
 
-        categoryService.deleteCategory(3L, null, authentication);
+        categoryService.deleteCategory(3L, null,1L);
 
         verify(transactionRepository, never()).reassignCategory(any(), any(), any());
         verify(recurringTransactionRepository, never()).reassignCategory(any(), any(), any());
@@ -204,12 +204,12 @@ class CategoryServiceTest {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
         Category category = EntityTestFactory.category(3L, user, "Rent", TransactionType.EXPENSE, CategoryStatus.ACTIVE);
 
-        when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
+        when(userService.getUserById(1L)).thenReturn(user);
         when(categoryRepository.findOwnedById(3L, user)).thenReturn(Optional.of(category));
         when(transactionRepository.countByUserAndCategory(user, category)).thenReturn(2L);
         when(recurringTransactionRepository.countByUserAndCategory(user, category)).thenReturn(0L);
 
-        assertThatThrownBy(() -> categoryService.deleteCategory(3L, null, authentication))
+        assertThatThrownBy(() -> categoryService.deleteCategory(3L, null, 1L))
                 .isInstanceOf(CategoryReplacementRequiredException.class)
                 .hasMessage("Replacement category is required when category is already used.");
 
@@ -222,13 +222,13 @@ class CategoryServiceTest {
         Category sourceCategory = EntityTestFactory.category(3L, user, "Rent", TransactionType.EXPENSE, CategoryStatus.ACTIVE);
         Category replacementCategory = EntityTestFactory.category(5L, null, "Housing", TransactionType.EXPENSE, CategoryStatus.ACTIVE);
 
-        when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
+        when(userService.getUserById(1L)).thenReturn(user);
         when(categoryRepository.findOwnedById(3L, user)).thenReturn(Optional.of(sourceCategory));
         when(categoryRepository.findAccessibleById(5L, user)).thenReturn(Optional.of(replacementCategory));
         when(transactionRepository.countByUserAndCategory(user, sourceCategory)).thenReturn(2L);
         when(recurringTransactionRepository.countByUserAndCategory(user, sourceCategory)).thenReturn(1L);
 
-        categoryService.deleteCategory(3L, 5L, authentication);
+        categoryService.deleteCategory(3L, 5L, 1L);
 
         verify(transactionRepository).reassignCategory(user, sourceCategory, replacementCategory);
         verify(recurringTransactionRepository).reassignCategory(user, sourceCategory, replacementCategory);
@@ -241,13 +241,13 @@ class CategoryServiceTest {
         Category sourceCategory = EntityTestFactory.category(3L, user, "Rent", TransactionType.EXPENSE, CategoryStatus.ACTIVE);
         Category replacementCategory = EntityTestFactory.category(5L, null, "Housing", TransactionType.EXPENSE, CategoryStatus.ARCHIVED);
 
-        when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
+        when(userService.getUserById(1L)).thenReturn(user);
         when(categoryRepository.findOwnedById(3L, user)).thenReturn(Optional.of(sourceCategory));
         when(transactionRepository.countByUserAndCategory(user, sourceCategory)).thenReturn(1L);
         when(recurringTransactionRepository.countByUserAndCategory(user, sourceCategory)).thenReturn(0L);
         when(categoryRepository.findAccessibleById(5L, user)).thenReturn(Optional.of(replacementCategory));
 
-        assertThatThrownBy(() -> categoryService.deleteCategory(3L, 5L, authentication))
+        assertThatThrownBy(() -> categoryService.deleteCategory(3L, 5L, 1L))
                 .isInstanceOf(InvalidCategoryReplacementException.class)
                 .hasMessage("Replacement category must be active.");
 
