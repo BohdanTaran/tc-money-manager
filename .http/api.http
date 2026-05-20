@@ -44,6 +44,12 @@ Content-Type: application/json
   "icon": "coins"
 }
 
+###Mail verifying
+
+GET {{baseUrl}}/users/verify-email?token=
+Accept-Language: en
+
+
 
 
 
