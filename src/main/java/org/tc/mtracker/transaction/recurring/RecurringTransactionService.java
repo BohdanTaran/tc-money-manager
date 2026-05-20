@@ -9,6 +9,7 @@ import org.tc.mtracker.account.Account;
 import org.tc.mtracker.category.Category;
 import org.tc.mtracker.transaction.Transaction;
 import org.tc.mtracker.transaction.TransactionMutationService;
+import org.tc.mtracker.transaction.TransactionRepository;
 import org.tc.mtracker.transaction.TransactionValidationService;
 import org.tc.mtracker.transaction.dto.TransactionCreateRequestDTO;
 import org.tc.mtracker.transaction.dto.TransactionUpdateRequestDTO;
@@ -34,6 +35,7 @@ public class RecurringTransactionService {
     private final UserService userService;
     private final TransactionValidationService transactionValidationService;
     private final TransactionMutationService transactionMutationService;
+    private final TransactionRepository transactionRepository;
 
     @Transactional(readOnly = true)
     public List<RecurringTransactionResponseDTO> getRecurringTransactions(Authentication auth) {
@@ -104,8 +106,70 @@ public class RecurringTransactionService {
         ));
     }
 
+    public void convertRecurringToOneTime(
+            Transaction transaction,
+            TransactionUpdateRequestDTO updateRequestDTO,
+            Account targetAccount,
+            Category category,
+            User user
+    ) {
+        RecurringTransaction recurringTransaction = getRecurringTransaction(transaction, user);
+
+        transactionMutationService.updateTransactionValues(transaction, updateRequestDTO, targetAccount, category);
+        transaction.setRecurringTransaction(null);
+
+        List<Transaction> futureOccurrences = transactionRepository
+                .findAllByRecurringTransactionAndDateGreaterThanEqualOrderByDateAscIdAsc(
+                        recurringTransaction,
+                        transaction.getDate()
+                );
+        for (Transaction futureOccurrence : futureOccurrences) {
+            if (!futureOccurrence.getId().equals(transaction.getId())) {
+                transactionMutationService.deleteSingleTransaction(futureOccurrence);
+            }
+        }
+
+        recurringTransactionRepository.delete(recurringTransaction);
+    }
+
+    public void convertOneTimeToRecurring(
+            Transaction transaction,
+            TransactionUpdateRequestDTO updateRequestDTO,
+            Account targetAccount,
+            Category category,
+            User user
+    ) {
+        transactionMutationService.updateTransactionValues(transaction, updateRequestDTO, targetAccount, category);
+
+        RecurringTransaction recurringTransaction = RecurringTransaction.builder()
+                .user(user)
+                .account(targetAccount)
+                .amount(updateRequestDTO.amount())
+                .description(updateRequestDTO.description())
+                .type(updateRequestDTO.type())
+                .category(category)
+                .startDate(updateRequestDTO.date())
+                .intervalUnit(updateRequestDTO.intervalUnit())
+                .nextExecutionDate(nextExecutionDateAfterToday(updateRequestDTO.date(), updateRequestDTO.intervalUnit()))
+                .build();
+
+        RecurringTransaction savedRecurringTransaction = recurringTransactionRepository.save(recurringTransaction);
+        transaction.setRecurringTransaction(savedRecurringTransaction);
+    }
+
     public void deleteCurrentAndFutureOccurrences(Transaction transaction, User user) {
         RecurringTransaction recurringTransaction = getRecurringTransaction(transaction, user);
+
+        List<Transaction> futureOccurrences = transactionRepository
+                .findAllByRecurringTransactionAndDateGreaterThanEqualOrderByDateAscIdAsc(
+                        recurringTransaction,
+                        transaction.getDate()
+                );
+        for (Transaction futureOccurrence : futureOccurrences) {
+            if (!futureOccurrence.getId().equals(transaction.getId())) {
+                transactionMutationService.deleteSingleTransaction(futureOccurrence);
+            }
+        }
 
         transactionMutationService.deleteSingleTransaction(transaction);
         recurringTransactionRepository.delete(recurringTransaction);

@@ -27,6 +27,7 @@ import org.tc.mtracker.user.UserService;
 import org.tc.mtracker.utils.S3Service;
 import org.tc.mtracker.utils.exceptions.CategoryIsNotActiveException;
 import org.tc.mtracker.utils.exceptions.MoneyFlowTypeMismatchException;
+import org.tc.mtracker.utils.exceptions.RecurringTransactionScopeException;
 import org.tc.mtracker.utils.exceptions.TransactionNotFoundException;
 
 import java.math.BigDecimal;
@@ -411,6 +412,18 @@ class TransactionServiceTest {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
         Account account = EntityTestFactory.account(1L, user, BigDecimal.ZERO);
         Category salaryCategory = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
+        RecurringTransaction recurringTransaction = RecurringTransaction.builder()
+                .id(10L)
+                .user(user)
+                .account(account)
+                .category(salaryCategory)
+                .type(TransactionType.INCOME)
+                .amount(new BigDecimal("100.00"))
+                .description("Salary")
+                .startDate(LocalDate.of(2026, 4, 1))
+                .nextExecutionDate(LocalDate.of(2026, 5, 1))
+                .intervalUnit(IntervalUnit.MONTHLY)
+                .build();
         Transaction transaction = EntityTestFactory.transaction(
                 9L,
                 user,
@@ -420,6 +433,7 @@ class TransactionServiceTest {
                 new BigDecimal("100.00"),
                 LocalDate.of(2026, 4, 1)
         );
+        transaction.setRecurringTransaction(recurringTransaction);
         TransactionUpdateRequestDTO updateDto = createUpdateRequest(
                 new BigDecimal("150.00"),
                 TransactionType.INCOME,
@@ -460,6 +474,231 @@ class TransactionServiceTest {
         assertThat(result).isEqualTo(response);
         verify(recurringTransactionService).updateCurrentAndFutureOccurrences(transaction, updateDto, account, salaryCategory, user);
         verify(transactionMutationService, never()).updateTransactionValues(any(), any(), any(), any());
+    }
+
+    @Test
+    void shouldConvertRecurringTransactionToOneTimeForCurrentAndFutureScope() {
+        User user = EntityTestFactory.user(1L, "user@example.com", true);
+        Account account = EntityTestFactory.account(1L, user, BigDecimal.ZERO);
+        Category salaryCategory = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
+        RecurringTransaction recurringTransaction = RecurringTransaction.builder()
+                .id(10L)
+                .user(user)
+                .account(account)
+                .category(salaryCategory)
+                .type(TransactionType.INCOME)
+                .amount(new BigDecimal("100.00"))
+                .description("Salary")
+                .startDate(LocalDate.of(2026, 4, 1))
+                .nextExecutionDate(LocalDate.of(2026, 5, 1))
+                .intervalUnit(IntervalUnit.MONTHLY)
+                .build();
+        Transaction transaction = EntityTestFactory.transaction(
+                9L,
+                user,
+                account,
+                salaryCategory,
+                TransactionType.INCOME,
+                new BigDecimal("100.00"),
+                LocalDate.of(2026, 4, 1)
+        );
+        transaction.setRecurringTransaction(recurringTransaction);
+        TransactionUpdateRequestDTO updateDto = createUpdateRequest(
+                new BigDecimal("150.00"),
+                TransactionType.INCOME,
+                4L,
+                LocalDate.of(2026, 4, 2),
+                "Updated salary",
+                1L,
+                IntervalUnit.ONCE,
+                RecurringTransactionChangeScope.THIS_AND_FUTURE
+        );
+        TransactionResponseDTO response = new TransactionResponseDTO(
+                9L,
+                1L,
+                null,
+                updateDto.amount(),
+                null,
+                updateDto.description(),
+                updateDto.type(),
+                List.of(),
+                updateDto.date(),
+                null,
+                null
+        );
+
+        when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
+        when(transactionRepository.findActiveByIdAndUser(9L, user)).thenReturn(Optional.of(transaction));
+        when(transactionValidationService.resolveAccount(user, 1L)).thenReturn(account);
+        when(transactionValidationService.resolveActiveCategory(4L, user)).thenReturn(salaryCategory);
+        when(transactionRepository.save(transaction)).thenReturn(transaction);
+        when(transactionMutationService.toResponseDto(transaction)).thenReturn(response);
+
+        TransactionResponseDTO result = transactionService.updateTransaction(
+                9L,
+                authentication,
+                updateDto
+        );
+
+        assertThat(result).isEqualTo(response);
+        verify(recurringTransactionService).convertRecurringToOneTime(transaction, updateDto, account, salaryCategory, user);
+        verify(recurringTransactionService, never()).updateCurrentAndFutureOccurrences(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void shouldConvertOneTimeTransactionToRecurringForOnlyThisScope() {
+        User user = EntityTestFactory.user(1L, "user@example.com", true);
+        Account account = EntityTestFactory.account(1L, user, BigDecimal.ZERO);
+        Category salaryCategory = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
+        Transaction transaction = EntityTestFactory.transaction(
+                9L,
+                user,
+                account,
+                salaryCategory,
+                TransactionType.INCOME,
+                new BigDecimal("100.00"),
+                LocalDate.of(2026, 4, 1)
+        );
+        TransactionUpdateRequestDTO updateDto = createUpdateRequest(
+                new BigDecimal("150.00"),
+                TransactionType.INCOME,
+                4L,
+                LocalDate.of(2026, 4, 2),
+                "Updated salary",
+                1L,
+                IntervalUnit.YEARLY,
+                RecurringTransactionChangeScope.ONLY_THIS
+        );
+        TransactionResponseDTO response = new TransactionResponseDTO(
+                9L,
+                1L,
+                IntervalUnit.YEARLY,
+                updateDto.amount(),
+                null,
+                updateDto.description(),
+                updateDto.type(),
+                List.of(),
+                updateDto.date(),
+                null,
+                null
+        );
+
+        when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
+        when(transactionRepository.findActiveByIdAndUser(9L, user)).thenReturn(Optional.of(transaction));
+        when(transactionValidationService.resolveAccount(user, 1L)).thenReturn(account);
+        when(transactionValidationService.resolveActiveCategory(4L, user)).thenReturn(salaryCategory);
+        when(transactionRepository.save(transaction)).thenReturn(transaction);
+        when(transactionMutationService.toResponseDto(transaction)).thenReturn(response);
+
+        TransactionResponseDTO result = transactionService.updateTransaction(
+                9L,
+                authentication,
+                updateDto
+        );
+
+        assertThat(result).isEqualTo(response);
+        verify(recurringTransactionService).convertOneTimeToRecurring(transaction, updateDto, account, salaryCategory, user);
+        verify(recurringTransactionService, never()).updateCurrentAndFutureOccurrences(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void shouldRejectMonthlyToYearlyTransition() {
+        User user = EntityTestFactory.user(1L, "user@example.com", true);
+        Account account = EntityTestFactory.account(1L, user, BigDecimal.ZERO);
+        Category salaryCategory = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
+        RecurringTransaction recurringTransaction = RecurringTransaction.builder()
+                .id(10L)
+                .user(user)
+                .account(account)
+                .category(salaryCategory)
+                .type(TransactionType.INCOME)
+                .amount(new BigDecimal("100.00"))
+                .description("Salary")
+                .startDate(LocalDate.of(2026, 4, 1))
+                .nextExecutionDate(LocalDate.of(2026, 5, 1))
+                .intervalUnit(IntervalUnit.MONTHLY)
+                .build();
+        Transaction transaction = EntityTestFactory.transaction(
+                9L,
+                user,
+                account,
+                salaryCategory,
+                TransactionType.INCOME,
+                new BigDecimal("100.00"),
+                LocalDate.of(2026, 4, 1)
+        );
+        transaction.setRecurringTransaction(recurringTransaction);
+        TransactionUpdateRequestDTO updateDto = createUpdateRequest(
+                new BigDecimal("150.00"),
+                TransactionType.INCOME,
+                4L,
+                LocalDate.of(2026, 4, 2),
+                "Updated salary",
+                1L,
+                IntervalUnit.YEARLY,
+                RecurringTransactionChangeScope.THIS_AND_FUTURE
+        );
+
+        when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
+        when(transactionRepository.findActiveByIdAndUser(9L, user)).thenReturn(Optional.of(transaction));
+        when(transactionValidationService.resolveAccount(user, 1L)).thenReturn(account);
+        when(transactionValidationService.resolveActiveCategory(4L, user)).thenReturn(salaryCategory);
+
+        assertThatThrownBy(() -> transactionService.updateTransaction(9L, authentication, updateDto))
+                .isInstanceOf(RecurringTransactionScopeException.class)
+                .hasMessage("Changing interval between MONTHLY and YEARLY is not supported.");
+
+        verifyNoInteractions(recurringTransactionService);
+    }
+
+    @Test
+    void shouldRejectIntervalChangeForOnlyThisScope() {
+        User user = EntityTestFactory.user(1L, "user@example.com", true);
+        Account account = EntityTestFactory.account(1L, user, BigDecimal.ZERO);
+        Category salaryCategory = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
+        RecurringTransaction recurringTransaction = RecurringTransaction.builder()
+                .id(10L)
+                .user(user)
+                .account(account)
+                .category(salaryCategory)
+                .type(TransactionType.INCOME)
+                .amount(new BigDecimal("100.00"))
+                .description("Salary")
+                .startDate(LocalDate.of(2026, 4, 1))
+                .nextExecutionDate(LocalDate.of(2026, 5, 1))
+                .intervalUnit(IntervalUnit.MONTHLY)
+                .build();
+        Transaction transaction = EntityTestFactory.transaction(
+                9L,
+                user,
+                account,
+                salaryCategory,
+                TransactionType.INCOME,
+                new BigDecimal("100.00"),
+                LocalDate.of(2026, 4, 1)
+        );
+        transaction.setRecurringTransaction(recurringTransaction);
+        TransactionUpdateRequestDTO updateDto = createUpdateRequest(
+                new BigDecimal("150.00"),
+                TransactionType.INCOME,
+                4L,
+                LocalDate.of(2026, 4, 2),
+                "Updated salary",
+                1L,
+                IntervalUnit.ONCE,
+                RecurringTransactionChangeScope.ONLY_THIS
+        );
+
+        when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
+        when(transactionRepository.findActiveByIdAndUser(9L, user)).thenReturn(Optional.of(transaction));
+        when(transactionValidationService.resolveAccount(user, 1L)).thenReturn(account);
+        when(transactionValidationService.resolveActiveCategory(4L, user)).thenReturn(salaryCategory);
+
+        assertThatThrownBy(() -> transactionService.updateTransaction(9L, authentication, updateDto))
+                .isInstanceOf(RecurringTransactionScopeException.class)
+                .hasMessage("Interval change requires THIS_AND_FUTURE scope.");
+
+        verifyNoInteractions(recurringTransactionService);
     }
 
     @Test

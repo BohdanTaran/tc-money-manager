@@ -100,28 +100,50 @@ public class TransactionService {
         User user = userService.getCurrentAuthenticatedUser(auth);
         transactionValidationService.validateOneTimeTransactionDate(updateRequestDTO.date(), user);
         Transaction transaction = findActiveOwnedTransaction(transactionId, user);
-
         Account targetAccount = transactionValidationService.resolveAccount(user, updateRequestDTO.accountId());
         Category category = transactionValidationService.resolveActiveCategory(updateRequestDTO.categoryId(), user);
 
-        RecurringTransactionChangeScope recurringScope = updateRequestDTO.transactionChangeScope() == null
-                ? RecurringTransactionChangeScope.ONLY_THIS
-                : updateRequestDTO.transactionChangeScope();
-        IntervalUnit intervalUnit = updateRequestDTO.intervalUnit() == null
-                ? IntervalUnit.ONCE
-                : updateRequestDTO.intervalUnit();
+        RecurringTransactionChangeScope recurringScope = updateRequestDTO.transactionChangeScope();
+        IntervalUnit currentInterval = getCurrentInterval(transaction);
+        IntervalUnit targetInterval = updateRequestDTO.intervalUnit();
+        validateIntervalTransition(currentInterval, targetInterval);
+
         transactionValidationService.validateTransactionType(updateRequestDTO.type(), category, user);
 
-        if (recurringScope == RecurringTransactionChangeScope.THIS_AND_FUTURE && intervalUnit != IntervalUnit.ONCE) {
-            recurringTransactionService.updateCurrentAndFutureOccurrences(
-                    transaction,
-                    updateRequestDTO,
-                    targetAccount,
-                    category,
-                    user
-            );
-        } else if (recurringScope == RecurringTransactionChangeScope.ONLY_THIS) {
-            transactionMutationService.updateTransactionValues(transaction, updateRequestDTO, targetAccount, category);
+        if (recurringScope == RecurringTransactionChangeScope.ONLY_THIS) {
+            if (currentInterval == IntervalUnit.ONCE && targetInterval != IntervalUnit.ONCE) {
+                recurringTransactionService.convertOneTimeToRecurring(
+                        transaction,
+                        updateRequestDTO,
+                        targetAccount,
+                        category,
+                        user
+                );
+            } else if (currentInterval != targetInterval) {
+                throw new RecurringTransactionScopeException("Interval change requires THIS_AND_FUTURE scope.");
+            } else {
+                transactionMutationService.updateTransactionValues(transaction, updateRequestDTO, targetAccount, category);
+            }
+        } else if (recurringScope == RecurringTransactionChangeScope.THIS_AND_FUTURE) {
+            if (currentInterval != IntervalUnit.ONCE && targetInterval == IntervalUnit.ONCE) {
+                recurringTransactionService.convertRecurringToOneTime(
+                        transaction,
+                        updateRequestDTO,
+                        targetAccount,
+                        category,
+                        user
+                );
+            } else if (currentInterval != IntervalUnit.ONCE) {
+                recurringTransactionService.updateCurrentAndFutureOccurrences(
+                        transaction,
+                        updateRequestDTO,
+                        targetAccount,
+                        category,
+                        user
+                );
+            } else {
+                throw new RecurringTransactionScopeException("invalid");
+            }
         } else {
             throw new RecurringTransactionScopeException("invalid");
         }
@@ -130,6 +152,12 @@ public class TransactionService {
         log.info("Transaction updated userId={} transactionId={} accountId={} amount={} type={}",
                 user.getId(), saved.getId(), targetAccount.getId(), saved.getAmount(), saved.getType());
         return transactionMutationService.toResponseDto(saved);
+    }
+
+    private static IntervalUnit getCurrentInterval(Transaction transaction) {
+        return transaction.getRecurringTransaction() == null
+                ? IntervalUnit.ONCE
+                : transaction.getRecurringTransaction().getIntervalUnit();
     }
 
     @Transactional
@@ -204,6 +232,20 @@ public class TransactionService {
 
     private boolean hasReceipts(List<MultipartFile> receipts) {
         return receipts != null && !receipts.isEmpty();
+    }
+
+    private void validateIntervalTransition(IntervalUnit currentInterval, IntervalUnit targetInterval) {
+        if (currentInterval == targetInterval) {
+            return;
+        }
+        if (currentInterval == IntervalUnit.ONCE && targetInterval != IntervalUnit.ONCE) {
+            return;
+        }
+        if (currentInterval != IntervalUnit.ONCE && targetInterval == IntervalUnit.ONCE) {
+            return;
+        }
+
+        throw new RecurringTransactionScopeException("Changing interval between MONTHLY and YEARLY is not supported.");
     }
 
 }

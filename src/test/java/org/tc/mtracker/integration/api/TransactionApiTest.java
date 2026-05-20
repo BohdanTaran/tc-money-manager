@@ -461,7 +461,7 @@ class TransactionApiTest extends BaseApiIntegrationTest {
     }
 
     @Test
-    void shouldUpdateRecurringTransactionCurrentAndFutureScope() {
+    void shouldUpdateRecurringTransactionCurrentAndFutureScopeWithoutChangingInterval() {
         User user = fixtures.createUser("update-recurring-transaction@example.com");
         var salary = fixtures.createUserCategory(user, "Salary", TransactionType.INCOME);
         var bonus = fixtures.createUserCategory(user, "Bonus", TransactionType.INCOME);
@@ -480,13 +480,13 @@ class TransactionApiTest extends BaseApiIntegrationTest {
                         updatedDate,
                         "Updated salary",
                         user.getDefaultAccount().getId(),
-                        IntervalUnit.YEARLY,
+                        IntervalUnit.MONTHLY,
                         RecurringTransactionChangeScope.THIS_AND_FUTURE
                 ))
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.intervalUnit").isEqualTo(IntervalUnit.YEARLY.name())
+                .jsonPath("$.intervalUnit").isEqualTo(IntervalUnit.MONTHLY.name())
                 .jsonPath("$.amount").isEqualTo(150.00)
                 .jsonPath("$.category.id").isEqualTo(bonus.getId());
 
@@ -495,11 +495,108 @@ class TransactionApiTest extends BaseApiIntegrationTest {
         assertThat(recurringTransaction.getCategory().getId()).isEqualTo(bonus.getId());
         assertThat(recurringTransaction.getDescription()).isEqualTo("Updated salary");
         assertThat(recurringTransaction.getStartDate()).isEqualTo(updatedDate);
-        assertThat(recurringTransaction.getIntervalUnit()).isEqualTo(IntervalUnit.YEARLY);
-        assertThat(recurringTransaction.getNextExecutionDate()).isEqualTo(updatedDate.plusYears(1));
+        assertThat(recurringTransaction.getIntervalUnit()).isEqualTo(IntervalUnit.MONTHLY);
+        assertThat(recurringTransaction.getNextExecutionDate()).isEqualTo(updatedDate.plusMonths(1));
 
         assertThat(accountRepository.findById(user.getDefaultAccount().getId()).orElseThrow().getBalance())
                 .isEqualByComparingTo("150.00");
+    }
+
+    @Test
+    void shouldRejectMonthlyToYearlyIntervalTransition() {
+        User user = fixtures.createUser("reject-monthly-yearly-transition@example.com");
+        var salary = fixtures.createUserCategory(user, "Salary", TransactionType.INCOME);
+        Transaction transaction = createRecurringIncomeForToday(user, salary, new BigDecimal("100.00"), "Salary");
+
+        restTestClient.patch()
+                .uri("/api/v1/transactions/{id}", transaction.getId())
+                .header(HttpHeaders.AUTHORIZATION, authHeader(user))
+                .body(new TransactionUpdateRequestDTO(
+                        new BigDecimal("150.00"),
+                        TransactionType.INCOME,
+                        salary.getId(),
+                        LocalDate.now(),
+                        "Updated salary",
+                        user.getDefaultAccount().getId(),
+                        IntervalUnit.YEARLY,
+                        RecurringTransactionChangeScope.THIS_AND_FUTURE
+                ))
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("invalid_recurring_transaction_scope");
+    }
+
+    @Test
+    void shouldConvertRecurringTransactionToOneTimeForCurrentAndFutureScope() {
+        User user = fixtures.createUser("convert-recurring-to-once@example.com");
+        var salary = fixtures.createUserCategory(user, "Salary", TransactionType.INCOME);
+        Transaction transaction = createRecurringIncomeForToday(user, salary, new BigDecimal("100.00"), "Salary");
+        Long recurringTransactionId = transaction.getRecurringTransaction().getId();
+
+        restTestClient.patch()
+                .uri("/api/v1/transactions/{id}", transaction.getId())
+                .header(HttpHeaders.AUTHORIZATION, authHeader(user))
+                .body(new TransactionUpdateRequestDTO(
+                        new BigDecimal("150.00"),
+                        TransactionType.INCOME,
+                        salary.getId(),
+                        LocalDate.now(),
+                        "Converted salary",
+                        user.getDefaultAccount().getId(),
+                        IntervalUnit.ONCE,
+                        RecurringTransactionChangeScope.THIS_AND_FUTURE
+                ))
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.amount").isEqualTo(150.00)
+                .jsonPath("$.description").isEqualTo("Converted salary");
+
+        assertThat(recurringTransactionRepository.findById(recurringTransactionId)).isEmpty();
+    }
+
+    @Test
+    void shouldConvertOneTimeTransactionToRecurringWithDefaultScope() {
+        User user = fixtures.createUser("convert-once-to-recurring-default-scope@example.com");
+        var salary = fixtures.createUserCategory(user, "Salary", TransactionType.INCOME);
+        Transaction transaction = fixtures.createTransaction(
+                user,
+                user.getDefaultAccount(),
+                salary,
+                new BigDecimal("100.00"),
+                TransactionType.INCOME,
+                LocalDate.now().minusDays(2),
+                "Salary"
+        );
+        LocalDate updatedDate = LocalDate.now().minusDays(1);
+
+        restTestClient.patch()
+                .uri("/api/v1/transactions/{id}", transaction.getId())
+                .header(HttpHeaders.AUTHORIZATION, authHeader(user))
+                .body(new TransactionUpdateRequestDTO(
+                        new BigDecimal("150.00"),
+                        TransactionType.INCOME,
+                        salary.getId(),
+                        updatedDate,
+                        "Recurring salary",
+                        user.getDefaultAccount().getId(),
+                        IntervalUnit.YEARLY,
+                        null
+                ))
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.intervalUnit").isEqualTo(IntervalUnit.YEARLY.name())
+                .jsonPath("$.amount").isEqualTo(150.00)
+                .jsonPath("$.description").isEqualTo("Recurring salary");
+
+        Transaction updatedTransaction = transactionRepository.findById(transaction.getId()).orElseThrow();
+        assertThat(updatedTransaction.getRecurringTransaction()).isNotNull();
+        var recurringTransaction = recurringTransactionRepository.findById(updatedTransaction.getRecurringTransaction().getId()).orElseThrow();
+        assertThat(recurringTransaction.getIntervalUnit()).isEqualTo(IntervalUnit.YEARLY);
+        assertThat(recurringTransaction.getStartDate()).isEqualTo(updatedDate);
+        assertThat(recurringTransaction.getNextExecutionDate()).isEqualTo(updatedDate.plusYears(1));
     }
 
     @Test

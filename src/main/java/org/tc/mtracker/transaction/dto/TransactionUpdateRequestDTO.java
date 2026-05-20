@@ -40,10 +40,18 @@ public record TransactionUpdateRequestDTO(
         @Schema(description = "Optional account ID. If omitted, the default account is used.", example = "1")
         Long accountId,
 
-        @Schema(description = "Interval unit for recurring transaction", example = "MONTHLY")
+        @Schema(
+                description = "Interval unit for recurring transaction. Supported transitions: ONCE <-> MONTHLY/YEARLY. MONTHLY <-> YEARLY is not supported.",
+                example = "MONTHLY"
+        )
         IntervalUnit intervalUnit,
 
         @Schema(description = "Transaction recurring scope", example = "ONLY_THIS")
         RecurringTransactionChangeScope transactionChangeScope
 ) {
+    public TransactionUpdateRequestDTO {
+        if (intervalUnit == null) intervalUnit = IntervalUnit.ONCE;
+        if (transactionChangeScope == null) transactionChangeScope = RecurringTransactionChangeScope.ONLY_THIS;
+    }
+
 }
