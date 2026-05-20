@@ -145,7 +145,15 @@ class TransactionServiceTest {
                 "Salary",
                 null
         );
-        Transaction transaction = EntityTestFactory.transaction(null, user, null, null, dto.type(), dto.amount(), dto.date());
+        Transaction transaction = EntityTestFactory.transaction(
+                null,
+                user,
+                defaultAccount,
+                category,
+                dto.type(),
+                dto.amount(),
+                dto.date()
+        );
         TransactionResponseDTO response = new TransactionResponseDTO(
                 10L,
                 1L,
@@ -164,7 +172,7 @@ class TransactionServiceTest {
         when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
         when(transactionValidationService.resolveAccount(user, dto.accountId())).thenReturn(defaultAccount);
         when(transactionValidationService.resolveActiveCategory(dto.categoryId(), user)).thenReturn(category);
-        when(transactionMapper.toEntity(dto, user)).thenReturn(transaction);
+        when(transactionMapper.toEntity(dto, user, defaultAccount, category)).thenReturn(transaction);
         when(transactionMutationService.persistTransaction(transaction)).thenReturn(transaction);
         when(transactionMutationService.toResponseDto(transaction)).thenReturn(response);
 
@@ -176,6 +184,7 @@ class TransactionServiceTest {
         assertThat(transaction.getCategory()).isEqualTo(category);
         verify(transactionValidationService).validateOneTimeTransactionDate(dto.date(), user);
         verify(transactionValidationService).validateTransactionType(dto.type(), category, user);
+        verify(transactionValidationService).resolveAccount(user, null);
         verify(transactionMutationService).addReceiptsToTransaction(List.of(), transaction);
         verify(transactionMutationService).persistTransaction(transaction);
     }
@@ -213,7 +222,7 @@ class TransactionServiceTest {
         when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
         when(transactionValidationService.resolveAccount(user, dto.accountId())).thenReturn(defaultAccount);
         when(transactionValidationService.resolveActiveCategory(dto.categoryId(), user)).thenReturn(category);
-        when(transactionMapper.toEntity(dto, user)).thenReturn(transaction);
+        when(transactionMapper.toEntity(dto, user, defaultAccount, category)).thenReturn(transaction);
         when(transactionMutationService.persistTransaction(transaction)).thenReturn(transaction);
         when(transactionMutationService.toResponseDto(transaction)).thenReturn(response);
 
@@ -288,7 +297,7 @@ class TransactionServiceTest {
                         && transaction.getAmount().compareTo(dto.amount()) == 0
                         && transaction.getType() == dto.type()
         ));
-        verify(transactionMapper, never()).toEntity(any(), any());
+        verify(transactionMapper, never()).toEntity(any(), any(), any(), any());
     }
 
     @Test
