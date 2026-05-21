@@ -17,7 +17,9 @@ import org.springframework.validation.FieldError;
 import org.springframework.validation.ObjectError;
 import org.springframework.validation.method.ParameterErrors;
 import org.springframework.validation.method.ParameterValidationResult;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingPathVariableException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -26,6 +28,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.net.URI;
 import java.time.Instant;
@@ -71,6 +74,18 @@ public class GlobalExceptionHandler {
         return buildValidationProblem(request, errors);
     }
 
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ProblemDetail handleMethodNotSupported(HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
+        log.warn("Method {} not supported for {}", ex.getMethod(), request.getRequestURI());
+
+        return buildProblem(
+                HttpStatus.METHOD_NOT_ALLOWED,
+                "HTTP method '" + ex.getMethod() + "' is not supported for this endpoint.",
+                "method_not_allowed",
+                request
+        );
+    }
+
     @ExceptionHandler(ConstraintViolationException.class)
     public ProblemDetail handleConstraintViolation(ConstraintViolationException ex, HttpServletRequest request) {
         Map<String, String> errors = new LinkedHashMap<>();
@@ -112,10 +127,17 @@ public class GlobalExceptionHandler {
             HttpMessageNotReadableException.class,
             MethodArgumentTypeMismatchException.class,
             MissingServletRequestPartException.class,
-            MissingServletRequestParameterException.class
+            MissingServletRequestParameterException.class,
+            MissingPathVariableException.class,
     })
     public ProblemDetail handleMalformedRequest(HttpServletRequest request) {
         return buildProblem(HttpStatus.BAD_REQUEST, "Malformed request.", "malformed_request", request);
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ProblemDetail handleNoResourceFound(NoResourceFoundException ex, HttpServletRequest request) {
+        log.warn("Resource not found: {} {}", request.getMethod(), request.getRequestURI(), ex);
+        return buildProblem(HttpStatus.NOT_FOUND, "Endpoint not found.", "endpoint_not_found", request);
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
@@ -135,7 +157,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ProblemDetail handleDataIntegrity(DataIntegrityViolationException ex, HttpServletRequest request) {
-        String causeMessage = ex.getMostSpecificCause() != null ? ex.getMostSpecificCause().getMessage() : ex.getMessage();
+        String causeMessage = ex.getMostSpecificCause().getMessage();
         log.warn("Data integrity violation for {} {}: {}", request.getMethod(), request.getRequestURI(), causeMessage);
         return buildProblem(HttpStatus.CONFLICT, "Request conflicts with existing data.", "data_conflict", request);
     }
