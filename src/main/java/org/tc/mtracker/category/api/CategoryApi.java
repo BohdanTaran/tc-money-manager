@@ -9,15 +9,19 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.tc.mtracker.category.dto.CategoryResponseDTO;
 import org.tc.mtracker.category.dto.CreateCategoryDTO;
 import org.tc.mtracker.category.dto.UpdateCategoryDTO;
 import org.tc.mtracker.common.enums.TransactionType;
+import org.tc.mtracker.security.CustomUserDetails;
 
 import java.util.List;
 
@@ -194,9 +198,10 @@ public interface CategoryApi {
             )
     })
     @DeleteMapping("/{categoryId}")
+    @PreAuthorize("isAuthenticated()")
     ResponseEntity<Void> deleteCategory(
-            @PathVariable("categoryId") Long categoryId,
+            @PathVariable @Positive @NotNull Long categoryId,
             @RequestParam(value = "replacementCategoryId", required = false) Long replacementCategoryId,
-            @Parameter(hidden = true) Authentication auth
+            CustomUserDetails principal
     );
 }

@@ -15,7 +15,7 @@ Content-Type: application/json
 
 
 ###Token verification
-GET {{baseUrl}}/auth/verify?token=eyJhbGciOiJIUzM4NCJ9.eyJwdXJwb3NlIjoiZW1haWxfdmVyaWZpY2F0aW9uIiwic3ViIjoiZXhhbXBsZUBtYWlsLmNvbSIsImlhdCI6MTc3ODQyMTk0MywiZXhwIjoxNzc4NDIyODQzfQ.oswUNGzeO_DHWqF3Vt8WudcZjknT6eCuoUTqya3MOzEXZgfqK7dtb-4rTtrQVQ7m
+GET {{baseUrl}}/auth/verify?token=eyJhbGciOiJIUzM4NCJ9.eyJwdXJwb3NlIjoiZW1haWxfdmVyaWZpY2F0aW9uIiwic3ViIjoiZXhhbXBsZUBtYWlsLmNvbSIsImlhdCI6MTc3OTMxNzY2MywiZXhwIjoxNzc5MzE4NTYzfQ.VOmzmSwqmwImeu0W3GIdDcAPQKKiqtLd_Y9chkraV5uCq7QorEGt0Ftvxg5KiA7d
 
 
 ###Login
@@ -44,6 +44,10 @@ Content-Type: application/json
   "icon": "coins"
 }
 
+
+###Delete category
+DELETE {{baseUrl}}/categories/9?10
+Authorization: Bearer {{accessToken}}
 
 
 
