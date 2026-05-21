@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -71,5 +72,5 @@ public interface UserIdentityApi {
                     schema = @Schema(implementation = ProblemDetail.class))
     )
     @GetMapping("/verify-email")
-    ResponseEntity<Void> verifyEmail(@RequestParam String token);
+    ResponseEntity<Void> verifyEmail(@Valid @NotBlank @RequestParam String token);
 }
