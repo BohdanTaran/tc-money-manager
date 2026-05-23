@@ -131,8 +131,7 @@ public interface AuthenticationApi {
     )
     @ApiResponse(
             responseCode = "200",
-            description = "Successful logout",
-            content = @Content
+            description = "Successful logout"
     )
     @ApiResponse(
             responseCode = "401",
