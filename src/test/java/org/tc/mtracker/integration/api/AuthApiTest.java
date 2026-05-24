@@ -8,6 +8,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.MultipartBodyBuilder;
@@ -304,6 +305,32 @@ class AuthApiTest extends BaseApiIntegrationTest {
                     .expectBody()
                     .jsonPath("$.detail").isEqualTo("Invalid email or password.")
                     .jsonPath("$.code").isEqualTo("bad_credentials");
+        }
+
+
+        @Test
+        void shouldReturn200AndRemoveRefreshTokenWhenUserAuthenticated() {
+            User user = fixtures.createUser();
+
+            fixtures.createRefreshToken(user, "refresh");
+
+            assertThat(refreshTokenRepository.findAll()).hasSize(1);
+            restTestClient.post()
+                    .uri("api/v1/auth/logout")
+                    .header(HttpHeaders.AUTHORIZATION, authHeader(user))
+                    .exchange()
+                    .expectStatus().isOk();
+
+            assertThat(refreshTokenRepository.findAll()).isEmpty();
+
+        }
+
+        @Test
+        void shouldReturn401WhenNotAuthenticatedUserTriesLogout() {
+            restTestClient.post()
+                    .uri("api/v1/auth/logout")
+                    .exchange()
+                    .expectStatus().isUnauthorized();
         }
 
         @Test

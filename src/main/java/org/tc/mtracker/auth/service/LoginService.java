@@ -49,4 +49,9 @@ public class LoginService {
         log.info("User with id {} is authenticated successfully.", user.getId());
         return new JwtResponseDTO(accessToken, refreshToken.getToken());
     }
+
+    public void logout(CustomUserDetails principal) {
+        refreshTokenService.findByUserId(principal.getId())
+                .ifPresent(refreshTokenService::deleteToken);
+    }
 }

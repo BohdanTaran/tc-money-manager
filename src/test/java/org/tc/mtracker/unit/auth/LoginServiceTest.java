@@ -12,6 +12,7 @@ import org.tc.mtracker.auth.dto.LoginRequestDto;
 import org.tc.mtracker.auth.model.RefreshToken;
 import org.tc.mtracker.auth.service.LoginService;
 import org.tc.mtracker.auth.service.RefreshTokenService;
+import org.tc.mtracker.security.CustomUserDetails;
 import org.tc.mtracker.security.JwtResponseDTO;
 import org.tc.mtracker.security.JwtService;
 import org.tc.mtracker.support.factory.EntityTestFactory;
@@ -25,8 +26,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @Tag("unit")
 @ExtendWith(MockitoExtension.class)
@@ -95,5 +95,26 @@ class LoginServiceTest {
 
         assertThatThrownBy(() -> loginService.login(new LoginRequestDto("missing@example.com", "StrongPass!1")))
                 .isInstanceOf(BadCredentialsException.class);
+    }
+
+    @Test
+    void shouldDeleteTokenWhenLogoutAndTokenExists() {
+        User user = EntityTestFactory.user(1L, "user@example.com", true);
+        RefreshToken refreshToken = new RefreshToken(1L, "token", LocalDateTime.MAX, user);
+        when(refreshTokenService.findByUserId(user.getId())).thenReturn(Optional.of(refreshToken));
+
+        loginService.logout(new CustomUserDetails(user));
+        verify(refreshTokenService, times(1)).deleteToken(refreshToken);
+    }
+
+    @Test
+    void shouldDoNothingWhenLogoutAndTokenDoesNotExist() {
+        User user = EntityTestFactory.user(1L, "user@example.com", true);
+
+        when(refreshTokenService.findByUserId(user.getId())).thenReturn(Optional.empty());
+
+        loginService.logout(new CustomUserDetails(user));
+
+        verify(refreshTokenService, never()).deleteToken(any());
     }
 }
