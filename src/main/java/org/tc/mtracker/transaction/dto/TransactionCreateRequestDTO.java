@@ -3,6 +3,7 @@ package org.tc.mtracker.transaction.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
 import org.hibernate.validator.constraints.Length;
 import org.tc.mtracker.common.enums.TransactionType;
@@ -17,6 +18,7 @@ public record TransactionCreateRequestDTO(
         @NotNull
         @DecimalMin(value = "0.01")
         @DecimalMax(value = "999999999999.99")
+        @Digits(integer = 12, fraction = 2)
         @Schema(description = "Transaction amount, min 0.01 max 999_999_999_999.99", example = "125.50")
         BigDecimal amount,
 
