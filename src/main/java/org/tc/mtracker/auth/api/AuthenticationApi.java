@@ -13,10 +13,12 @@ import jakarta.validation.constraints.Email;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.tc.mtracker.auth.dto.*;
 import org.tc.mtracker.common.image.ValidImage;
+import org.tc.mtracker.security.CustomUserDetails;
 import org.tc.mtracker.security.JwtResponseDTO;
 
 @RequestMapping("/api/v1/auth")
@@ -122,6 +124,25 @@ public interface AuthenticationApi {
             )
             @Valid @RequestBody LoginRequestDto loginRequestDto
     );
+
+    @Operation(
+            summary = "Logout user",
+            description = "Deletes users Refresh Token from DB. Requires valid Access JWT in header Authorization "
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "Successful logout"
+    )
+    @ApiResponse(
+            responseCode = "401",
+            description = "Invalid or missed access token",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                    schema = @Schema(implementation = ProblemDetail.class)
+            )
+    )
+    @PostMapping("/logout")
+    ResponseEntity<Void> logout(@AuthenticationPrincipal CustomUserDetails principal);
 
     @Operation(
             summary = "Send reset password email",

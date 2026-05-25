@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RestController;
 import org.tc.mtracker.category.CategoryService;
@@ -11,6 +12,7 @@ import org.tc.mtracker.category.dto.CategoryResponseDTO;
 import org.tc.mtracker.category.dto.CreateCategoryDTO;
 import org.tc.mtracker.category.dto.UpdateCategoryDTO;
 import org.tc.mtracker.common.enums.TransactionType;
+import org.tc.mtracker.security.CustomUserDetails;
 
 import java.util.List;
 
@@ -80,9 +82,9 @@ public class CategoryController implements CategoryApi {
     public ResponseEntity<Void> deleteCategory(
             Long categoryId,
             Long replacementCategoryId,
-            Authentication auth
+            @AuthenticationPrincipal CustomUserDetails principal
     ) {
-        categoryService.deleteCategory(categoryId, replacementCategoryId, auth);
+        categoryService.deleteCategory(categoryId, replacementCategoryId, principal.getId());
         return ResponseEntity.noContent().build();
     }
 }

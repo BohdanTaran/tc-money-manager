@@ -130,8 +130,8 @@ public class CategoryService {
     }
 
     @Transactional
-    public void deleteCategory(Long categoryId, Long replacementCategoryId, Authentication auth) {
-        User currentUser = userService.getCurrentAuthenticatedUser(auth);
+    public void deleteCategory(Long categoryId, Long replacementCategoryId, long userId) {
+        User currentUser = userService.getUserById(userId);
         Category category = findOwnedById(categoryId, currentUser);
         long linkedTransactions = transactionRepository.countByUserAndCategory(currentUser, category);
         long linkedRecurringTransactions = recurringTransactionRepository.countByUserAndCategory(currentUser, category);
