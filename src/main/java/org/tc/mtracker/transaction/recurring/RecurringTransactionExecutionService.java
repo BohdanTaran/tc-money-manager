@@ -38,13 +38,8 @@ public class RecurringTransactionExecutionService {
         while (!recurringTransaction.getNextExecutionDate().isAfter(executionDate)) {
             LocalDate transactionDate = recurringTransaction.getNextExecutionDate();
             recurringTransactionService.createAutomatedTransaction(
-                    RecurringTransactionService.toTransaction(recurringTransaction, transactionDate));
-            recurringTransaction.setNextExecutionDate(
-                    recurringTransactionService.nextExecutionDateAfter(
-                            transactionDate,
-                            recurringTransaction.getIntervalUnit()
-                    )
-            );
+                    recurringTransaction.toTransaction(transactionDate));
+            recurringTransaction.setNextExecutionDate(recurringTransaction.nextExecutionDateAfter(transactionDate));
             createdTransactions++;
         }
         return createdTransactions;

@@ -1,6 +1,8 @@
 package org.tc.mtracker.transaction.dto;
 
 import org.mapstruct.*;
+import org.tc.mtracker.account.Account;
+import org.tc.mtracker.category.Category;
 import org.tc.mtracker.category.CategoryMapper;
 import org.tc.mtracker.category.CategoryService;
 import org.tc.mtracker.transaction.Transaction;
@@ -15,14 +17,15 @@ public interface TransactionMapper {
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "user", source = "user")
-    @Mapping(target = "account", ignore = true)
-    @Mapping(target = "category", ignore = true)
+    @Mapping(target = "account", source = "account")
+    @Mapping(target = "category", source = "category")
+    @Mapping(target = "type", source = "dto.type")
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "deletedAt", ignore = true)
     @Mapping(target = "receipts", ignore = true)
     @Mapping(target = "recurringTransaction", ignore = true)
-    Transaction toEntity(TransactionCreateRequestDTO dto, User user);
+    Transaction toEntity(TransactionCreateRequestDTO dto, User user, Account account, Category category);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "user", ignore = true)
@@ -32,8 +35,9 @@ public interface TransactionMapper {
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "deletedAt", ignore = true)
     @Mapping(target = "receipts", ignore = true)
+    @Mapping(target = "type", ignore = true)
     @Mapping(target = "recurringTransaction", ignore = true)
-    void updateEntity(TransactionCreateRequestDTO dto, @MappingTarget Transaction transaction);
+    void updateEntity(TransactionUpdateRequestDTO dto, @MappingTarget Transaction transaction);
 
     @Mapping(target = "accountId", source = "transaction.account.id")
     @Mapping(target = "intervalUnit", source = "transaction.recurringTransaction.intervalUnit")

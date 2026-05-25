@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.tc.mtracker.category.Category;
 import org.tc.mtracker.common.enums.TransactionType;
+import org.tc.mtracker.transaction.recurring.RecurringTransaction;
 import org.tc.mtracker.user.User;
 
 import java.time.LocalDate;
@@ -42,6 +43,11 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     );
 
     long countByUserAndCategory(User user, Category category);
+
+    List<Transaction> findAllByRecurringTransactionAndDateGreaterThanEqualOrderByDateAscIdAsc(
+            RecurringTransaction recurringTransaction,
+            LocalDate date
+    );
 
     @Modifying
     @Query("""
