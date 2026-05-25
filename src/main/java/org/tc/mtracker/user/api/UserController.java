@@ -1,7 +1,6 @@
 package org.tc.mtracker.user.api;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
@@ -15,7 +14,6 @@ import org.tc.mtracker.user.dto.ResponseUserDTO;
 @RestController
 @RequiredArgsConstructor
 @Validated
-@Slf4j
 public class UserController implements UserApi {
 
     private final UserService userService;
