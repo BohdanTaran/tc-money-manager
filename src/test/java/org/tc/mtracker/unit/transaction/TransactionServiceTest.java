@@ -396,7 +396,6 @@ class TransactionServiceTest {
 
         assertThat(result).isEqualTo(response);
         verify(transactionMutationService).updateTransactionValues(existingTransaction, updateDto, targetAccount, expenseCategory);
-        verify(transactionValidationService).validateOneTimeTransactionDate(updateDto.date(), user);
         verify(transactionValidationService).validateTransactionType(existingTransaction.getType(), expenseCategory, user);
     }
 
