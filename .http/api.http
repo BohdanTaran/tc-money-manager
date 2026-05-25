@@ -29,6 +29,11 @@ Content-Type: application/json
 
 > {% client.global.set("accessToken", response.body.accessToken) %}
 
+###Logout
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer {{accessToken}}
+
+
 ###Profile
 GET {{baseUrl}}/users/me
 Authorization: Bearer {{accessToken}}
