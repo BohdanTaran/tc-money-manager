@@ -11,13 +11,13 @@ import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.tc.mtracker.common.image.ValidImage;
+import org.tc.mtracker.security.CustomUserDetails;
 import org.tc.mtracker.user.dto.RequestUpdateUserProfileDTO;
 import org.tc.mtracker.user.dto.ResponseUserDTO;
 
@@ -109,4 +109,113 @@ public interface UserApi {
     )
     @GetMapping("/me")
     ResponseEntity<ResponseUserDTO> getUserProfile(@Parameter(hidden = true) Authentication auth);
+
+
+    @Operation(
+            summary = "Delete current user account",
+            description = "Deletes the currently authenticated user account and all associated data " +
+                    "(accounts, transactions, categories, recurring transactions, receipt images, etc.). " +
+                    "This operation is irreversible."
+    )
+    @ApiResponse(
+            responseCode = "204",
+            description = "Current user account successfully deleted",
+            content = @Content
+    )
+    @ApiResponse(
+            responseCode = "401",
+            description = "Unauthorized - User not authenticated",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                    examples = @ExampleObject(value = """
+            {
+                "timestamp": "2026-05-25T11:03:16.040982600Z",
+                "status": 401,
+                "title": "Unauthorized",
+                "detail": "Full authentication is required to access this resource",
+                "instance": "/api/v1/users/me"
+            }
+            """)
+            )
+    )
+    @ApiResponse(
+            responseCode = "403",
+            description = "Forbidden - Authentication required",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                    examples = @ExampleObject(value = """
+            {
+                "timestamp": "2026-05-25T11:03:16.040982600Z",
+                "status": 403,
+                "title": "Forbidden",
+                "detail": "Access denied.",
+                "instance": "/api/v1/users/me"
+            }
+            """)
+            )
+    )
+    @ApiResponse(
+            responseCode = "404",
+            description = "User not found (user exists in authentication but not in database)",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                    examples = @ExampleObject(value = """
+            {
+                "timestamp": "2026-05-25T11:03:16.040982600Z",
+                "status": 404,
+                "title": "Not Found",
+                "detail": "User with id#123 not found",
+                "instance": "/api/v1/users/me"
+            }
+            """)
+            )
+    )
+    @ApiResponse(
+            responseCode = "409",
+            description = "Conflict - Cannot delete due to referential integrity (should not happen with proper cascade)",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                    examples = @ExampleObject(value = """
+            {
+                "timestamp": "2026-05-25T11:03:16.040982600Z",
+                "status": 409,
+                "title": "Conflict",
+                "detail": "Cannot delete or update a parent row: a foreign key constraint fails",
+                "instance": "/api/v1/users/me"
+            }
+            """)
+            )
+    )
+    @ApiResponse(
+            responseCode = "405",
+            description = "Method not allowed",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                    examples = @ExampleObject(value = """
+            {
+                "timestamp": "2026-05-25T11:03:16.040982600Z",
+                "status": 405,
+                "title": "Method Not Allowed",
+                "detail": "Request method 'GET' is not supported",
+                "instance": "/api/v1/users/me"
+            }
+            """)
+            )
+    )
+    @ApiResponse(
+            responseCode = "500",
+            description = "Internal server error",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                    examples = @ExampleObject(value = """
+            {
+                "timestamp": "2026-05-25T11:03:16.040982600Z",
+                "status": 500,
+                "title": "Internal Server Error",
+                "detail": "Database connection failed",
+                "instance": "/api/v1/users/me"
+            }
+            """)
+            )
+    )
+    @DeleteMapping("/me")
+    @PreAuthorize("isAuthenticated()")
+    ResponseEntity<Void> deleteUser(
+            @Parameter(hidden = true, description = "Currently authenticated user details")
+            @AuthenticationPrincipal CustomUserDetails principal
+    );
 }
