@@ -15,7 +15,7 @@ Content-Type: application/json
 
 
 ###Token verification
-GET {{baseUrl}}/auth/verify?token=eyJhbGciOiJIUzM4NCJ9.eyJwdXJwb3NlIjoiZW1haWxfdmVyaWZpY2F0aW9uIiwic3ViIjoiZXhhbXBsZUBtYWlsLmNvbSIsImlhdCI6MTc3OTMxNzY2MywiZXhwIjoxNzc5MzE4NTYzfQ.VOmzmSwqmwImeu0W3GIdDcAPQKKiqtLd_Y9chkraV5uCq7QorEGt0Ftvxg5KiA7d
+GET {{baseUrl}}/auth/verify?token=eyJhbGciOiJIUzM4NCJ9.eyJwdXJwb3NlIjoiZW1haWxfdmVyaWZpY2F0aW9uIiwic3ViIjoiZXhhbXBsZUBtYWlsLmNvbSIsImlhdCI6MTc3OTcwNDk3MiwiZXhwIjoxNzc5NzA1ODcyfQ.plqKd_YorAtVIQgGMhcEoBPaR6m9Hna6JTvmeqSHJH4syF3e49-HifwsyOtxrzUj
 
 
 ###Login
@@ -23,7 +23,7 @@ POST {{baseUrl}}/auth/login
 Content-Type: application/json
 
 {
-  "email": "example@mail.com",
+  "email": "ivan@example.com",
   "password": "Example8!"
 }
 
@@ -59,6 +59,11 @@ Accept-Language: en
 ###Delete category
 DELETE {{baseUrl}}/categories/9?10
 Authorization: Bearer {{accessToken}}
+
+###Delete user
+DELETE {{baseUrl}}/users/me
+Authorization: Bearer {{accessToken}}
+
 
 
 

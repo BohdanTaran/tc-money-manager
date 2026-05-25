@@ -1,11 +1,13 @@
 package org.tc.mtracker.user.api;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.tc.mtracker.security.CustomUserDetails;
 import org.tc.mtracker.user.UserService;
 import org.tc.mtracker.user.dto.RequestUpdateUserProfileDTO;
 import org.tc.mtracker.user.dto.ResponseUserDTO;
@@ -13,6 +15,7 @@ import org.tc.mtracker.user.dto.ResponseUserDTO;
 @RestController
 @RequiredArgsConstructor
 @Validated
+@Slf4j
 public class UserController implements UserApi {
 
     private final UserService userService;
@@ -31,5 +34,13 @@ public class UserController implements UserApi {
     @Override
     public ResponseEntity<ResponseUserDTO> getUserProfile(Authentication auth) {
         return ResponseEntity.ok(userService.getUser(auth.getName()));
+    }
+
+
+    @Override
+    public ResponseEntity<Void> deleteUser(
+            CustomUserDetails principal) {
+        userService.deleteUserWithAllData(principal.getId());
+        return ResponseEntity.noContent().build();
     }
 }

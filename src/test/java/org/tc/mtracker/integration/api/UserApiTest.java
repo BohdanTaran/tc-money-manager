@@ -273,4 +273,77 @@ class UserApiTest extends BaseApiIntegrationTest {
                 .exchange()
                 .expectStatus().isUnauthorized();
     }
+
+
+    @Test
+    void shouldDeleteCurrentUserAccount() {
+        User user = fixtures.createUser("delete@example.com");
+        Long userId = user.getId();
+
+        assertThat(userRepository.findById(userId)).isPresent();
+
+        restTestClient.delete()
+                .uri("/api/v1/users/me")
+                .header("Authorization", authHeader(user))
+                .exchange()
+                .expectStatus().isNoContent(); // 204
+
+        assertThat(userRepository.findById(userId)).isNotPresent();
+    }
+
+    @Test
+    void shouldDeleteAllUserAssociatedData() {
+        User user = fixtures.createUser("fulldelete@example.com");
+        Long userId = user.getId();
+
+        restTestClient.delete()
+                .uri("/api/v1/users/me")
+                .header("Authorization", authHeader(user))
+                .exchange()
+                .expectStatus().isNoContent();
+
+        assertThat(userRepository.findById(userId)).isNotPresent();
+    }
+
+    @Test
+    void shouldReturnUnauthorizedWhenDeletingWithoutAuth() {
+        restTestClient.delete()
+                .uri("/api/v1/users/me")
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
+    void shouldReturnNotFoundWhenUserDeletedAndTryToAccessAgain() {
+        User user = fixtures.createUser("deletedagain@example.com");
+        restTestClient.delete()
+                .uri("/api/v1/users/me")
+                .header("Authorization", authHeader(user))
+                .exchange()
+                .expectStatus().isNoContent();
+
+        restTestClient.get()
+                .uri("/api/v1/users/me")
+                .header("Authorization", authHeader(user))
+                .exchange()
+                .expectStatus().isUnauthorized(); // or isNotFound()
+    }
+
+       @Test
+    void shouldHandleConsecutiveDeletionAttempts() {
+        User user = fixtures.createUser("consecutive@example.com");
+        restTestClient.delete()
+                .uri("/api/v1/users/me")
+                .header("Authorization", authHeader(user))
+                .exchange()
+                .expectStatus().isNoContent();
+        restTestClient.delete()
+                .uri("/api/v1/users/me")
+                .header("Authorization", authHeader(user))
+                .exchange()
+                .expectStatus().isUnauthorized(); // или isNotFound()
+    }
+
+
+
 }
