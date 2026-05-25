@@ -98,7 +98,6 @@ public class TransactionService {
             TransactionUpdateRequestDTO updateRequestDTO
     ) {
         User user = userService.getCurrentAuthenticatedUser(auth);
-        transactionValidationService.validateOneTimeTransactionDate(updateRequestDTO.date(), user);
         Transaction transaction = findActiveOwnedTransaction(transactionId, user);
         Account targetAccount = transactionValidationService.resolveAccount(user, updateRequestDTO.accountId());
         Category category = transactionValidationService.resolveActiveCategory(updateRequestDTO.categoryId(), user);
@@ -117,7 +116,8 @@ public class TransactionService {
                     category,
                     user);
         } else {
-            throw new RecurringTransactionScopeException("");
+            throw new RecurringTransactionScopeException("Scope THIS_AND_FUTURE is allowed " +
+                    "only for recurring transactions.");
         }
 
         Transaction saved = transactionRepository.save(transaction);
