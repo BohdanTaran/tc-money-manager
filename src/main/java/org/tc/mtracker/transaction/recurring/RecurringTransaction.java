@@ -7,6 +7,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import org.tc.mtracker.account.Account;
 import org.tc.mtracker.category.Category;
 import org.tc.mtracker.common.enums.TransactionType;
+import org.tc.mtracker.transaction.Transaction;
 import org.tc.mtracker.transaction.recurring.enums.IntervalUnit;
 import org.tc.mtracker.user.User;
 
@@ -63,4 +64,33 @@ public class RecurringTransaction {
 
     @UpdateTimestamp
     private LocalDateTime updatedAt;
+
+    public Transaction toTransaction(LocalDate transactionDate) {
+        return Transaction.builder()
+                .user(user)
+                .account(account)
+                .category(category)
+                .recurringTransaction(this)
+                .type(type)
+                .amount(amount)
+                .description(description)
+                .date(transactionDate)
+                .build();
+    }
+
+    public LocalDate nextExecutionDateAfter(LocalDate baseDate) {
+        return switch (intervalUnit) {
+            case MONTHLY -> baseDate.plusMonths(1);
+            case YEARLY -> baseDate.plusYears(1);
+            default -> throw new IllegalArgumentException("Invalid interval unit");
+        };
+    }
+
+    public LocalDate nextExecutionDateAfter(LocalDate baseDate, LocalDate today) {
+        LocalDate nextDate = nextExecutionDateAfter(baseDate);
+        while (!nextDate.isAfter(today)) {
+            nextDate = nextExecutionDateAfter(nextDate);
+        }
+        return nextDate;
+    }
 }

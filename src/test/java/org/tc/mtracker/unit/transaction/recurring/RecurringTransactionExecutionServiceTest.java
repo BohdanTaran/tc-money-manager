@@ -78,8 +78,6 @@ class RecurringTransactionExecutionServiceTest {
 
         when(recurringTransactionRepository.findDueTransactions(LocalDate.of(2026, 4, 15), CategoryStatus.ACTIVE))
                 .thenReturn(List.of(recurringTransaction));
-        when(recurringTransactionService.nextExecutionDateAfter(any(LocalDate.class), eq(IntervalUnit.MONTHLY)))
-                .thenAnswer(invocation -> invocation.<LocalDate>getArgument(0).plusMonths(1));
 
         recurringTransactionExecutionService.executeDueTransactions(LocalDate.of(2026, 4, 15));
 

@@ -8,6 +8,7 @@ import org.tc.mtracker.account.Account;
 import org.tc.mtracker.category.Category;
 import org.tc.mtracker.common.enums.TransactionType;
 import org.tc.mtracker.transaction.recurring.RecurringTransaction;
+import org.tc.mtracker.transaction.recurring.enums.IntervalUnit;
 import org.tc.mtracker.user.User;
 
 import java.math.BigDecimal;
@@ -72,6 +73,17 @@ public class Transaction {
 
     public void addReceipt(ReceiptImage receipt) {
         this.receipts.add(receipt);
+    }
+
+    public boolean isRecurring() {
+        return recurringTransaction != null;
+    }
+
+    public IntervalUnit getIntervalUnit() {
+        if (recurringTransaction == null) {
+            return IntervalUnit.ONCE;
+        }
+        return recurringTransaction.getIntervalUnit();
     }
 
 }

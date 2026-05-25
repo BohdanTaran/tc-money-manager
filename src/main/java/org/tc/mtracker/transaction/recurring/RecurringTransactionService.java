@@ -15,7 +15,6 @@ import org.tc.mtracker.transaction.dto.TransactionCreateRequestDTO;
 import org.tc.mtracker.transaction.dto.TransactionUpdateRequestDTO;
 import org.tc.mtracker.transaction.recurring.dto.RecurringTransactionMapper;
 import org.tc.mtracker.transaction.recurring.dto.RecurringTransactionResponseDTO;
-import org.tc.mtracker.transaction.recurring.enums.IntervalUnit;
 import org.tc.mtracker.user.User;
 import org.tc.mtracker.user.UserService;
 import org.tc.mtracker.utils.exceptions.RecurringTransactionNotFoundException;
@@ -65,7 +64,7 @@ public class RecurringTransactionService {
 
         boolean startToday = requestDTO.date().isEqual(today);
         recurringTransaction.setNextExecutionDate(startToday
-                ? nextExecutionDateAfter(requestDTO.date(), requestDTO.intervalUnit())
+                ? recurringTransaction.nextExecutionDateAfter(requestDTO.date())
                 : requestDTO.date());
 
         RecurringTransaction saved = recurringTransactionRepository.save(recurringTransaction);
@@ -96,65 +95,15 @@ public class RecurringTransactionService {
         recurringTransaction.setAccount(targetAccount);
         recurringTransaction.setCategory(category);
         recurringTransaction.setAmount(updateRequestDTO.amount());
-        recurringTransaction.setType(updateRequestDTO.type());
         recurringTransaction.setDescription(updateRequestDTO.description());
         recurringTransaction.setStartDate(updateRequestDTO.date());
-        recurringTransaction.setIntervalUnit(updateRequestDTO.intervalUnit());
-        recurringTransaction.setNextExecutionDate(nextExecutionDateAfterToday(
-                updateRequestDTO.date(),
-                updateRequestDTO.intervalUnit()
-        ));
-    }
+        recurringTransaction.setNextExecutionDate(
+                recurringTransaction.nextExecutionDateAfter(updateRequestDTO.date(), transactionValidationService.today())
+        );
 
-    public void convertRecurringToOneTime(
-            Transaction transaction,
-            TransactionUpdateRequestDTO updateRequestDTO,
-            Account targetAccount,
-            Category category,
-            User user
-    ) {
-        RecurringTransaction recurringTransaction = getRecurringTransaction(transaction, user);
-
-        transactionMutationService.updateTransactionValues(transaction, updateRequestDTO, targetAccount, category);
-        transaction.setRecurringTransaction(null);
-
-        List<Transaction> futureOccurrences = transactionRepository
-                .findAllByRecurringTransactionAndDateGreaterThanEqualOrderByDateAscIdAsc(
-                        recurringTransaction,
-                        transaction.getDate()
-                );
-        for (Transaction futureOccurrence : futureOccurrences) {
-            if (!futureOccurrence.getId().equals(transaction.getId())) {
-                transactionMutationService.deleteSingleTransaction(futureOccurrence);
-            }
-        }
-
-        recurringTransactionRepository.delete(recurringTransaction);
-    }
-
-    public void convertOneTimeToRecurring(
-            Transaction transaction,
-            TransactionUpdateRequestDTO updateRequestDTO,
-            Account targetAccount,
-            Category category,
-            User user
-    ) {
-        transactionMutationService.updateTransactionValues(transaction, updateRequestDTO, targetAccount, category);
-
-        RecurringTransaction recurringTransaction = RecurringTransaction.builder()
-                .user(user)
-                .account(targetAccount)
-                .amount(updateRequestDTO.amount())
-                .description(updateRequestDTO.description())
-                .type(updateRequestDTO.type())
-                .category(category)
-                .startDate(updateRequestDTO.date())
-                .intervalUnit(updateRequestDTO.intervalUnit())
-                .nextExecutionDate(nextExecutionDateAfterToday(updateRequestDTO.date(), updateRequestDTO.intervalUnit()))
-                .build();
-
-        RecurringTransaction savedRecurringTransaction = recurringTransactionRepository.save(recurringTransaction);
-        transaction.setRecurringTransaction(savedRecurringTransaction);
+        recurringTransactionRepository.save(recurringTransaction);
+        log.info("Recurring transaction updated userId={}, recurringTransactionId ={}",
+                user.getId(), recurringTransaction.getId());
     }
 
     public void deleteCurrentAndFutureOccurrences(Transaction transaction, User user) {
@@ -186,23 +135,6 @@ public class RecurringTransactionService {
                 saved.getDate());
     }
 
-    public LocalDate nextExecutionDateAfter(LocalDate baseDate, IntervalUnit intervalUnit) {
-        return switch (intervalUnit) {
-            case MONTHLY -> baseDate.plusMonths(1);
-            case YEARLY -> baseDate.plusYears(1);
-            default -> throw new IllegalArgumentException("Invalid interval unit");
-        };
-    }
-
-    private LocalDate nextExecutionDateAfterToday(LocalDate startDate, IntervalUnit intervalUnit) {
-        LocalDate nextExecutionDate = nextExecutionDateAfter(startDate, intervalUnit);
-        LocalDate today = transactionValidationService.today();
-        while (!nextExecutionDate.isAfter(today)) {
-            nextExecutionDate = nextExecutionDateAfter(nextExecutionDate, intervalUnit);
-        }
-        return nextExecutionDate;
-    }
-
     private RecurringTransaction findOwnedRecurringTransaction(Long recurringTransactionId, User user) {
         return recurringTransactionRepository.findByIdAndUser(recurringTransactionId, user)
                 .orElseThrow(() -> {
@@ -224,18 +156,5 @@ public class RecurringTransactionService {
         }
 
         return recurringTransaction;
-    }
-
-    public static Transaction toTransaction(RecurringTransaction recurringTransaction, LocalDate transactionDate) {
-        return Transaction.builder()
-                .user(recurringTransaction.getUser())
-                .account(recurringTransaction.getAccount())
-                .category(recurringTransaction.getCategory())
-                .recurringTransaction(recurringTransaction)
-                .type(recurringTransaction.getType())
-                .amount(recurringTransaction.getAmount())
-                .description(recurringTransaction.getDescription())
-                .date(transactionDate)
-                .build();
     }
 }

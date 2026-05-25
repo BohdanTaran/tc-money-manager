@@ -4,9 +4,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PastOrPresent;
 import org.hibernate.validator.constraints.Length;
-import org.tc.mtracker.common.enums.TransactionType;
-import org.tc.mtracker.transaction.recurring.enums.IntervalUnit;
 import org.tc.mtracker.transaction.recurring.enums.RecurringTransactionChangeScope;
 
 import java.math.BigDecimal;
@@ -22,15 +21,13 @@ public record TransactionUpdateRequestDTO(
         BigDecimal amount,
 
         @NotNull
-        @Schema(description = "Transaction type", example = "EXPENSE")
-        TransactionType type,
-
-        @NotNull
         @Schema(description = "Category ID", example = "4")
         Long categoryId,
 
         @NotNull
-        @Schema(description = "Transaction date. For one-time transactions only past or today is allowed.", example = "2026-04-17")
+        @Schema(description = "Transaction date. For one-time transactions only past or today is allowed.",
+                example = "2026-04-17")
+        @PastOrPresent(message = "Transaction date must be Past or present")
         LocalDate date,
 
         @Length(max = 255)
@@ -40,17 +37,10 @@ public record TransactionUpdateRequestDTO(
         @Schema(description = "Optional account ID. If omitted, the default account is used.", example = "1")
         Long accountId,
 
-        @Schema(
-                description = "Interval unit for recurring transaction. Supported transitions: ONCE <-> MONTHLY/YEARLY. MONTHLY <-> YEARLY is not supported.",
-                example = "MONTHLY"
-        )
-        IntervalUnit intervalUnit,
-
         @Schema(description = "Transaction recurring scope", example = "ONLY_THIS")
         RecurringTransactionChangeScope transactionChangeScope
 ) {
     public TransactionUpdateRequestDTO {
-        if (intervalUnit == null) intervalUnit = IntervalUnit.ONCE;
         if (transactionChangeScope == null) transactionChangeScope = RecurringTransactionChangeScope.ONLY_THIS;
     }
 

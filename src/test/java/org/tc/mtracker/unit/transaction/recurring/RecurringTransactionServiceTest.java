@@ -176,12 +176,10 @@ class RecurringTransactionServiceTest {
         selectedOccurrence.setRecurringTransaction(recurringTransaction);
         TransactionUpdateRequestDTO updateDto = new TransactionUpdateRequestDTO(
                 new BigDecimal("150.00"),
-                TransactionType.INCOME,
                 5L,
                 LocalDate.of(2026, 4, 2),
                 "Updated salary",
                 1L,
-                IntervalUnit.YEARLY,
                 RecurringTransactionChangeScope.THIS_AND_FUTURE
         );
 
@@ -192,7 +190,6 @@ class RecurringTransactionServiceTest {
             Account targetAccount = invocation.getArgument(2);
             Category category = invocation.getArgument(3);
             transaction.setAmount(requestDTO.amount());
-            transaction.setType(requestDTO.type());
             transaction.setDescription(requestDTO.description());
             transaction.setDate(requestDTO.date());
             transaction.setAccount(targetAccount);
@@ -212,8 +209,8 @@ class RecurringTransactionServiceTest {
         assertThat(selectedOccurrence.getAmount()).isEqualByComparingTo("150.00");
         assertThat(selectedOccurrence.getCategory()).isEqualTo(bonusCategory);
         assertThat(recurringTransaction.getStartDate()).isEqualTo(LocalDate.of(2026, 4, 2));
-        assertThat(recurringTransaction.getNextExecutionDate()).isEqualTo(LocalDate.of(2027, 4, 2));
-        assertThat(recurringTransaction.getIntervalUnit()).isEqualTo(IntervalUnit.YEARLY);
+        assertThat(recurringTransaction.getNextExecutionDate()).isEqualTo(LocalDate.of(2026, 5, 2));
+        assertThat(recurringTransaction.getIntervalUnit()).isEqualTo(IntervalUnit.MONTHLY);
         assertThat(recurringTransaction.getAmount()).isEqualByComparingTo("150.00");
         assertThat(recurringTransaction.getCategory()).isEqualTo(bonusCategory);
         assertThat(recurringTransaction.getDescription()).isEqualTo("Updated salary");
@@ -238,73 +235,6 @@ class RecurringTransactionServiceTest {
                 .isInstanceOf(RecurringTransactionScopeException.class);
 
         verifyNoInteractions(transactionMutationService);
-    }
-
-    @Test
-    void shouldConvertRecurringToOneTimeAndDeleteFutureOccurrences() {
-        User user = EntityTestFactory.user(1L, "user@example.com", true);
-        Account account = EntityTestFactory.account(1L, user, BigDecimal.ZERO);
-        Category category = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
-        RecurringTransaction recurringTransaction = RecurringTransaction.builder()
-                .id(10L)
-                .user(user)
-                .account(account)
-                .category(category)
-                .type(TransactionType.INCOME)
-                .amount(new BigDecimal("100.00"))
-                .description("Salary")
-                .startDate(LocalDate.of(2026, 4, 1))
-                .nextExecutionDate(LocalDate.of(2026, 5, 1))
-                .intervalUnit(IntervalUnit.MONTHLY)
-                .build();
-        Transaction selectedOccurrence = EntityTestFactory.transaction(
-                11L,
-                user,
-                account,
-                category,
-                TransactionType.INCOME,
-                new BigDecimal("100.00"),
-                LocalDate.of(2026, 4, 2)
-        );
-        selectedOccurrence.setRecurringTransaction(recurringTransaction);
-        Transaction futureOccurrence = EntityTestFactory.transaction(
-                12L,
-                user,
-                account,
-                category,
-                TransactionType.INCOME,
-                new BigDecimal("100.00"),
-                LocalDate.of(2026, 5, 2)
-        );
-        futureOccurrence.setRecurringTransaction(recurringTransaction);
-        TransactionUpdateRequestDTO updateDto = new TransactionUpdateRequestDTO(
-                new BigDecimal("150.00"),
-                TransactionType.INCOME,
-                4L,
-                LocalDate.of(2026, 4, 2),
-                "Updated salary",
-                1L,
-                IntervalUnit.ONCE,
-                RecurringTransactionChangeScope.THIS_AND_FUTURE
-        );
-
-        when(transactionRepository.findAllByRecurringTransactionAndDateGreaterThanEqualOrderByDateAscIdAsc(
-                recurringTransaction,
-                LocalDate.of(2026, 4, 2)
-        )).thenReturn(java.util.List.of(selectedOccurrence, futureOccurrence));
-
-        recurringTransactionService.convertRecurringToOneTime(
-                selectedOccurrence,
-                updateDto,
-                account,
-                category,
-                user
-        );
-
-        verify(transactionMutationService).updateTransactionValues(selectedOccurrence, updateDto, account, category);
-        verify(transactionMutationService).deleteSingleTransaction(futureOccurrence);
-        verify(recurringTransactionRepository).delete(recurringTransaction);
-        assertThat(selectedOccurrence.getRecurringTransaction()).isNull();
     }
 
     @Test

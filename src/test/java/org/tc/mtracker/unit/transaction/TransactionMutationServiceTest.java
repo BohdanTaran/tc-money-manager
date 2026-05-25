@@ -20,7 +20,6 @@ import org.tc.mtracker.transaction.TransactionMutationService;
 import org.tc.mtracker.transaction.TransactionRepository;
 import org.tc.mtracker.transaction.dto.TransactionMapper;
 import org.tc.mtracker.transaction.dto.TransactionUpdateRequestDTO;
-import org.tc.mtracker.transaction.recurring.enums.IntervalUnit;
 import org.tc.mtracker.transaction.recurring.enums.RecurringTransactionChangeScope;
 import org.tc.mtracker.user.User;
 import org.tc.mtracker.utils.S3Service;
@@ -94,19 +93,16 @@ class TransactionMutationServiceTest {
         );
         TransactionUpdateRequestDTO updateDto = new TransactionUpdateRequestDTO(
                 new BigDecimal("50.00"),
-                TransactionType.EXPENSE,
                 4L,
                 LocalDate.of(2026, 4, 2),
                 "Updated expense",
                 2L,
-                IntervalUnit.ONCE,
                 RecurringTransactionChangeScope.ONLY_THIS
         );
         doAnswer(invocation -> {
             TransactionUpdateRequestDTO dto = invocation.getArgument(0);
             Transaction target = invocation.getArgument(1);
             target.setAmount(dto.amount());
-            target.setType(dto.type());
             target.setDescription(dto.description());
             target.setDate(dto.date());
             return null;

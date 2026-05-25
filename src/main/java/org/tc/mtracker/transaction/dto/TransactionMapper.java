@@ -35,6 +35,7 @@ public interface TransactionMapper {
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "deletedAt", ignore = true)
     @Mapping(target = "receipts", ignore = true)
+    @Mapping(target = "type", ignore = true)
     @Mapping(target = "recurringTransaction", ignore = true)
     void updateEntity(TransactionUpdateRequestDTO dto, @MappingTarget Transaction transaction);
 
