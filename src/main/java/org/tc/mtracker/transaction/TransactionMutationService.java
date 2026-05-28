@@ -79,7 +79,7 @@ public class TransactionMutationService {
                 .forEach(receipt -> s3Service.deleteFile(receiptObjectKey(receipt)));
     }
 
-    private List<String> generatePresignedUrlsForReceipts(Transaction saved) {
+    public List<String> generatePresignedUrlsForReceipts(Transaction saved) {
         List<ReceiptImage> receipts = saved.getReceipts();
         if (receipts.isEmpty()) {
             return List.of();
