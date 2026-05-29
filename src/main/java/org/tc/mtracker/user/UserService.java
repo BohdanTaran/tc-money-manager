@@ -8,6 +8,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.tc.mtracker.common.file.ObjectStorageKeys;
+import org.tc.mtracker.currency.CurrencyCode;
+import org.tc.mtracker.security.CustomUserDetails;
+import org.tc.mtracker.transaction.TransactionRepository;
+import org.tc.mtracker.transaction.recurring.RecurringTransactionRepository;
 import org.tc.mtracker.user.dto.RequestUpdateUserProfileDTO;
 import org.tc.mtracker.user.dto.ResponseUserDTO;
 import org.tc.mtracker.user.dto.UserMapper;
@@ -26,10 +30,8 @@ public class UserService {
     private final UserRepository userRepository;
     private final S3Service s3Service;
     private final JdbcTemplate jdbcTemplate;
-
-    public ResponseUserDTO getUser(Authentication auth) {
-        return getUser(auth.getName());
-    }
+    private final TransactionRepository transactionRepository;
+    private final RecurringTransactionRepository recurringTransactionRepository;
 
     public User getCurrentAuthenticatedUser(Authentication auth) {
         return getCurrentAuthenticatedUser(auth.getName());
@@ -51,17 +53,23 @@ public class UserService {
     }
 
     @Transactional
-    public ResponseUserDTO updateProfile(RequestUpdateUserProfileDTO dto, MultipartFile avatar, Authentication auth) {
-        return updateProfile(dto, avatar, auth.getName());
+    public ResponseUserDTO updateProfile(RequestUpdateUserProfileDTO dto,
+                                         MultipartFile avatar,
+                                         CustomUserDetails principal) {
+        return updateProfile(dto, avatar, principal.getId());
     }
 
     @Transactional
-    public ResponseUserDTO updateProfile(RequestUpdateUserProfileDTO dto, MultipartFile avatar, String currentUserEmail) {
-        User user = getCurrentAuthenticatedUser(currentUserEmail);
+    public ResponseUserDTO updateProfile(RequestUpdateUserProfileDTO dto, MultipartFile avatar, Long userId) {
+        User user = getUserById(userId);
 
-        if (dto != null && user.getFullName().equals(dto.fullName())) {
+        if (isSameFullNameUpdate(dto, user)) {
             log.warn("User update rejected: new full name is the same as the current one");
             throw new UserUpdateProfileException("New full name is the same as the current one.");
+        }
+
+        if (isCurrencyChangeRequested(dto, user) && userHasFinancialActivity(userId)) {
+            throw new UserUpdateProfileException("Cannot update currency while user has financial activity.");
         }
 
         if (avatar != null) {
@@ -76,6 +84,23 @@ public class UserService {
         log.info("User with id {} is updated successfully!", user.getId());
 
         return userMapper.toDto(user, avatarUrl);
+    }
+
+    private static boolean isSameFullNameUpdate(RequestUpdateUserProfileDTO dto, User user) {
+        return dto != null
+                && dto.fullName() != null
+                && dto.currencyCode() == null
+                && user.getFullName().equals(dto.fullName());
+    }
+
+    private static boolean isCurrencyChangeRequested(RequestUpdateUserProfileDTO dto, User user) {
+        return dto != null
+                && dto.currencyCode() != null
+                && isDifferentCurrency(dto.currencyCode(), user.getCurrencyCode());
+    }
+
+    private static boolean isDifferentCurrency(CurrencyCode requestedCurrency, CurrencyCode currentCurrency) {
+        return requestedCurrency != currentCurrency;
     }
 
     private String generateAvatarUrl(User user) {
@@ -171,6 +196,11 @@ public class UserService {
             throw new UserNotFoundException("User not found with id: " + userId);
         }
         log.info("User {} successfully deleted", userId);
+    }
+
+    private boolean userHasFinancialActivity(long userId) {
+        return transactionRepository.existsByUserIdAndDeletedAtIsNull(userId)
+                || recurringTransactionRepository.existsByUserId(userId);
     }
 
 }

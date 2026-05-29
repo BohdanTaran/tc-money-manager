@@ -61,4 +61,6 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
             @Param("sourceCategory") Category sourceCategory,
             @Param("replacementCategory") Category replacementCategory
     );
+
+    boolean existsByUserIdAndDeletedAtIsNull(Long userId);
 }

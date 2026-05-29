@@ -22,9 +22,9 @@ public class UserController implements UserApi {
     public ResponseEntity<ResponseUserDTO> updateMe(
             RequestUpdateUserProfileDTO dto,
             MultipartFile avatar,
-            Authentication auth
+            CustomUserDetails principal
     ) {
-        ResponseUserDTO responseUserProfileDTO = userService.updateProfile(dto, avatar, auth.getName());
+        ResponseUserDTO responseUserProfileDTO = userService.updateProfile(dto, avatar, principal);
         return ResponseEntity.ok()
                 .body(responseUserProfileDTO);
     }

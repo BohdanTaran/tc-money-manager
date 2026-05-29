@@ -9,6 +9,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.tc.mtracker.currency.CurrencyCode;
 import org.tc.mtracker.support.factory.EntityTestFactory;
+import org.tc.mtracker.transaction.TransactionRepository;
+import org.tc.mtracker.transaction.recurring.RecurringTransactionRepository;
 import org.tc.mtracker.user.User;
 import org.tc.mtracker.user.UserRepository;
 import org.tc.mtracker.user.UserService;
@@ -39,6 +41,12 @@ class UserServiceTest {
     @Mock
     private S3Service s3Service;
 
+    @Mock
+    private TransactionRepository transactionRepository;
+
+    @Mock
+    private RecurringTransactionRepository recurringTransactionRepository;
+
     @InjectMocks
     private UserService userService;
 
@@ -58,7 +66,7 @@ class UserServiceTest {
                 LocalDateTime.now()
         );
 
-        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
         doAnswer(invocation -> {
             RequestUpdateUserProfileDTO updateDto = invocation.getArgument(0);
             User target = invocation.getArgument(1);
@@ -69,7 +77,7 @@ class UserServiceTest {
         when(s3Service.generatePresignedUrl("existing-avatar-id")).thenReturn("https://test-bucket.local/existing-avatar-id");
         when(userMapper.toDto(user, "https://test-bucket.local/existing-avatar-id")).thenReturn(response);
 
-        ResponseUserDTO result = userService.updateProfile(dto, avatar, user.getEmail());
+        ResponseUserDTO result = userService.updateProfile(dto, avatar, user.getId());
 
         assertThat(result).isEqualTo(response);
         assertThat(user.getFullName()).isEqualTo("Updated User");
@@ -104,12 +112,71 @@ class UserServiceTest {
     @Test
     void shouldThrowWhenUpdatingProfileWithSameFullNameAsCurrent() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
-        RequestUpdateUserProfileDTO dto = new RequestUpdateUserProfileDTO(user.getFullName(), CurrencyCode.EUR);
+        RequestUpdateUserProfileDTO dto = new RequestUpdateUserProfileDTO(user.getFullName(), null);
 
-        when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
 
-        assertThatThrownBy(() -> userService.updateProfile(dto, null, user.getEmail()))
+        assertThatThrownBy(() -> userService.updateProfile(dto, null, user.getId()))
                 .isInstanceOf(UserUpdateProfileException.class);
+    }
+
+    @Test
+    void shouldThrowWhenChangingCurrencyWithExistingTransaction() {
+        User user = EntityTestFactory.user(1L, "user@example.com", true);
+        RequestUpdateUserProfileDTO dto = new RequestUpdateUserProfileDTO(null, CurrencyCode.EUR);
+
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(transactionRepository.existsByUserIdAndDeletedAtIsNull(user.getId())).thenReturn(true);
+
+        assertThatThrownBy(() -> userService.updateProfile(dto, null, user.getId()))
+                .isInstanceOf(UserUpdateProfileException.class)
+                .hasMessage("Cannot update currency while user has financial activity.");
+
+        verify(userRepository, never()).save(any());
+        verifyNoInteractions(userMapper, s3Service);
+    }
+
+    @Test
+    void shouldThrowWhenChangingCurrencyWithExistingRecurringTransaction() {
+        User user = EntityTestFactory.user(1L, "user@example.com", true);
+        RequestUpdateUserProfileDTO dto = new RequestUpdateUserProfileDTO(null, CurrencyCode.EUR);
+
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(transactionRepository.existsByUserIdAndDeletedAtIsNull(user.getId())).thenReturn(false);
+        when(recurringTransactionRepository.existsByUserId(user.getId())).thenReturn(true);
+
+        assertThatThrownBy(() -> userService.updateProfile(dto, null, user.getId()))
+                .isInstanceOf(UserUpdateProfileException.class)
+                .hasMessage("Cannot update currency while user has financial activity.");
+
+        verify(userRepository, never()).save(any());
+        verifyNoInteractions(userMapper, s3Service);
+    }
+
+    @Test
+    void shouldAllowFullNameUpdateWhenCurrencyIsUnchangedAndUserHasTransactions() {
+        User user = EntityTestFactory.user(1L, "user@example.com", true);
+        RequestUpdateUserProfileDTO dto = new RequestUpdateUserProfileDTO("Updated User", CurrencyCode.USD);
+        ResponseUserDTO response = new ResponseUserDTO(
+                1L,
+                user.getEmail(),
+                "Updated User",
+                CurrencyCode.USD,
+                null,
+                true,
+                LocalDateTime.now()
+        );
+
+        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
+        when(userMapper.toDto(user, null)).thenReturn(response);
+
+        ResponseUserDTO result = userService.updateProfile(dto, null, user.getId());
+
+        assertThat(result).isEqualTo(response);
+        verify(transactionRepository, never()).existsByUserIdAndDeletedAtIsNull(any());
+        verify(recurringTransactionRepository, never()).existsByUserId(any());
+        verify(userMapper).updateEntityFromDto(dto, user);
+        verify(userRepository).save(user);
     }
 
     @Test

@@ -1,6 +1,9 @@
 package org.tc.mtracker.utils.exceptions;
 
-public class UserUpdateProfileException extends RuntimeException {
-    public UserUpdateProfileException(String s) {
+import org.springframework.http.HttpStatus;
+
+public class UserUpdateProfileException extends ApiException {
+    public UserUpdateProfileException(String message) {
+        super(HttpStatus.BAD_REQUEST, "user_update_profile_failed", message);
     }
 }

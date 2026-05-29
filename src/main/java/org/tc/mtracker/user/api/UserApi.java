@@ -70,7 +70,7 @@ public interface UserApi {
                     }
             )
             @ValidImage @RequestPart(name = "avatar", required = false) MultipartFile avatar,
-            @Parameter(hidden = true) Authentication auth
+            @AuthenticationPrincipal CustomUserDetails principal
     );
 
     @Operation(
