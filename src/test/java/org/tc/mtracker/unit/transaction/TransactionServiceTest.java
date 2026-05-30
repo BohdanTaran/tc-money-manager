@@ -1,5 +1,7 @@
 package org.tc.mtracker.unit.transaction;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -70,6 +72,9 @@ class TransactionServiceTest {
 
     @InjectMocks
     private TransactionService transactionService;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     private static TransactionCreateRequestDTO createRequest(
             BigDecimal amount,
@@ -385,8 +390,8 @@ class TransactionServiceTest {
         when(transactionRepository.findActiveByIdAndUser(9L, user)).thenReturn(Optional.of(existingTransaction));
         when(transactionValidationService.resolveAccount(user, 2L)).thenReturn(targetAccount);
         when(transactionValidationService.resolveActiveCategory(4L, user)).thenReturn(expenseCategory);
-        when(transactionRepository.save(existingTransaction)).thenReturn(existingTransaction);
         when(transactionMutationService.toResponseDto(existingTransaction)).thenReturn(response);
+        when(transactionRepository.findById(9L)).thenReturn(Optional.of(existingTransaction));
 
         TransactionResponseDTO result = transactionService.updateTransaction(
                 9L,
@@ -452,7 +457,7 @@ class TransactionServiceTest {
         when(transactionRepository.findActiveByIdAndUser(9L, user)).thenReturn(Optional.of(transaction));
         when(transactionValidationService.resolveAccount(user, 1L)).thenReturn(account);
         when(transactionValidationService.resolveActiveCategory(4L, user)).thenReturn(salaryCategory);
-        when(transactionRepository.save(transaction)).thenReturn(transaction);
+        when(transactionRepository.findById(9L)).thenReturn(Optional.of(transaction));
         when(transactionMutationService.toResponseDto(transaction)).thenReturn(response);
 
         TransactionResponseDTO result = transactionService.updateTransaction(

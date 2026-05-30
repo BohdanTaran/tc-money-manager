@@ -1,6 +1,7 @@
 package org.tc.mtracker.transaction;
 
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,9 +40,6 @@ public class TransactionService {
     private final TransactionValidationService transactionValidationService;
     private final RecurringTransactionService recurringTransactionService;
     private final TransactionMutationService transactionMutationService;
-
-    @PersistenceContext
-    private EntityManager entityManager;
 
     @Transactional
     public TransactionResponseDTO createTransaction(Authentication auth,
@@ -125,11 +123,14 @@ public class TransactionService {
                     "only for recurring transactions.");
         }
 
-        Transaction saved = transactionRepository.saveAndFlush(transaction);
-        entityManager.refresh(transaction);
+        transactionRepository.saveAndFlush(transaction);
+
+        Transaction updated = transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new EntityNotFoundException("Transaction not found after update"));
+
         log.info("Transaction updated userId={} transactionId={} accountId={} amount={} type={} updateTime={}",
-                user.getId(), saved.getId(), targetAccount.getId(), saved.getAmount(), saved.getType(), saved.getUpdatedAt());
-        return transactionMutationService.toResponseDto(saved);
+                user.getId(), updated.getId(), targetAccount.getId(), updated.getAmount(), updated.getType(), updated.getUpdatedAt());
+        return transactionMutationService.toResponseDto(updated);
     }
 
     @Transactional
