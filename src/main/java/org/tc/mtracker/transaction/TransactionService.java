@@ -1,5 +1,7 @@
 package org.tc.mtracker.transaction;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
@@ -37,6 +39,9 @@ public class TransactionService {
     private final TransactionValidationService transactionValidationService;
     private final RecurringTransactionService recurringTransactionService;
     private final TransactionMutationService transactionMutationService;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Transactional
     public TransactionResponseDTO createTransaction(Authentication auth,
@@ -120,9 +125,10 @@ public class TransactionService {
                     "only for recurring transactions.");
         }
 
-        Transaction saved = transactionRepository.save(transaction);
-        log.info("Transaction updated userId={} transactionId={} accountId={} amount={} type={}",
-                user.getId(), saved.getId(), targetAccount.getId(), saved.getAmount(), saved.getType());
+        Transaction saved = transactionRepository.saveAndFlush(transaction);
+        entityManager.refresh(transaction);
+        log.info("Transaction updated userId={} transactionId={} accountId={} amount={} type={} updateTime={}",
+                user.getId(), saved.getId(), targetAccount.getId(), saved.getAmount(), saved.getType(), saved.getUpdatedAt());
         return transactionMutationService.toResponseDto(saved);
     }
 
