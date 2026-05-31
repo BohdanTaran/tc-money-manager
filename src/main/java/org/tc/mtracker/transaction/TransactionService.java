@@ -12,11 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.tc.mtracker.account.Account;
 import org.tc.mtracker.category.Category;
-import org.tc.mtracker.common.enums.TransactionType;
-import org.tc.mtracker.transaction.dto.TransactionCreateRequestDTO;
-import org.tc.mtracker.transaction.dto.TransactionMapper;
-import org.tc.mtracker.transaction.dto.TransactionResponseDTO;
-import org.tc.mtracker.transaction.dto.TransactionUpdateRequestDTO;
+import org.tc.mtracker.transaction.dto.*;
 import org.tc.mtracker.transaction.recurring.RecurringTransaction;
 import org.tc.mtracker.transaction.recurring.RecurringTransactionService;
 import org.tc.mtracker.transaction.recurring.enums.IntervalUnit;
@@ -27,7 +23,6 @@ import org.tc.mtracker.utils.exceptions.InvalidReceiptAttachmentException;
 import org.tc.mtracker.utils.exceptions.RecurringTransactionScopeException;
 import org.tc.mtracker.utils.exceptions.TransactionNotFoundException;
 
-import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -61,29 +56,52 @@ public class TransactionService {
     }
 
     @Transactional(readOnly = true)
-    public List<TransactionResponseDTO> getTransactions(
-            Authentication auth,
-            Long accountId,
-            Long categoryId,
-            TransactionType type,
-            LocalDate dateFrom,
-            LocalDate dateTo
+    public TransactionCursorPageResponseDTO<TransactionResponseDTO> getTransactions(
+            TransactionCursorRequest request,
+            Long userId
     ) {
-        User user = userService.getCurrentAuthenticatedUser(auth);
-        log.debug("Loading transactions for userId={} accountId={} categoryId={} type={} dateFrom={} dateTo={}",
-                user.getId(), accountId, categoryId, type, dateFrom, dateTo);
 
-        if (accountId != null) {
-            transactionValidationService.resolveAccount(user, accountId);
-        }
-        if (categoryId != null) {
-            transactionValidationService.resolveAccessibleCategory(categoryId, user);
+        TransactionCursor cursor = TransactionCursor.decode(request.cursor());
+
+        TransactionQueryParams params = TransactionQueryParams.builder()
+                .userId(userId)
+                .accountId(request.accountId())
+                .categoryId(request.categoryId())
+                .type(request.type() != null ? request.type().name() : null)
+                .dateFrom(request.dateFrom())
+                .dateTo(request.dateTo())
+                .cursorDate(cursor != null ? cursor.getDate() : null)
+                .cursorId(cursor != null ? cursor.getId() : null)
+                .limit(request.limit() + 1)
+                .build();
+
+        List<Long> transactionIds = transactionRepository.findTransactionIdsWithCursor(params);
+
+        boolean hasNext = transactionIds.size() > request.limit();
+        if (hasNext) {
+            transactionIds = transactionIds.subList(0, request.limit());
         }
 
-        return transactionRepository.findAllByUserAndFilters(user, accountId, categoryId, type, dateFrom, dateTo)
-                .stream()
-                .map(transactionMutationService::toResponseDto)
+        List<Transaction> transactions = transactionRepository
+                .findAllByIdInOrderByDateDescIdDesc(transactionIds);
+
+        String nextCursor = null;
+        if (hasNext && !transactions.isEmpty()) {
+            Transaction lastTransaction = transactions.getLast();
+            nextCursor = TransactionCursor.fromTransaction(lastTransaction).encode();
+        }
+
+        List<TransactionResponseDTO> responseData = transactions.stream()
+                .map(t -> transactionMapper.toDto(
+                        t, transactionMutationService.generatePresignedUrlsForReceipts(t)))
                 .toList();
+
+        return new TransactionCursorPageResponseDTO<>(
+                responseData,
+                nextCursor,
+                hasNext,
+                responseData.size()
+        );
     }
 
     @Transactional(readOnly = true)
