@@ -42,4 +42,5 @@ public interface TransactionMapper {
     @Mapping(target = "accountId", source = "transaction.account.id")
     @Mapping(target = "intervalUnit", source = "transaction.recurringTransaction.intervalUnit")
     TransactionResponseDTO toDto(Transaction transaction, List<String> receiptsUrls);
+
 }

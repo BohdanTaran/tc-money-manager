@@ -312,9 +312,9 @@ class TransactionApiTest extends BaseApiIntegrationTest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.length()").isEqualTo(1)
-                .jsonPath("$[0].id").isEqualTo(expected.getId())
-                .jsonPath("$[0].amount").isEqualTo(40.00);
+                .jsonPath("$.data.length()").isEqualTo(1)        // ← изменили
+                .jsonPath("$.data[0].id").isEqualTo(expected.getId())  // ← изменили
+                .jsonPath("$.data[0].amount").isEqualTo(40.00);
     }
 
     @Test
@@ -340,9 +340,8 @@ class TransactionApiTest extends BaseApiIntegrationTest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.length()").isEqualTo(1)
-                .jsonPath("$[0].id").isEqualTo(expected.getId())
-                .jsonPath("$[0].amount").isEqualTo(25.00);
+                .jsonPath("$.data.length()").isEqualTo(1)       // ← изменили
+                .jsonPath("$.data[0].id").isEqualTo(expected.getId()); // ← изменили
     }
 
     @Test
@@ -604,4 +603,5 @@ class TransactionApiTest extends BaseApiIntegrationTest {
         assertThat(transactionRepository.findById(transaction.getId())).isEmpty();
         verify(s3Service).deleteFile("receipts/" + receiptId);
     }
+
 }

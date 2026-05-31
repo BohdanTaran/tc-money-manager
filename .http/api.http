@@ -23,7 +23,7 @@ POST {{baseUrl}}/auth/login
 Content-Type: application/json
 
 {
-  "email": "ivan@example.com",
+  "email": "maria@example.com",
   "password": "Example8!"
 }
 
@@ -62,6 +62,23 @@ Authorization: Bearer {{accessToken}}
 
 ###Delete user
 DELETE {{baseUrl}}/users/me
+Authorization: Bearer {{accessToken}}
+
+###Get first transaction page without cursor
+GET {{baseUrl}}/transactions?limit=10
+Authorization: Bearer {{accessToken}}
+
+###Get first transaction page with date-filter
+GET http://localhost:8080/api/v1/transactions?limit=5&dateFrom=2025-05-20&dateTo=2025-05-27
+Authorization: Bearer {{accessToken}}
+
+###Get second transaction page with cursor from response
+GET http://localhost:8080/api/v1/transactions?limit=5&cursor=MjAyNS0wNS0yN3wxMjM0NQ==
+Authorization: Bearer {{accessToken}}
+
+
+###Get first transaction page with folter by account and category
+GET http://localhost:8080/api/v1/transactions?limit=10&accountId=3&categoryId=5&type=EXPENSE
 Authorization: Bearer {{accessToken}}
 
 
