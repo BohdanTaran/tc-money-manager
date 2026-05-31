@@ -8,9 +8,9 @@ import org.tc.mtracker.account.AccountRepository;
 import org.tc.mtracker.category.Category;
 import org.tc.mtracker.common.enums.TransactionType;
 import org.tc.mtracker.common.file.ObjectStorageKeys;
-import org.tc.mtracker.transaction.dto.TransactionCreateRequestDTO;
 import org.tc.mtracker.transaction.dto.TransactionMapper;
 import org.tc.mtracker.transaction.dto.TransactionResponseDTO;
+import org.tc.mtracker.transaction.dto.TransactionUpdateRequestDTO;
 import org.tc.mtracker.utils.S3Service;
 
 import java.math.BigDecimal;
@@ -48,7 +48,7 @@ public class TransactionMutationService {
 
     public void updateTransactionValues(
             Transaction transaction,
-            TransactionCreateRequestDTO updateRequestDTO,
+            TransactionUpdateRequestDTO updateRequestDTO,
             Account targetAccount,
             Category category
     ) {
@@ -79,7 +79,7 @@ public class TransactionMutationService {
                 .forEach(receipt -> s3Service.deleteFile(receiptObjectKey(receipt)));
     }
 
-    private List<String> generatePresignedUrlsForReceipts(Transaction saved) {
+    public List<String> generatePresignedUrlsForReceipts(Transaction saved) {
         List<ReceiptImage> receipts = saved.getReceipts();
         if (receipts.isEmpty()) {
             return List.of();

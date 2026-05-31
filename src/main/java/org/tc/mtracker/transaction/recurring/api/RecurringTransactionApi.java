@@ -7,13 +7,14 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.*;
-import org.tc.mtracker.transaction.recurring.dto.RecurringTransactionCreateRequestDTO;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.tc.mtracker.transaction.recurring.dto.RecurringTransactionResponseDTO;
 
 import java.util.List;
@@ -58,28 +59,6 @@ public interface RecurringTransactionApi {
     @GetMapping("/{recurringTransactionId}")
     ResponseEntity<RecurringTransactionResponseDTO> getRecurringTransactionById(
             @PathVariable Long recurringTransactionId,
-            @Parameter(hidden = true) Authentication auth
-    );
-
-    @Operation(
-            summary = "Create recurring transaction",
-            description = "Creates a recurring transaction. Start date can be today or in the future. If the start date is today, the first transaction is created immediately. If the start date is in the future, the first transaction is scheduled for that date."
-    )
-    @ApiResponse(
-            responseCode = "201",
-            description = "Recurring transaction created",
-            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-                    schema = @Schema(implementation = RecurringTransactionResponseDTO.class))
-    )
-    @ApiResponse(
-            responseCode = "400",
-            description = "Invalid input data or validation failed",
-            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-                    schema = @Schema(implementation = ProblemDetail.class))
-    )
-    @PostMapping
-    ResponseEntity<RecurringTransactionResponseDTO> createRecurringTransaction(
-            @Valid @RequestBody RecurringTransactionCreateRequestDTO requestDTO,
             @Parameter(hidden = true) Authentication auth
     );
 

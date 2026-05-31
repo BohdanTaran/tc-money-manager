@@ -2,27 +2,23 @@ package org.tc.mtracker.transaction.api;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.tc.mtracker.common.enums.TransactionType;
 import org.tc.mtracker.common.receipt.ValidReceiptFile;
-import org.tc.mtracker.transaction.dto.TransactionCreateRequestDTO;
-import org.tc.mtracker.transaction.dto.TransactionResponseDTO;
+import org.tc.mtracker.security.CustomUserDetails;
+import org.tc.mtracker.transaction.dto.*;
 import org.tc.mtracker.transaction.recurring.enums.RecurringTransactionChangeScope;
 
-import java.time.LocalDate;
 import java.util.List;
 
 @RequestMapping("/api/v1/transactions")
@@ -30,26 +26,44 @@ import java.util.List;
 public interface TransactionApi {
 
     @Operation(
-            summary = "Get transactions",
-            description = "Returns the authenticated user's transactions filtered by account, category, type," +
-                    " and date range. Category filters can reference both active and archived categories that " +
-                    "still exist in historical transactions."
+            summary = "Get paginated transactions",
+            description = """
+                    Returns the authenticated user's transactions filtered by account, category, type, and date range.
+                    
+                    **Pagination:** Uses cursor-based pagination (not page numbers) for consistent ordering even when
+                    new transactions are added. The first request omits the `cursor` parameter. Subsequent requests
+                    should use the `nextCursor` value returned in the response.
+                    
+                    **Sorting:** Always returns transactions sorted from newest to oldest by date, then by ID.
+                    
+                    **Filters:** Category filters can reference both active and archived categories that still exist
+                    in historical transactions.
+                    """
     )
     @ApiResponse(
             responseCode = "200",
-            description = "Transactions returned",
-            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-                    array = @ArraySchema(schema = @Schema(implementation = TransactionResponseDTO.class)))
+            description = "Transactions returned successfully",
+            content = @Content(
+                    mediaType = MediaType.APPLICATION_JSON_VALUE,
+                    schema = @Schema(implementation = TransactionCursorPageResponseDTO.class)
+            )
+    )
+    @ApiResponse(
+            responseCode = "400",
+            description = "Invalid request parameters (e.g., limit out of range 1-100)"
+    )
+    @ApiResponse(
+            responseCode = "401",
+            description = "Unauthorized - authentication required"
     )
     @GetMapping
-    ResponseEntity<List<TransactionResponseDTO>> getTransactions(
-            @RequestParam(name = "accountId", required = false) Long accountId,
-            @RequestParam(name = "categoryId", required = false) Long categoryId,
-            @RequestParam(name = "type", required = false) TransactionType type,
-            @RequestParam(name = "dateFrom", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
-            @RequestParam(name = "dateTo", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
-            @Parameter(hidden = true) Authentication auth
+    ResponseEntity<TransactionCursorPageResponseDTO<TransactionResponseDTO>> getTransactions(
+            @Valid @ModelAttribute
+            @Parameter(description = "Pagination and filter parameters")
+            TransactionCursorRequest request,
+            CustomUserDetails user
     );
+
 
     @Operation(
             summary = "Get transaction by id",
@@ -106,7 +120,6 @@ public interface TransactionApi {
 
             @Parameter(
                     name = "receipts",
-                    required = false,
                     description = "Allowed formats: jpg, jpeg, png, webp, pdf. Maximum 10 files.",
                     content = {
                             @Content(mediaType = "image/jpeg", schema = @Schema(type = "string", format = "binary")),
@@ -124,8 +137,9 @@ public interface TransactionApi {
             summary = "Update transaction",
             description = "Updates a transaction and recalculates related balances. For transactions generated by " +
                     "a recurring rule, recurringScope=ONLY_THIS updates only the selected occurrence, " +
-                    "while recurringScope=THIS_AND_FUTURE also updates the recurring rule and already-created " +
-                    "future occurrences. Transaction date can be in the past or today, but not in the future."
+                    "while recurringScope=THIS_AND_FUTURE also updates the recurring rule and " +
+                    "future occurrences. Transaction date can be in the past or today, " +
+                    "but not in the future."
     )
     @ApiResponse(
             responseCode = "200",
@@ -143,9 +157,7 @@ public interface TransactionApi {
     ResponseEntity<TransactionResponseDTO> updateTransaction(
             @PathVariable Long id,
             @Parameter(description = "How to apply changes when the transaction belongs to a recurring rule.")
-            @RequestParam(name = "recurringScope", defaultValue = "ONLY_THIS")
-            RecurringTransactionChangeScope recurringScope,
-            @Valid @RequestBody TransactionCreateRequestDTO updateRequestDTO,
+            @Valid @RequestBody TransactionUpdateRequestDTO updateRequestDTO,
             @Parameter(hidden = true) Authentication auth
     );
 

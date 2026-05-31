@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.tc.mtracker.auth.dto.*;
 import org.tc.mtracker.auth.service.*;
+import org.tc.mtracker.security.CustomUserDetails;
 import org.tc.mtracker.security.JwtResponseDTO;
 
 @RestController
@@ -33,6 +34,12 @@ public class AuthenticationController implements AuthenticationApi {
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(jwt);
+    }
+
+    @Override
+    public ResponseEntity<Void> logout(CustomUserDetails principal) {
+        loginService.logout(principal);
+        return ResponseEntity.ok().build();
     }
 
     @Override

@@ -41,6 +41,10 @@ public class RefreshTokenService {
         return refreshTokenRepository.findByToken(token);
     }
 
+    public Optional<RefreshToken> findByUserId(Long userId) {
+        return refreshTokenRepository.findByUserId(userId);
+    }
+
     public RefreshToken verifyExpiration(RefreshToken token) {
         if (token.getExpiryDate().isBefore(LocalDateTime.now())) {
             refreshTokenRepository.delete(token);
@@ -53,5 +57,9 @@ public class RefreshTokenService {
     @Scheduled(fixedRate = 86400000)
     public void deleteExpiredTokens() {
         refreshTokenRepository.deleteByExpiryDateBefore(LocalDateTime.now());
+    }
+
+    public void deleteToken(RefreshToken refreshToken) {
+        refreshTokenRepository.delete(refreshToken);
     }
 }
