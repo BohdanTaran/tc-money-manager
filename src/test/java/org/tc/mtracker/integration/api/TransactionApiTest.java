@@ -11,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.client.MultipartBodyBuilder;
 import org.tc.mtracker.account.AccountRepository;
 import org.tc.mtracker.category.Category;
+import org.tc.mtracker.category.enums.CategoryIcon;
 import org.tc.mtracker.category.enums.CategoryStatus;
 import org.tc.mtracker.common.enums.TransactionType;
 import org.tc.mtracker.support.base.BaseApiIntegrationTest;
@@ -269,7 +270,13 @@ class TransactionApiTest extends BaseApiIntegrationTest {
     @Test
     void shouldRejectArchivedCategory() {
         User user = fixtures.createUser("archived-category@example.com");
-        var category = fixtures.createCategory(user, "Archived", TransactionType.INCOME, CategoryStatus.ARCHIVED, "archive");
+        var category = fixtures.createCategory(
+                user,
+                "Archived",
+                TransactionType.INCOME,
+                CategoryStatus.ARCHIVED,
+                CategoryIcon.DATABASE
+        );
         MultipartBodyBuilder parts = createMultipartRequest(createRequest(
                 new BigDecimal("15.00"),
                 TransactionType.INCOME,
@@ -320,7 +327,12 @@ class TransactionApiTest extends BaseApiIntegrationTest {
     @Test
     void shouldFilterTransactionsByArchivedCategory() {
         User user = fixtures.createUser("filters-archived@example.com");
-        var archivedCategory = fixtures.createCategory(user, "Archived Groceries", TransactionType.EXPENSE, CategoryStatus.ARCHIVED, "archive");
+        var archivedCategory = fixtures.createCategory(
+                user,
+                "Archived Groceries",
+                TransactionType.EXPENSE,
+                CategoryStatus.ARCHIVED,
+                CategoryIcon.DATABASE);
         Transaction expected = fixtures.createTransaction(
                 user,
                 user.getDefaultAccount(),
@@ -444,7 +456,7 @@ class TransactionApiTest extends BaseApiIntegrationTest {
                         "Updated groceries",
                         savings.getId(),
                         RecurringTransactionChangeScope.ONLY_THIS
-                        
+
                 ))
                 .exchange()
                 .expectStatus().isOk()

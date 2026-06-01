@@ -44,10 +44,26 @@ Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
-  "name": "Salary",
+  "name": "Salarу5y",
   "type": "INCOME",
-  "icon": "coins"
+  "icon": "WALLET"
 }
+
+###Update category
+PATCH {{baseUrl}}/categories/7
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "Salary",
+  "icon": "DATABASE"
+}
+
+
+###Get categories
+GET {{baseUrl}}/categories
+Authorization: Bearer {{accessToken}}
+
 
 ###Mail verifying
 
@@ -69,17 +85,48 @@ GET {{baseUrl}}/transactions?limit=10
 Authorization: Bearer {{accessToken}}
 
 ###Get first transaction page with date-filter
-GET http://localhost:8080/api/v1/transactions?limit=5&dateFrom=2025-05-20&dateTo=2025-05-27
+GET{{baseUrl}}/transactions?limit=5&dateFrom=2025-05-20&dateTo=2025-05-27
 Authorization: Bearer {{accessToken}}
 
 ###Get second transaction page with cursor from response
-GET http://localhost:8080/api/v1/transactions?limit=5&cursor=MjAyNS0wNS0yN3wxMjM0NQ==
+GET {{baseUrl}}/transactions?limit=5&cursor=MjAyNS0wNS0yN3wxMjM0NQ==
 Authorization: Bearer {{accessToken}}
 
 
 ###Get first transaction page with folter by account and category
-GET http://localhost:8080/api/v1/transactions?limit=10&accountId=3&categoryId=5&type=EXPENSE
+GET {{baseUrl}}/transactions?limit=10&accountId=3&categoryId=5&type=EXPENSE
 Authorization: Bearer {{accessToken}}
+
+###Update transaction
+PATCH{{baseUrl}}/transactions/22
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "amount": "135.80",
+  "description": "всяка фігня",
+  "categoryId": "5",
+  "date": "2026-01-01"
+}
+
+###Create transaction
+POST{{baseUrl}}/transactions
+Authorization: Bearer {{accessToken}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+Accept-Language: en
+
+--WebAppBoundary
+Content-Disposition: form-data; name="dto"
+Content-Type: application/json
+
+{
+  "amount": 100.555,
+  "type": "INCOME",
+  "categoryId": 8,
+  "date": "2026-05-09",
+  "description": null,
+  "accountId": 2
+}
 
 
 

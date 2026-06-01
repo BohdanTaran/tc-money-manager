@@ -3,6 +3,7 @@ package org.tc.mtracker.support.factory;
 import org.tc.mtracker.account.Account;
 import org.tc.mtracker.auth.model.RefreshToken;
 import org.tc.mtracker.category.Category;
+import org.tc.mtracker.category.enums.CategoryIcon;
 import org.tc.mtracker.category.enums.CategoryStatus;
 import org.tc.mtracker.common.enums.TransactionType;
 import org.tc.mtracker.currency.CurrencyCode;
@@ -14,7 +15,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 
 public final class EntityTestFactory {
 
@@ -47,7 +47,7 @@ public final class EntityTestFactory {
                 .name(name)
                 .type(type)
                 .status(status)
-                .icon("icon")
+                .icon(CategoryIcon.DATABASE)
                 .build();
     }
 
@@ -72,10 +72,6 @@ public final class EntityTestFactory {
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
-    }
-
-    public static ReceiptImage receipt(Transaction transaction) {
-        return new ReceiptImage(UUID.randomUUID(), transaction);
     }
 
     public static RefreshToken refreshToken(String token, User user, LocalDateTime expiryDate) {
