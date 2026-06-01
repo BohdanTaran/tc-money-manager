@@ -109,16 +109,6 @@ class UserServiceTest {
         assertThat(result).isEqualTo(response);
     }
 
-    @Test
-    void shouldThrowWhenUpdatingProfileWithSameFullNameAsCurrent() {
-        User user = EntityTestFactory.user(1L, "user@example.com", true);
-        RequestUpdateUserProfileDTO dto = new RequestUpdateUserProfileDTO(user.getFullName(), null);
-
-        when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
-
-        assertThatThrownBy(() -> userService.updateProfile(dto, null, user.getId()))
-                .isInstanceOf(UserUpdateProfileException.class);
-    }
 
     @Test
     void shouldThrowWhenChangingCurrencyWithExistingTransaction() {

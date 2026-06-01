@@ -24,7 +24,7 @@ public class UserController implements UserApi {
             MultipartFile avatar,
             CustomUserDetails principal
     ) {
-        ResponseUserDTO responseUserProfileDTO = userService.updateProfile(dto, avatar, principal);
+        ResponseUserDTO responseUserProfileDTO = userService.updateProfile(dto, avatar, principal.getId());
         return ResponseEntity.ok()
                 .body(responseUserProfileDTO);
     }

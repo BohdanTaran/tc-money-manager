@@ -9,7 +9,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.tc.mtracker.common.file.ObjectStorageKeys;
 import org.tc.mtracker.currency.CurrencyCode;
-import org.tc.mtracker.security.CustomUserDetails;
 import org.tc.mtracker.transaction.TransactionRepository;
 import org.tc.mtracker.transaction.recurring.RecurringTransactionRepository;
 import org.tc.mtracker.user.dto.RequestUpdateUserProfileDTO;
@@ -53,20 +52,8 @@ public class UserService {
     }
 
     @Transactional
-    public ResponseUserDTO updateProfile(RequestUpdateUserProfileDTO dto,
-                                         MultipartFile avatar,
-                                         CustomUserDetails principal) {
-        return updateProfile(dto, avatar, principal.getId());
-    }
-
-    @Transactional
     public ResponseUserDTO updateProfile(RequestUpdateUserProfileDTO dto, MultipartFile avatar, Long userId) {
         User user = getUserById(userId);
-
-        if (isSameFullNameUpdate(dto, user)) {
-            log.warn("User update rejected: new full name is the same as the current one");
-            throw new UserUpdateProfileException("New full name is the same as the current one.");
-        }
 
         if (isCurrencyChangeRequested(dto, user) && userHasFinancialActivity(userId)) {
             throw new UserUpdateProfileException("Cannot update currency while user has financial activity.");
@@ -84,13 +71,6 @@ public class UserService {
         log.info("User with id {} is updated successfully!", user.getId());
 
         return userMapper.toDto(user, avatarUrl);
-    }
-
-    private static boolean isSameFullNameUpdate(RequestUpdateUserProfileDTO dto, User user) {
-        return dto != null
-                && dto.fullName() != null
-                && dto.currencyCode() == null
-                && user.getFullName().equals(dto.fullName());
     }
 
     private static boolean isCurrencyChangeRequested(RequestUpdateUserProfileDTO dto, User user) {
