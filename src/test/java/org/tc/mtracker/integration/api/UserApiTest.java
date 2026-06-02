@@ -59,7 +59,7 @@ class UserApiTest extends BaseApiIntegrationTest {
         MultipartBodyBuilder parts = new MultipartBodyBuilder();
         parts.part("dto", new RequestUpdateUserProfileDTO("Updated User", CurrencyCode.EUR), MediaType.APPLICATION_JSON);
 
-        restTestClient.put()
+        restTestClient.patch()
                 .uri("/api/v1/users/me")
                 .header("Authorization", authHeader(user))
                 .body(parts.build())
@@ -91,7 +91,7 @@ class UserApiTest extends BaseApiIntegrationTest {
         MultipartBodyBuilder parts = new MultipartBodyBuilder();
         parts.part("dto", new RequestUpdateUserProfileDTO(null, CurrencyCode.EUR), MediaType.APPLICATION_JSON);
 
-        restTestClient.put()
+        restTestClient.patch()
                 .uri("/api/v1/users/me")
                 .header("Authorization", authHeader(user))
                 .body(parts.build())
@@ -122,7 +122,7 @@ class UserApiTest extends BaseApiIntegrationTest {
         MultipartBodyBuilder parts = new MultipartBodyBuilder();
         parts.part("dto", new RequestUpdateUserProfileDTO("Updated User", CurrencyCode.USD), MediaType.APPLICATION_JSON);
 
-        restTestClient.put()
+        restTestClient.patch()
                 .uri("/api/v1/users/me")
                 .header("Authorization", authHeader(user))
                 .body(parts.build())
@@ -146,7 +146,7 @@ class UserApiTest extends BaseApiIntegrationTest {
         ByteArrayResource avatar = MultipartTestResourceFactory.jpegImage("avatar.jpg");
         parts.part("avatar", avatar, MediaType.IMAGE_JPEG);
 
-        restTestClient.put()
+        restTestClient.patch()
                 .uri("/api/v1/users/me")
                 .header("Authorization", authHeader(user))
                 .body(parts.build())
@@ -168,7 +168,7 @@ class UserApiTest extends BaseApiIntegrationTest {
         ByteArrayResource avatar = MultipartTestResourceFactory.webpImage("avatar.webp");
         parts.part("avatar", avatar, MediaType.parseMediaType("image/webp"));
 
-        restTestClient.put()
+        restTestClient.patch()
                 .uri("/api/v1/users/me")
                 .header("Authorization", authHeader(user))
                 .body(parts.build())
@@ -240,7 +240,7 @@ class UserApiTest extends BaseApiIntegrationTest {
         MultipartBodyBuilder parts = new MultipartBodyBuilder();
         parts.part("dto", new RequestUpdateUserProfileDTO(invalidFullName, CurrencyCode.USD), MediaType.APPLICATION_JSON);
 
-        restTestClient.put()
+        restTestClient.patch()
                 .uri("/api/v1/users/me")
                 .header("Authorization", authHeader(user))
                 .body(parts.build())
@@ -259,7 +259,7 @@ class UserApiTest extends BaseApiIntegrationTest {
         MultipartBodyBuilder parts = new MultipartBodyBuilder();
         parts.part("dto", new RequestUpdateUserProfileDTO("Abfhkiuytresdfghjkloiuytrewsdfghjkloi", CurrencyCode.USD), MediaType.APPLICATION_JSON);
 
-        restTestClient.put()
+        restTestClient.patch()
                 .uri("/api/v1/users/me")
                 .header("Authorization", authHeader(user))
                 .body(parts.build())
@@ -278,7 +278,7 @@ class UserApiTest extends BaseApiIntegrationTest {
         MultipartBodyBuilder parts = new MultipartBodyBuilder();
         parts.part("dto", new RequestUpdateUserProfileDTO("Ab", CurrencyCode.USD), MediaType.APPLICATION_JSON);
 
-        restTestClient.put()
+        restTestClient.patch()
                 .uri("/api/v1/users/me")
                 .header("Authorization", authHeader(user))
                 .body(parts.build())
