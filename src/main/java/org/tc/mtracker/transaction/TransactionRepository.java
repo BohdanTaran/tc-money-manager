@@ -1,11 +1,13 @@
 package org.tc.mtracker.transaction;
 
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.tc.mtracker.category.Category;
 import org.tc.mtracker.common.enums.TransactionType;
+import org.tc.mtracker.transaction.dto.TransactionQueryParams;
 import org.tc.mtracker.transaction.recurring.RecurringTransaction;
 import org.tc.mtracker.user.User;
 
@@ -61,6 +63,33 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
             @Param("sourceCategory") Category sourceCategory,
             @Param("replacementCategory") Category replacementCategory
     );
+
+    @Query(value = """
+        SELECT t.id
+        FROM transactions t
+        WHERE t.user_id = :#{#params.userId}
+            AND (:#{#params.accountId} IS NULL OR t.account_id = :#{#params.accountId})
+            AND (:#{#params.categoryId} IS NULL OR t.category_id = :#{#params.categoryId})
+            AND (:#{#params.type} IS NULL OR t.type = :#{#params.type})
+            AND (:#{#params.dateFrom} IS NULL OR t.date >= :#{#params.dateFrom})
+            AND (:#{#params.dateTo} IS NULL OR t.date <= :#{#params.dateTo})
+            AND (
+                :#{#params.cursorDate} IS NULL
+                OR t.date < :#{#params.cursorDate}
+                OR (t.date = :#{#params.cursorDate} AND t.id < :#{#params.cursorId})
+            )
+        ORDER BY t.date DESC, t.id DESC
+        LIMIT :#{#params.limit}
+        """, nativeQuery = true)
+    List<Long> findTransactionIdsWithCursor(@Param("params") TransactionQueryParams params);
+
+    @EntityGraph(attributePaths = {"category", "receipts"})
+    @Query("""
+             SELECT t FROM Transaction t
+             WHERE t.id IN :ids
+             ORDER BY t.date DESC, t.id DESC
+            """)
+    List<Transaction> findAllByIdInOrderByDateDescIdDesc(@Param("ids") List<Long> ids);
 
     boolean existsByUserIdAndDeletedAtIsNull(Long userId);
 }
