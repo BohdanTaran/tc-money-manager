@@ -1,15 +1,15 @@
 package org.tc.mtracker.category.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import org.hibernate.validator.constraints.Length;
-import org.tc.mtracker.category.validator.IconId;
+import org.tc.mtracker.category.enums.CategoryIcon;
 import org.tc.mtracker.common.enums.TransactionType;
 
 @Schema(description = "Create a new category")
 public record CreateCategoryDTO(
+
         @Schema(description = "Name", example = "Salary")
         @NotEmpty(message = "Name should not be empty")
         @Length(min = 1, max = 25, message = "Name should be between 1 and 25 characters")
@@ -20,9 +20,8 @@ public record CreateCategoryDTO(
         @NotNull(message = "Category's type should not be null, and should be uppercase")
         TransactionType type,
 
-        @Schema(description = "Icon", example = "coin")
-        @NotBlank(message = "Category's icon should not be null or empty")
-        @IconId(message = "Incorrect category icon id")
-        String icon
+        @Schema(description = "Icon", example = "COIN")
+        @NotNull(message = "Category's icon should not be null")
+        CategoryIcon icon
 ) {
 }

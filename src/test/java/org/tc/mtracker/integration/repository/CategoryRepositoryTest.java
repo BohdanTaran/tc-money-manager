@@ -7,6 +7,7 @@ import org.tc.mtracker.account.Account;
 import org.tc.mtracker.account.AccountRepository;
 import org.tc.mtracker.category.Category;
 import org.tc.mtracker.category.CategoryRepository;
+import org.tc.mtracker.category.enums.CategoryIcon;
 import org.tc.mtracker.category.enums.CategoryStatus;
 import org.tc.mtracker.common.enums.TransactionType;
 import org.tc.mtracker.currency.CurrencyCode;
@@ -95,7 +96,7 @@ class CategoryRepositoryTest extends BaseRepositoryIntegrationTest {
                 .name(name)
                 .type(type)
                 .status(status)
-                .icon("icon")
+                .icon(CategoryIcon.BRIEFCASE)
                 .build());
     }
 }

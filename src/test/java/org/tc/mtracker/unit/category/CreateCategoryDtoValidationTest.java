@@ -6,9 +6,11 @@ import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.tc.mtracker.category.dto.CreateCategoryDTO;
+import org.tc.mtracker.category.enums.CategoryIcon;
 import org.tc.mtracker.common.enums.TransactionType;
 
 import java.util.Set;
@@ -35,14 +37,15 @@ class CreateCategoryDtoValidationTest {
 
     @ParameterizedTest
     @CsvSource({
-            "award, true",
-            "trend_up, true",
-            "dollar, true",
-            "invalid-icon, false",
-            "nonexistent, false",
-            "random, false"
+            "TREND_UP, true",
+            "AWARD, true",
+            "DOLLAR, true",
+            "WALLET, true",
+            "INVALID, false"
     })
-    void shouldValidateIcon(String icon, boolean isValid) {
+    void shouldValidateIcon(String iconName, boolean isValid) {
+        CategoryIcon icon = isValid ? CategoryIcon.valueOf(iconName) : null;
+
         var dto = new CreateCategoryDTO("Salary", TransactionType.INCOME, icon);
 
         Set<ConstraintViolation<CreateCategoryDTO>> violations = validator.validate(dto);
@@ -51,30 +54,19 @@ class CreateCategoryDtoValidationTest {
             assertThat(violations).isEmpty();
         } else {
             assertThat(violations).isNotEmpty();
-            assertThat(violations).anyMatch(v ->
-                    v.getPropertyPath().toString().equals("icon") &&
-                            v.getMessage().equals("Incorrect category icon id")
-            );
         }
     }
 
-    @ParameterizedTest
-    @CsvSource({
-            "null, Category's icon should not be null or empty",
-            "'', Category's icon should not be null or empty",
-            "'   ', Category's icon should not be null or empty"
-    })
-    void shouldRejectNullOrBlankIcon(String icon) {
-        String iconValue = icon.equals("null") ? null : icon;
-        var dto = new CreateCategoryDTO("Salary", TransactionType.INCOME, iconValue);
+    @Test
+    void shouldRejectNullOrBlankIcon() {
+        var dtoNull = new CreateCategoryDTO("Salary", TransactionType.INCOME, null);
+        Set<ConstraintViolation<CreateCategoryDTO>> violationsNull = validator.validate(dtoNull);
 
-        Set<ConstraintViolation<CreateCategoryDTO>> violations = validator.validate(dto);
-
-        assertThat(violations)
+        assertThat(violationsNull)
                 .isNotEmpty()
                 .anyMatch(v ->
                         v.getPropertyPath().toString().equals("icon") &&
-                                v.getMessage().equals("Category's icon should not be null or empty")
+                                v.getMessage().equals("Category's icon should not be null")
                 );
     }
 }

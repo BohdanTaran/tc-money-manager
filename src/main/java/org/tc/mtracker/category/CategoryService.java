@@ -89,8 +89,8 @@ public class CategoryService {
     }
 
     @Transactional
-    public CategoryResponseDTO updateCategory(Long categoryId, UpdateCategoryDTO dto, Authentication auth) {
-        User currentUser = userService.getCurrentAuthenticatedUser(auth);
+    public CategoryResponseDTO updateCategory(Long categoryId, UpdateCategoryDTO dto, Long userId) {
+        User currentUser = userService.getUserById(userId);
         Category category = findOwnedById(categoryId, currentUser);
 
         validateDuplicateCategory(dto.name(), category.getType(), currentUser, categoryId);

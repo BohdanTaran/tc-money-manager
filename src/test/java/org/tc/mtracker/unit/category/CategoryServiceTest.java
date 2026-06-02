@@ -15,6 +15,7 @@ import org.tc.mtracker.category.CategoryService;
 import org.tc.mtracker.category.dto.CategoryResponseDTO;
 import org.tc.mtracker.category.dto.CreateCategoryDTO;
 import org.tc.mtracker.category.dto.UpdateCategoryDTO;
+import org.tc.mtracker.category.enums.CategoryIcon;
 import org.tc.mtracker.category.enums.CategoryStatus;
 import org.tc.mtracker.common.enums.TransactionType;
 import org.tc.mtracker.support.factory.EntityTestFactory;
@@ -85,7 +86,7 @@ class CategoryServiceTest {
     @Test
     void shouldCreateCategoryWhenNameAndTypeAreUnique() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
-        CreateCategoryDTO dto = new CreateCategoryDTO("Health", TransactionType.EXPENSE, "heart");
+        CreateCategoryDTO dto = new CreateCategoryDTO("Health", TransactionType.EXPENSE, CategoryIcon.DATABASE);
         Category saved = EntityTestFactory.category(3L, user, "Health", TransactionType.EXPENSE, CategoryStatus.ACTIVE);
         CategoryResponseDTO response = new CategoryResponseDTO(3L, "Health", TransactionType.EXPENSE, CategoryStatus.ACTIVE, "heart");
 
@@ -108,7 +109,7 @@ class CategoryServiceTest {
     @Test
     void shouldRejectDuplicateCategoryDuringCreate() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
-        CreateCategoryDTO dto = new CreateCategoryDTO("Salary", TransactionType.INCOME, "coin");
+        CreateCategoryDTO dto = new CreateCategoryDTO("Salary", TransactionType.INCOME, CategoryIcon.COINS);
         Category existing = EntityTestFactory.category(1L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
 
         when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
@@ -124,16 +125,16 @@ class CategoryServiceTest {
     void shouldUpdateOwnedCategory() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
         Category category = EntityTestFactory.category(3L, user, "Side Project", TransactionType.INCOME, CategoryStatus.ACTIVE);
-        UpdateCategoryDTO dto = new UpdateCategoryDTO("Freelance", "briefcase");
+        UpdateCategoryDTO dto = new UpdateCategoryDTO("Freelance", CategoryIcon.BRIEFCASE);
         CategoryResponseDTO response = new CategoryResponseDTO(3L, "Freelance", TransactionType.INCOME, CategoryStatus.ACTIVE, "briefcase");
 
-        when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
+        when(userService.getUserById(1L)).thenReturn(user);
         when(categoryRepository.findOwnedById(3L, user)).thenReturn(Optional.of(category));
         when(categoryRepository.findAllByNameAndUser(dto.name(), user)).thenReturn(List.of());
         when(categoryRepository.save(category)).thenReturn(category);
         when(categoryMapper.toDto(category)).thenReturn(response);
 
-        CategoryResponseDTO result = categoryService.updateCategory(3L, dto, authentication);
+        CategoryResponseDTO result = categoryService.updateCategory(3L, dto, 1L);
 
         assertThat(result).isEqualTo(response);
         assertThat(category.getName()).isEqualTo("Freelance");

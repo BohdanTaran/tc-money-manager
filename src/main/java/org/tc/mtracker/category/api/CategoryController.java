@@ -55,9 +55,9 @@ public class CategoryController implements CategoryApi {
     public ResponseEntity<CategoryResponseDTO> updateCategory(
             Long categoryId,
             UpdateCategoryDTO dto,
-            Authentication auth
+            @AuthenticationPrincipal CustomUserDetails principal
     ) {
-        return ResponseEntity.ok(categoryService.updateCategory(categoryId, dto, auth));
+        return ResponseEntity.ok(categoryService.updateCategory(categoryId, dto, principal.getId()));
     }
 
     @Override

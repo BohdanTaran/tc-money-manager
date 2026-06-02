@@ -137,11 +137,11 @@ public interface CategoryApi {
             content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
                     schema = @Schema(implementation = ProblemDetail.class))
     )
-    @PutMapping("/{categoryId}")
+    @PatchMapping("/{categoryId}")
     ResponseEntity<CategoryResponseDTO> updateCategory(
-            @PathVariable("categoryId") Long categoryId,
+            @PathVariable Long categoryId,
             @Valid @RequestBody UpdateCategoryDTO dto,
-            @Parameter(hidden = true) Authentication auth
+            CustomUserDetails principal
     );
 
     @Operation(

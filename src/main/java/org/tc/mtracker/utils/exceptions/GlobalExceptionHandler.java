@@ -34,6 +34,8 @@ import java.net.URI;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Slf4j
 @RestControllerAdvice
@@ -123,21 +125,42 @@ public class GlobalExceptionHandler {
         return buildValidationProblem(request, errors);
     }
 
+
     @ExceptionHandler({
-            HttpMessageNotReadableException.class,
             MethodArgumentTypeMismatchException.class,
             MissingServletRequestPartException.class,
             MissingServletRequestParameterException.class,
             MissingPathVariableException.class,
     })
     public ProblemDetail handleMalformedRequest(HttpServletRequest request) {
-        return buildProblem(HttpStatus.BAD_REQUEST, "Malformed request.", "malformed_request", request);
+        return buildProblem(
+                HttpStatus.BAD_REQUEST,
+                "Malformed request.",
+                "malformed_request", request);
+    }
+
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ProblemDetail handleHttpMessageNotReadable(HttpMessageNotReadableException ex, HttpServletRequest request) {
+        String message = ex.getMessage();
+        String cleanedMessage = cleanEnumErrorMessage(message);
+
+        return buildProblem(
+                HttpStatus.BAD_REQUEST,
+                cleanedMessage,
+                "invalid_value",
+                request
+        );
     }
 
     @ExceptionHandler(NoResourceFoundException.class)
     public ProblemDetail handleNoResourceFound(NoResourceFoundException ex, HttpServletRequest request) {
         log.warn("Resource not found: {} {}", request.getMethod(), request.getRequestURI(), ex);
-        return buildProblem(HttpStatus.NOT_FOUND, "Endpoint not found.", "endpoint_not_found", request);
+        return buildProblem(
+                HttpStatus.NOT_FOUND,
+                "Endpoint not found.",
+                "endpoint_not_found",
+                request);
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
@@ -251,6 +274,59 @@ public class GlobalExceptionHandler {
         if (key != null) {
             path.append('[').append(key).append(']');
         }
+    }
+
+    private String cleanEnumErrorMessage(String originalMessage) {
+        if (originalMessage == null) {
+            return "Malformed request.";
+        }
+
+        Pattern enumPattern = Pattern.compile("Cannot deserialize value of type `(.*?)`");
+        Matcher enumMatcher = enumPattern.matcher(originalMessage);
+        String enumName = "field";
+
+        if (enumMatcher.find()) {
+            String fullName = enumMatcher.group(1);
+            enumName = fullName.substring(fullName.lastIndexOf('.') + 1);
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < enumName.length(); i++) {
+                if (enumName.charAt(i) == Character.toUpperCase(enumName.charAt(i))) {
+                    sb.append(" ");
+                }
+                sb.append(enumName.charAt(i));
+            }
+            enumName = sb.toString();
+
+        }
+
+        if (originalMessage.contains("empty String") || originalMessage.contains("from String \"\"")) {
+            return String.format("%s cannot be empty.", enumName);
+        }
+
+        if (originalMessage.contains("null")) {
+            return String.format("%s cannot be null.", enumName);
+        }
+
+        Pattern valuesPattern = Pattern.compile("accepted for Enum class: \\[(.*?)]");
+        Matcher valuesMatcher = valuesPattern.matcher(originalMessage);
+
+        if (valuesMatcher.find()) {
+            String invalidValue = extractInvalidValue(originalMessage);
+            String allowedValues = valuesMatcher.group(1);
+            return String.format("Invalid %s '%s'. Allowed values: [%s]",
+                    enumName, invalidValue, allowedValues);
+        }
+
+        return "Malformed request.";
+    }
+
+    private String extractInvalidValue(String message) {
+        Pattern pattern = Pattern.compile("from String \"(.*?)\"");
+        Matcher matcher = pattern.matcher(message);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+        return "unknown";
     }
 
     private ProblemDetail buildProblem(HttpStatus status, String detail, String code, HttpServletRequest request) {
