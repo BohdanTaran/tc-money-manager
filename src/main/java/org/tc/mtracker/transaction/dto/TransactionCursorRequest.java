@@ -1,6 +1,7 @@
 package org.tc.mtracker.transaction.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -70,5 +71,10 @@ public record TransactionCursorRequest(
         if (limit == null) {
             limit = 15;
         }
+    }
+
+    @AssertTrue(message = "dateFrom must be before or equal to dateTo")
+    public boolean isDateRangeValid() {
+        return dateFrom == null || dateTo == null || !dateFrom.isAfter(dateTo);
     }
 }

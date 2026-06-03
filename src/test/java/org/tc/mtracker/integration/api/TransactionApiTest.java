@@ -11,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.client.MultipartBodyBuilder;
 import org.tc.mtracker.account.AccountRepository;
 import org.tc.mtracker.category.Category;
+import org.tc.mtracker.category.enums.CategoryIcon;
 import org.tc.mtracker.category.enums.CategoryStatus;
 import org.tc.mtracker.common.enums.TransactionType;
 import org.tc.mtracker.support.base.BaseApiIntegrationTest;
@@ -269,7 +270,13 @@ class TransactionApiTest extends BaseApiIntegrationTest {
     @Test
     void shouldRejectArchivedCategory() {
         User user = fixtures.createUser("archived-category@example.com");
-        var category = fixtures.createCategory(user, "Archived", TransactionType.INCOME, CategoryStatus.ARCHIVED, "archive");
+        var category = fixtures.createCategory(
+                user,
+                "Archived",
+                TransactionType.INCOME,
+                CategoryStatus.ARCHIVED,
+                CategoryIcon.DATABASE
+        );
         MultipartBodyBuilder parts = createMultipartRequest(createRequest(
                 new BigDecimal("15.00"),
                 TransactionType.INCOME,
@@ -318,9 +325,69 @@ class TransactionApiTest extends BaseApiIntegrationTest {
     }
 
     @Test
+    void shouldFilterTransactionsBySingleDayDateRange() {
+        User user = fixtures.createUser("single-day-filter@example.com");
+        var groceries = fixtures.createUserCategory(user, "Groceries", TransactionType.EXPENSE);
+        Transaction expected = fixtures.createTransaction(
+                user,
+                user.getDefaultAccount(),
+                groceries,
+                new BigDecimal("40.00"),
+                TransactionType.EXPENSE,
+                LocalDate.of(2026, 4, 10),
+                "Groceries"
+        );
+        fixtures.createTransaction(
+                user,
+                user.getDefaultAccount(),
+                groceries,
+                new BigDecimal("15.00"),
+                TransactionType.EXPENSE,
+                LocalDate.of(2026, 4, 11),
+                "Groceries"
+        );
+
+        restTestClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/transactions")
+                        .queryParam("dateFrom", "2026-04-10")
+                        .queryParam("dateTo", "2026-04-10")
+                        .build())
+                .header(HttpHeaders.AUTHORIZATION, authHeader(user))
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.data.length()").isEqualTo(1)
+                .jsonPath("$.data[0].id").isEqualTo(expected.getId());
+    }
+
+    @Test
+    void shouldRejectTransactionsFilterWhenDateRangeIsInvalid() {
+        User user = fixtures.createUser("invalid-date-range@example.com");
+
+        restTestClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/transactions")
+                        .queryParam("dateFrom", "2026-04-30")
+                        .queryParam("dateTo", "2026-04-01")
+                        .build())
+                .header(HttpHeaders.AUTHORIZATION, authHeader(user))
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("validation_failed")
+                .jsonPath("$.errors.dateRangeValid").isEqualTo("dateFrom must be before or equal to dateTo");
+    }
+
+    @Test
     void shouldFilterTransactionsByArchivedCategory() {
         User user = fixtures.createUser("filters-archived@example.com");
-        var archivedCategory = fixtures.createCategory(user, "Archived Groceries", TransactionType.EXPENSE, CategoryStatus.ARCHIVED, "archive");
+        var archivedCategory = fixtures.createCategory(
+                user,
+                "Archived Groceries",
+                TransactionType.EXPENSE,
+                CategoryStatus.ARCHIVED,
+                CategoryIcon.DATABASE);
         Transaction expected = fixtures.createTransaction(
                 user,
                 user.getDefaultAccount(),
@@ -444,7 +511,7 @@ class TransactionApiTest extends BaseApiIntegrationTest {
                         "Updated groceries",
                         savings.getId(),
                         RecurringTransactionChangeScope.ONLY_THIS
-                        
+
                 ))
                 .exchange()
                 .expectStatus().isOk()

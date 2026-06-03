@@ -12,6 +12,8 @@ import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.tc.mtracker.auth.dto.UpdateEmailRequestDto;
 import org.tc.mtracker.auth.dto.UpdatePasswordRequestDto;
+import org.tc.mtracker.category.Category;
+import org.tc.mtracker.common.enums.TransactionType;
 import org.tc.mtracker.currency.CurrencyCode;
 import org.tc.mtracker.support.base.BaseApiIntegrationTest;
 import org.tc.mtracker.support.factory.DatabaseTestDataFactory;
@@ -19,6 +21,9 @@ import org.tc.mtracker.support.factory.MultipartTestResourceFactory;
 import org.tc.mtracker.user.User;
 import org.tc.mtracker.user.UserRepository;
 import org.tc.mtracker.user.dto.RequestUpdateUserProfileDTO;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -54,7 +59,7 @@ class UserApiTest extends BaseApiIntegrationTest {
         MultipartBodyBuilder parts = new MultipartBodyBuilder();
         parts.part("dto", new RequestUpdateUserProfileDTO("Updated User", CurrencyCode.EUR), MediaType.APPLICATION_JSON);
 
-        restTestClient.put()
+        restTestClient.patch()
                 .uri("/api/v1/users/me")
                 .header("Authorization", authHeader(user))
                 .body(parts.build())
@@ -70,6 +75,69 @@ class UserApiTest extends BaseApiIntegrationTest {
     }
 
     @Test
+    void shouldRejectCurrencyUpdateWhenUserHasTransactions() {
+        User user = fixtures.createUser("currency-restricted@example.com");
+        Category category = fixtures.createUserCategory(user, "Groceries", TransactionType.EXPENSE);
+        fixtures.createTransaction(
+                user,
+                user.getDefaultAccount(),
+                category,
+                new BigDecimal("10.00"),
+                TransactionType.EXPENSE,
+                LocalDate.of(2026, 5, 1),
+                "Products"
+        );
+
+        MultipartBodyBuilder parts = new MultipartBodyBuilder();
+        parts.part("dto", new RequestUpdateUserProfileDTO(null, CurrencyCode.EUR), MediaType.APPLICATION_JSON);
+
+        restTestClient.patch()
+                .uri("/api/v1/users/me")
+                .header("Authorization", authHeader(user))
+                .body(parts.build())
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("user_update_profile_failed")
+                .jsonPath("$.detail").isEqualTo("Cannot update currency while user has financial activity.");
+
+        User savedUser = userRepository.findByEmail(user.getEmail()).orElseThrow();
+        assertThat(savedUser.getCurrencyCode()).isEqualTo(CurrencyCode.USD);
+    }
+
+    @Test
+    void shouldAllowProfileUpdateWithUnchangedCurrencyWhenUserHasTransactions() {
+        User user = fixtures.createUser("unchanged-currency@example.com");
+        Category category = fixtures.createUserCategory(user, "Groceries", TransactionType.EXPENSE);
+        fixtures.createTransaction(
+                user,
+                user.getDefaultAccount(),
+                category,
+                new BigDecimal("10.00"),
+                TransactionType.EXPENSE,
+                LocalDate.of(2026, 5, 1),
+                "Product"
+        );
+
+        MultipartBodyBuilder parts = new MultipartBodyBuilder();
+        parts.part("dto", new RequestUpdateUserProfileDTO("Updated User", CurrencyCode.USD), MediaType.APPLICATION_JSON);
+
+        restTestClient.patch()
+                .uri("/api/v1/users/me")
+                .header("Authorization", authHeader(user))
+                .body(parts.build())
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.fullName").isEqualTo("Updated User")
+                .jsonPath("$.currencyCode").isEqualTo("USD");
+
+        User savedUser = userRepository.findByEmail(user.getEmail()).orElseThrow();
+        assertThat(savedUser.getFullName()).isEqualTo("Updated User");
+        assertThat(savedUser.getCurrencyCode()).isEqualTo(CurrencyCode.USD);
+    }
+
+    @Test
     void shouldUploadAvatarWhenUpdatingProfile() {
         User user = fixtures.createUser("avatar@example.com");
         when(s3Service.generatePresignedUrl(anyString())).thenReturn("https://test-bucket.local/avatar.jpg");
@@ -78,7 +146,7 @@ class UserApiTest extends BaseApiIntegrationTest {
         ByteArrayResource avatar = MultipartTestResourceFactory.jpegImage("avatar.jpg");
         parts.part("avatar", avatar, MediaType.IMAGE_JPEG);
 
-        restTestClient.put()
+        restTestClient.patch()
                 .uri("/api/v1/users/me")
                 .header("Authorization", authHeader(user))
                 .body(parts.build())
@@ -100,7 +168,7 @@ class UserApiTest extends BaseApiIntegrationTest {
         ByteArrayResource avatar = MultipartTestResourceFactory.webpImage("avatar.webp");
         parts.part("avatar", avatar, MediaType.parseMediaType("image/webp"));
 
-        restTestClient.put()
+        restTestClient.patch()
                 .uri("/api/v1/users/me")
                 .header("Authorization", authHeader(user))
                 .body(parts.build())
@@ -172,7 +240,7 @@ class UserApiTest extends BaseApiIntegrationTest {
         MultipartBodyBuilder parts = new MultipartBodyBuilder();
         parts.part("dto", new RequestUpdateUserProfileDTO(invalidFullName, CurrencyCode.USD), MediaType.APPLICATION_JSON);
 
-        restTestClient.put()
+        restTestClient.patch()
                 .uri("/api/v1/users/me")
                 .header("Authorization", authHeader(user))
                 .body(parts.build())
@@ -191,7 +259,7 @@ class UserApiTest extends BaseApiIntegrationTest {
         MultipartBodyBuilder parts = new MultipartBodyBuilder();
         parts.part("dto", new RequestUpdateUserProfileDTO("Abfhkiuytresdfghjkloiuytrewsdfghjkloi", CurrencyCode.USD), MediaType.APPLICATION_JSON);
 
-        restTestClient.put()
+        restTestClient.patch()
                 .uri("/api/v1/users/me")
                 .header("Authorization", authHeader(user))
                 .body(parts.build())
@@ -210,7 +278,7 @@ class UserApiTest extends BaseApiIntegrationTest {
         MultipartBodyBuilder parts = new MultipartBodyBuilder();
         parts.part("dto", new RequestUpdateUserProfileDTO("Ab", CurrencyCode.USD), MediaType.APPLICATION_JSON);
 
-        restTestClient.put()
+        restTestClient.patch()
                 .uri("/api/v1/users/me")
                 .header("Authorization", authHeader(user))
                 .body(parts.build())

@@ -20,6 +20,11 @@ spring:
           auth: false
           starttls:
             enable: false
+  jpa:
+    properties:
+      hibernate:
+        show-sql: true
+
 
 aws:
   region: us-east-1
@@ -38,10 +43,16 @@ debug: true
 logging:
   level:
     root: INFO
-    org.springframework: INFO
-    org.tc.mtracker : DEBUG
-    org.hibernate: INFO
-    org.apache.catalina: INFO
+    org:
+      tc.mtracker : DEBUG
+      springframework: INFO
+      apache.catalina: INFO
+      hibernate:
+        sql: DEBUG
+        type:
+          descriptor.sql.BasicBinder: TRACE
+    org.hibernate.orm.jdbc.bind: TRACE
+
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

@@ -11,8 +11,8 @@ import org.springframework.http.HttpStatus;
 import org.tc.mtracker.category.CategoryRepository;
 import org.tc.mtracker.category.dto.CreateCategoryDTO;
 import org.tc.mtracker.category.dto.UpdateCategoryDTO;
+import org.tc.mtracker.category.enums.CategoryIcon;
 import org.tc.mtracker.category.enums.CategoryStatus;
-import org.tc.mtracker.category.enums.IconIds;
 import org.tc.mtracker.common.enums.TransactionType;
 import org.tc.mtracker.support.base.BaseApiIntegrationTest;
 import org.tc.mtracker.transaction.TransactionRepository;
@@ -41,7 +41,7 @@ class CategoryApiTest extends BaseApiIntegrationTest {
                 "Archived Food",
                 TransactionType.EXPENSE,
                 CategoryStatus.ARCHIVED,
-                IconIds.AWARD.getId()
+                CategoryIcon.AWARD
         );
         fixtures.createUserCategory(otherUser, "Hidden", TransactionType.EXPENSE);
 
@@ -66,7 +66,7 @@ class CategoryApiTest extends BaseApiIntegrationTest {
                 "Archived Food",
                 TransactionType.EXPENSE,
                 CategoryStatus.ARCHIVED,
-                "archive");
+                CategoryIcon.DATABASE);
 
         restTestClient.get()
                 .uri(uriBuilder -> uriBuilder
@@ -90,7 +90,7 @@ class CategoryApiTest extends BaseApiIntegrationTest {
         restTestClient.post()
                 .uri("/api/v1/categories")
                 .header(HttpHeaders.AUTHORIZATION, authHeader(user))
-                .body(new CreateCategoryDTO(categoryName, TransactionType.EXPENSE, IconIds.TROPHY.getId()))
+                .body(new CreateCategoryDTO(categoryName, TransactionType.EXPENSE, CategoryIcon.TROPHY))
                 .exchange()
                 .expectStatus().isCreated()
                 .expectBody()
@@ -111,7 +111,7 @@ class CategoryApiTest extends BaseApiIntegrationTest {
         restTestClient.post()
                 .uri("/api/v1/categories")
                 .header(HttpHeaders.AUTHORIZATION, authHeader(user))
-                .body(new CreateCategoryDTO(invalidName, TransactionType.EXPENSE, "https://www.aws.s3/ioi.txt"))
+                .body(new CreateCategoryDTO(invalidName, TransactionType.EXPENSE, CategoryIcon.BRIEFCASE))
                 .exchange()
                 .expectStatus().isBadRequest();
 
@@ -128,7 +128,7 @@ class CategoryApiTest extends BaseApiIntegrationTest {
         restTestClient.post()
                 .uri("/api/v1/categories")
                 .header(HttpHeaders.AUTHORIZATION, authHeader(user))
-                .body(new CreateCategoryDTO("Salary", TransactionType.INCOME, IconIds.TROPHY.getId()))
+                .body(new CreateCategoryDTO("Salary", TransactionType.INCOME, CategoryIcon.TROPHY))
                 .exchange()
                 .expectStatus().isEqualTo(HttpStatus.CONFLICT);
     }
@@ -139,10 +139,10 @@ class CategoryApiTest extends BaseApiIntegrationTest {
         User user = fixtures.createUser("update-category@example.com");
         var category = fixtures.createUserCategory(user, "Freelance", TransactionType.INCOME);
 
-        restTestClient.put()
+        restTestClient.patch()
                 .uri("/api/v1/categories/{id}", category.getId())
                 .header(HttpHeaders.AUTHORIZATION, authHeader(user))
-                .body(new UpdateCategoryDTO(categoryName, "briefcase"))
+                .body(new UpdateCategoryDTO(categoryName, CategoryIcon.BRIEFCASE))
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
@@ -168,7 +168,12 @@ class CategoryApiTest extends BaseApiIntegrationTest {
     @Test
     void shouldUnarchiveCategory() {
         User user = fixtures.createUser("unarchive-category@example.com");
-        var category = fixtures.createCategory(user, "Travel", TransactionType.EXPENSE, CategoryStatus.ARCHIVED, "https://www.aws.s3/ioi.txt");
+        var category = fixtures.createCategory(
+                user,
+                "Travel",
+                TransactionType.EXPENSE,
+                CategoryStatus.ARCHIVED,
+                CategoryIcon.DATABASE);
 
         restTestClient.patch()
                 .uri("/api/v1/categories/{id}/unarchive", category.getId())

@@ -58,7 +58,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
                 WHERE t.user = :user
                 AND t.category = :sourceCategory
             """)
-    void reassignCategory(
+    int reassignCategory(
             @Param("user") User user,
             @Param("sourceCategory") Category sourceCategory,
             @Param("replacementCategory") Category replacementCategory
@@ -90,4 +90,6 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
              ORDER BY t.date DESC, t.id DESC
             """)
     List<Transaction> findAllByIdInOrderByDateDescIdDesc(@Param("ids") List<Long> ids);
+
+    boolean existsByUserIdAndDeletedAtIsNull(Long userId);
 }
