@@ -325,6 +325,61 @@ class TransactionApiTest extends BaseApiIntegrationTest {
     }
 
     @Test
+    void shouldFilterTransactionsBySingleDayDateRange() {
+        User user = fixtures.createUser("single-day-filter@example.com");
+        var groceries = fixtures.createUserCategory(user, "Groceries", TransactionType.EXPENSE);
+        Transaction expected = fixtures.createTransaction(
+                user,
+                user.getDefaultAccount(),
+                groceries,
+                new BigDecimal("40.00"),
+                TransactionType.EXPENSE,
+                LocalDate.of(2026, 4, 10),
+                "Groceries"
+        );
+        fixtures.createTransaction(
+                user,
+                user.getDefaultAccount(),
+                groceries,
+                new BigDecimal("15.00"),
+                TransactionType.EXPENSE,
+                LocalDate.of(2026, 4, 11),
+                "Groceries"
+        );
+
+        restTestClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/transactions")
+                        .queryParam("dateFrom", "2026-04-10")
+                        .queryParam("dateTo", "2026-04-10")
+                        .build())
+                .header(HttpHeaders.AUTHORIZATION, authHeader(user))
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.data.length()").isEqualTo(1)
+                .jsonPath("$.data[0].id").isEqualTo(expected.getId());
+    }
+
+    @Test
+    void shouldRejectTransactionsFilterWhenDateRangeIsInvalid() {
+        User user = fixtures.createUser("invalid-date-range@example.com");
+
+        restTestClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/transactions")
+                        .queryParam("dateFrom", "2026-04-30")
+                        .queryParam("dateTo", "2026-04-01")
+                        .build())
+                .header(HttpHeaders.AUTHORIZATION, authHeader(user))
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("validation_failed")
+                .jsonPath("$.errors.dateRangeValid").isEqualTo("dateFrom must be before or equal to dateTo");
+    }
+
+    @Test
     void shouldFilterTransactionsByArchivedCategory() {
         User user = fixtures.createUser("filters-archived@example.com");
         var archivedCategory = fixtures.createCategory(
