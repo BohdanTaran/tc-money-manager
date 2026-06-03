@@ -41,6 +41,8 @@ public interface RecurringTransactionRepository extends JpaRepository<RecurringT
 
     long countByUserAndCategory(User user, Category category);
 
+    boolean existsByUserId(Long userId);
+
     @Modifying
     @Query("""
             UPDATE RecurringTransaction rt

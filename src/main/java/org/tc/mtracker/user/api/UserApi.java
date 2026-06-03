@@ -47,7 +47,7 @@ public interface UserApi {
             content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
                     schema = @Schema(implementation = ProblemDetail.class))
     )
-    @PutMapping(value = "/me", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PatchMapping(value = "/me", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     ResponseEntity<ResponseUserDTO> updateMe(
             @Parameter(
                     name = "User profile update DTO",
@@ -70,7 +70,7 @@ public interface UserApi {
                     }
             )
             @ValidImage @RequestPart(name = "avatar", required = false) MultipartFile avatar,
-            @Parameter(hidden = true) Authentication auth
+            @AuthenticationPrincipal CustomUserDetails principal
     );
 
     @Operation(
