@@ -57,8 +57,7 @@ public class UserService {
         if (isCurrencyChangeRequested(dto, user) && userHasFinancialActivity(userId)) {
             throw new UserUpdateProfileException("Cannot update currency while user has financial activity.");
         }
-        Boolean deleteAvatar = dto == null ? null : dto.deleteAvatar();
-        handleUserAvatar(user, avatar, deleteAvatar);
+        handleUserAvatar(user, avatar, dto);
         userMapper.updateEntityFromDto(dto, user);
         userRepository.save(user);
         String avatarUrl = generateAvatarUrl(user);
@@ -66,8 +65,8 @@ public class UserService {
         return userMapper.toDto(user, avatarUrl);
     }
 
-    private void handleUserAvatar(User user, MultipartFile avatar, Boolean deleteAvatar) {
-
+    private void handleUserAvatar(User user, MultipartFile avatar, RequestUpdateUserProfileDTO dto) {
+        Boolean deleteAvatar = dto == null ? null : dto.deleteAvatar();
         if (Boolean.TRUE.equals(deleteAvatar) && user.getAvatarId() != null) {
             s3Service.deleteFile(user.getAvatarId());
             user.setAvatarId(null);
