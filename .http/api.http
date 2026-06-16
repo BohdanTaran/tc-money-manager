@@ -15,7 +15,7 @@ Content-Type: application/json
 
 
 ###Token verification
-GET {{baseUrl}}/auth/verify?token=eyJhbGciOiJIUzM4NCJ9.eyJwdXJwb3NlIjoiZW1haWxfdmVyaWZpY2F0aW9uIiwic3ViIjoiZXhhbXBsZUBtYWlsLmNvbSIsImlhdCI6MTc3OTcwNDk3MiwiZXhwIjoxNzc5NzA1ODcyfQ.plqKd_YorAtVIQgGMhcEoBPaR6m9Hna6JTvmeqSHJH4syF3e49-HifwsyOtxrzUj
+GET {{baseUrl}}/auth/verify?token=eyJhbGciOiJIUzM4NCJ9.eyJwdXJwb3NlIjoiZW1haWxfdmVyaWZpY2F0aW9uIiwic3ViIjoiZXhhbXBsZUBtYWlsLmNvbSIsImlhdCI6MTc4MDQzMTY2OSwiZXhwIjoxNzgwNDMyNTY5fQ.V-okv8UAWQ7HvhsLYtPs-TfXlyWvKNiEcCQLvPxV6DGjHWB7wBBG5srKdk8bl4Gu
 
 
 ###Login
@@ -23,7 +23,19 @@ POST {{baseUrl}}/auth/login
 Content-Type: application/json
 
 {
-  "email": "maria@example.com",
+  "email": "uzaren@ukr.net",
+  "password": "!1Qq@2Ww#3Ee$4Rr"
+}
+
+> {% client.global.set("accessToken", response.body.accessToken) %}
+
+
+###Login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "example@mail.com",
   "password": "Example8!"
 }
 
@@ -38,15 +50,56 @@ Authorization: Bearer {{accessToken}}
 GET {{baseUrl}}/users/me
 Authorization: Bearer {{accessToken}}
 
+###Update user
+PATCH {{baseUrl}}/users/me
+Authorization: Bearer {{accessToken}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+Accept-Language: en
+
+--WebAppBoundary
+Content-Disposition: form-data; name="dto"
+Content-Type: application/json
+
+{
+  "fullName": "Fiat",
+  "currencyCode": "EUR"
+}
+
+###Update user with avatar
+PATCH {{baseUrl}}/users/me
+Authorization: Bearer {{accessToken}}
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+Accept-Language: en
+
+--WebAppBoundary
+Content-Disposition: form-data; name="dto"
+Content-Type: application/json
+
+{
+  "fullName": "Fiat",
+  "deleteAvatar": true
+}
+
+--WebAppBoundary
+Content-Disposition: form-data; name="avatar"; filename="8ef858e6a2714fbcb1ce6d1b12e32831.jpg"
+Content-Type: image/jpeg
+
+< D:\Java\Projects\tc-money-manager\.assets\8ef858e6a2714fbcb1ce6d1b12e32831.jpg
+
+--WebAppBoundary--
+
+
+
+
 ###Create category
 POST {{baseUrl}}/categories
-Authorization: Bearer {{accessToken}}
+Authorization: Bearer {{userToken}}
 Content-Type: application/json
 
 {
   "name": "Salarу5y",
   "type": "INCOME",
-  "icon": "WALLET"
+  "icon": "wallet"
 }
 
 ###Update category
@@ -56,7 +109,7 @@ Content-Type: application/json
 
 {
   "name": "Salary",
-  "icon": "DATABASE"
+  "icon": null
 }
 
 
@@ -69,7 +122,6 @@ Authorization: Bearer {{accessToken}}
 
 GET {{baseUrl}}/users/verify-email?token=
 Accept-Language: en
-
 
 
 ###Delete category
@@ -85,7 +137,7 @@ GET {{baseUrl}}/transactions?limit=10
 Authorization: Bearer {{accessToken}}
 
 ###Get first transaction page with date-filter
-GET{{baseUrl}}/transactions?limit=5&dateFrom=2025-05-20&dateTo=2025-05-27
+GET{{baseUrl}}/transactions?limit=5&dateFrom=2025-05-20&dateTo=2025-03-27
 Authorization: Bearer {{accessToken}}
 
 ###Get second transaction page with cursor from response
