@@ -51,7 +51,6 @@ public interface UserApi {
     ResponseEntity<ResponseUserDTO> updateMe(
             @Parameter(
                     name = "User profile update DTO",
-                    required = false,
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = RequestUpdateUserProfileDTO.class)
@@ -60,7 +59,6 @@ public interface UserApi {
             @Valid @RequestPart(name = "dto", required = false) RequestUpdateUserProfileDTO dto,
             @Parameter(
                     name = "avatar",
-                    required = false,
                     description = "Allowed formats: jpg, jpeg, png, gif, webp.",
                     content = {
                             @Content(mediaType = MediaType.IMAGE_JPEG_VALUE, schema = @Schema(type = "string", format = "binary")),
