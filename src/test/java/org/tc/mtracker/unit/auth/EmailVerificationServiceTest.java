@@ -1,5 +1,7 @@
 package org.tc.mtracker.unit.auth;
 
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -17,7 +19,9 @@ import org.tc.mtracker.security.JwtService;
 import org.tc.mtracker.support.factory.EntityTestFactory;
 import org.tc.mtracker.user.User;
 import org.tc.mtracker.user.UserRepository;
+import org.tc.mtracker.user.UserService;
 import org.tc.mtracker.utils.exceptions.EmailVerificationException;
+import org.tc.mtracker.utils.exceptions.JwtAuthenticationException;
 import org.tc.mtracker.utils.exceptions.UserAlreadyActivatedException;
 
 import java.time.LocalDateTime;
@@ -44,6 +48,9 @@ class EmailVerificationServiceTest {
 
     @Mock
     private AuthEmailService authEmailService;
+
+    @Mock
+    private UserService userService;
 
     @InjectMocks
     private EmailVerificationService emailVerificationService;
@@ -78,6 +85,31 @@ class EmailVerificationServiceTest {
         assertThatThrownBy(() -> emailVerificationService.verifyToken("verification-token"))
                 .isInstanceOf(UserAlreadyActivatedException.class);
     }
+
+    @Test
+    void shouldDeleteUserAndRejectExpiredToken() {
+        User user = EntityTestFactory.user(1L, "expired@example.com", false);
+
+        Claims claims = mock(Claims.class);
+        when(claims.getSubject()).thenReturn(user.getEmail());
+
+        ExpiredJwtException expiredJwtException = mock(ExpiredJwtException.class);
+        when(expiredJwtException.getClaims()).thenReturn(claims);
+        when(expiredJwtException.getMessage()).thenReturn("JWT expired");
+
+        when(jwtService.extractClaim(eq("expired-token"), any()))
+                .thenThrow(expiredJwtException);
+        when(userRepository.findByEmail(user.getEmail()))
+                .thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> emailVerificationService.verifyToken("expired-token"))
+                .isInstanceOf(JwtAuthenticationException.class)
+                .hasMessageContaining("expired");
+
+        verify(userService).deleteUserWithAllData(user.getId());
+    }
+
+
 
     @Test
     void shouldStorePendingEmailAndSendVerificationMail() {

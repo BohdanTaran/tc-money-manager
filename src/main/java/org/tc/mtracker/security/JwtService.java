@@ -63,11 +63,11 @@ public class JwtService {
         return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
     }
 
-    boolean isTokenExpired(String token) {
+    boolean isTokenExpired(String token) {//todo воно не працює.
         return extractExpiration(token).before(new Date());
     }
 
-    private Date extractExpiration(String token) {
+    private Date extractExpiration(String token) {//todo воно не працює. Падає на extractClaim, якщо токен expired
         return extractClaim(token, Claims::getExpiration);
     }
 

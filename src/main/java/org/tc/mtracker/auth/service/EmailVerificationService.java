@@ -1,10 +1,13 @@
 package org.tc.mtracker.auth.service;
 
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.servlet.HandlerExceptionResolver;
 import org.tc.mtracker.auth.dto.UpdateEmailRequestDto;
 import org.tc.mtracker.auth.mail.AuthEmailService;
 import org.tc.mtracker.auth.model.RefreshToken;
@@ -13,10 +16,8 @@ import org.tc.mtracker.security.JwtResponseDTO;
 import org.tc.mtracker.security.JwtService;
 import org.tc.mtracker.user.User;
 import org.tc.mtracker.user.UserRepository;
-import org.tc.mtracker.utils.exceptions.EmailVerificationException;
-import org.tc.mtracker.utils.exceptions.UserAlreadyActivatedException;
-import org.tc.mtracker.utils.exceptions.UserAlreadyExistsException;
-import org.tc.mtracker.utils.exceptions.UserNotFoundException;
+import org.tc.mtracker.user.UserService;
+import org.tc.mtracker.utils.exceptions.*;
 
 import java.util.Map;
 
@@ -32,6 +33,7 @@ public class EmailVerificationService {
     private final RefreshTokenService refreshTokenService;
     private final UserRepository userRepository;
     private final AuthEmailService authEmailService;
+    private final UserService userService;
 
     public JwtResponseDTO verifyToken(String token) {
         if (token == null || token.isBlank()) {
@@ -39,10 +41,20 @@ public class EmailVerificationService {
             throw new JwtException("Token is missing");
         }
 
-        String purpose = jwtService.extractClaim(token, claims -> claims.get(CLAIM_NAME_PURPOSE, String.class));
-        if (!EMAIL_VERIFICATION_PURPOSE.equals(purpose)) {
-            log.warn("Email verification rejected: invalid token purpose={}", purpose);
-            throw new JwtException("Invalid token purpose");
+        try {
+            String purpose = jwtService.extractClaim(token, claims -> claims.get(CLAIM_NAME_PURPOSE, String.class));
+            if (!EMAIL_VERIFICATION_PURPOSE.equals(purpose)) {
+                log.warn("Email verification rejected: invalid token purpose={}", purpose);
+                throw new JwtException("Invalid token purpose");
+            }
+
+        } catch (ExpiredJwtException e) {
+            log.debug("JWT processing error: {}", e.getMessage());
+            String email = e.getClaims().getSubject();
+            User user = findUserByEmail(email);
+            userService.deleteUserWithAllData(user.getId());
+            SecurityContextHolder.clearContext();
+            throw new JwtAuthenticationException("Registration token expired: " + e.getMessage(), "invalid_token", e);
         }
 
         String email = jwtService.extractUsername(token);

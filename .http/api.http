@@ -7,15 +7,15 @@ Content-Disposition: form-data; name="dto"
 Content-Type: application/json
 
 {
-  "email": "example@mail.com",
+  "email": "example1@mail.com",
   "password": "Example8!",
-  "fullName": "Abraham Lincoln",
+  "fullName": "Expired Token",
   "currencyCode": "USD"
 }
 
 
 ###Token verification
-GET {{baseUrl}}/auth/verify?token=eyJhbGciOiJIUzM4NCJ9.eyJwdXJwb3NlIjoiZW1haWxfdmVyaWZpY2F0aW9uIiwic3ViIjoiZXhhbXBsZUBtYWlsLmNvbSIsImlhdCI6MTc3OTcwNDk3MiwiZXhwIjoxNzc5NzA1ODcyfQ.plqKd_YorAtVIQgGMhcEoBPaR6m9Hna6JTvmeqSHJH4syF3e49-HifwsyOtxrzUj
+GET {{baseUrl}}/auth/verify?token=eyJhbGciOiJIUzM4NCJ9.eyJwdXJwb3NlIjoiZW1haWxfdmVyaWZpY2F0aW9uIiwic3ViIjoiZXhhbXBsZTFAbWFpbC5jb20iLCJpYXQiOjE3ODE2NDcwNjksImV4cCI6MTc4MTY0NzA4NH0.L8ojVtoplh9rzR-y4S4WoMsmm-aZrpGmZStJ3ZCGF4useibtPIVx4ESLHu2hpjD3
 
 
 ###Login
@@ -23,7 +23,7 @@ POST {{baseUrl}}/auth/login
 Content-Type: application/json
 
 {
-  "email": "maria@example.com",
+  "email": "example1@mail.com",
   "password": "Example8!"
 }
 

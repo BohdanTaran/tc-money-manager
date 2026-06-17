@@ -393,6 +393,25 @@ class AuthApiTest extends BaseApiIntegrationTest {
         }
 
         @Test
+        void shouldDeleteUserForExpiredEmailVerificationToken() {
+            User user = fixtures.createUser("expired@example.com", false);
+            String token = jwtFactory.token(user.getEmail(), "email_verification", Duration.ofSeconds(-1));
+            restTestClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/api/v1/auth/verify")
+                            .queryParam("token", token)
+                            .build())
+                    .exchange()
+                    .expectStatus().isUnauthorized()
+                    .expectBody()
+                    .jsonPath("$.code").isEqualTo("invalid_token")
+                    .jsonPath("$.detail").value(detail -> assertThat((String)detail).contains("expired"));
+
+            assertThat(userRepository.findByEmail(user.getEmail())).isEmpty();
+        }
+
+
+        @Test
         void shouldRefreshAccessTokenForKnownRefreshToken() {
             User user = fixtures.createUser("refresh@example.com");
             fixtures.createRefreshToken(user, "refresh-token");

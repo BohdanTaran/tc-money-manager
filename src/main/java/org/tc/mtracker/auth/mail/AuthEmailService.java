@@ -28,7 +28,7 @@ public class AuthEmailService {
         sendPlainTextEmail(
                 email,
                 EMAIL_VERIFICATION_SUBJECT,
-                "Please verify your email by clicking this link: " + verificationLink
+                "Please verify your email by clicking this link. The link is valid for 15 minutes. \n " + verificationLink
         );
     }
 
