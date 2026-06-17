@@ -57,7 +57,12 @@ class UserApiTest extends BaseApiIntegrationTest {
     void shouldUpdateProfileFields() {
         User user = fixtures.createUser("profile@example.com");
         MultipartBodyBuilder parts = new MultipartBodyBuilder();
-        parts.part("dto", new RequestUpdateUserProfileDTO("Updated User", CurrencyCode.EUR), MediaType.APPLICATION_JSON);
+        parts.part("dto",
+                new RequestUpdateUserProfileDTO(
+                        "Updated User",
+                        CurrencyCode.EUR,
+                        false),
+                MediaType.APPLICATION_JSON);
 
         restTestClient.patch()
                 .uri("/api/v1/users/me")
@@ -89,7 +94,11 @@ class UserApiTest extends BaseApiIntegrationTest {
         );
 
         MultipartBodyBuilder parts = new MultipartBodyBuilder();
-        parts.part("dto", new RequestUpdateUserProfileDTO(null, CurrencyCode.EUR), MediaType.APPLICATION_JSON);
+        parts.part("dto", new RequestUpdateUserProfileDTO(
+                        null,
+                        CurrencyCode.EUR,
+                        false),
+                MediaType.APPLICATION_JSON);
 
         restTestClient.patch()
                 .uri("/api/v1/users/me")
@@ -120,7 +129,11 @@ class UserApiTest extends BaseApiIntegrationTest {
         );
 
         MultipartBodyBuilder parts = new MultipartBodyBuilder();
-        parts.part("dto", new RequestUpdateUserProfileDTO("Updated User", CurrencyCode.USD), MediaType.APPLICATION_JSON);
+        parts.part("dto", new RequestUpdateUserProfileDTO(
+                        "Updated User",
+                        CurrencyCode.USD,
+                        false),
+                MediaType.APPLICATION_JSON);
 
         restTestClient.patch()
                 .uri("/api/v1/users/me")
@@ -182,6 +195,37 @@ class UserApiTest extends BaseApiIntegrationTest {
     }
 
     @Test
+    void shouldDeleteAvatarWhenUpdatingProfile() {
+        // Given
+        User user = fixtures.createUser("avatar-delete@example.com");
+        user.setAvatarId("existing-avatar-id");
+        userRepository.save(user);
+
+        when(s3Service.generatePresignedUrl(anyString())).thenReturn(null);
+
+        MultipartBodyBuilder parts = new MultipartBodyBuilder();
+        parts.part("dto",
+                new RequestUpdateUserProfileDTO(null, null, true),
+                MediaType.APPLICATION_JSON);
+
+        // When
+        restTestClient.patch()
+                .uri("/api/v1/users/me")
+                .header("Authorization", authHeader(user))
+                .body(parts.build())
+                .exchange()
+                // Then
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.avatarUrl").doesNotExist();
+
+        User savedUser = userRepository.findByEmail(user.getEmail()).orElseThrow();
+        assertThat(savedUser.getAvatarId()).isNull();
+        verify(s3Service).deleteFile("existing-avatar-id");
+        verify(s3Service, never()).saveFile(anyString(), any());
+    }
+
+    @Test
     void shouldTriggerAndVerifyEmailUpdateFlow() {
         User user = fixtures.createUser("before-update@example.com");
 
@@ -238,7 +282,11 @@ class UserApiTest extends BaseApiIntegrationTest {
         User user = fixtures.createUser();
         String fullName = user.getFullName();
         MultipartBodyBuilder parts = new MultipartBodyBuilder();
-        parts.part("dto", new RequestUpdateUserProfileDTO(invalidFullName, CurrencyCode.USD), MediaType.APPLICATION_JSON);
+        parts.part("dto", new RequestUpdateUserProfileDTO(
+                invalidFullName,
+                CurrencyCode.USD,
+                false
+        ), MediaType.APPLICATION_JSON);
 
         restTestClient.patch()
                 .uri("/api/v1/users/me")
@@ -257,7 +305,11 @@ class UserApiTest extends BaseApiIntegrationTest {
         User user = fixtures.createUser();
         String fullName = user.getFullName();
         MultipartBodyBuilder parts = new MultipartBodyBuilder();
-        parts.part("dto", new RequestUpdateUserProfileDTO("Abfhkiuytresdfghjkloiuytrewsdfghjkloi", CurrencyCode.USD), MediaType.APPLICATION_JSON);
+        parts.part("dto", new RequestUpdateUserProfileDTO(
+                        "Abfhkiuytresdfghjkloiuytrewsdfghjkloi",
+                        CurrencyCode.USD,
+                        false),
+                MediaType.APPLICATION_JSON);
 
         restTestClient.patch()
                 .uri("/api/v1/users/me")
@@ -276,7 +328,10 @@ class UserApiTest extends BaseApiIntegrationTest {
         User user = fixtures.createUser();
         String fullName = user.getFullName();
         MultipartBodyBuilder parts = new MultipartBodyBuilder();
-        parts.part("dto", new RequestUpdateUserProfileDTO("Ab", CurrencyCode.USD), MediaType.APPLICATION_JSON);
+        parts.part("dto", new RequestUpdateUserProfileDTO(
+                "Ab",
+                CurrencyCode.USD,
+                false), MediaType.APPLICATION_JSON);
 
         restTestClient.patch()
                 .uri("/api/v1/users/me")
@@ -397,7 +452,7 @@ class UserApiTest extends BaseApiIntegrationTest {
                 .expectStatus().isUnauthorized(); // or isNotFound()
     }
 
-       @Test
+    @Test
     void shouldHandleConsecutiveDeletionAttempts() {
         User user = fixtures.createUser("consecutive@example.com");
         restTestClient.delete()
@@ -411,7 +466,6 @@ class UserApiTest extends BaseApiIntegrationTest {
                 .exchange()
                 .expectStatus().isUnauthorized(); // или isNotFound()
     }
-
 
 
 }

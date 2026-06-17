@@ -54,23 +54,26 @@ public class UserService {
     @Transactional
     public ResponseUserDTO updateProfile(RequestUpdateUserProfileDTO dto, MultipartFile avatar, Long userId) {
         User user = getUserById(userId);
-
         if (isCurrencyChangeRequested(dto, user) && userHasFinancialActivity(userId)) {
             throw new UserUpdateProfileException("Cannot update currency while user has financial activity.");
         }
-
-        if (avatar != null) {
-            uploadAvatar(avatar, user);
-        }
-
+        handleUserAvatar(user, avatar, dto);
         userMapper.updateEntityFromDto(dto, user);
-
         userRepository.save(user);
-
         String avatarUrl = generateAvatarUrl(user);
         log.info("User with id {} is updated successfully!", user.getId());
-
         return userMapper.toDto(user, avatarUrl);
+    }
+
+    private void handleUserAvatar(User user, MultipartFile avatar, RequestUpdateUserProfileDTO dto) {
+        Boolean deleteAvatar = dto == null ? null : dto.deleteAvatar();
+        if (Boolean.TRUE.equals(deleteAvatar) && user.getAvatarId() != null) {
+            s3Service.deleteFile(user.getAvatarId());
+            user.setAvatarId(null);
+        } else if (avatar != null && !avatar.isEmpty()) {
+            s3Service.deleteFile(user.getAvatarId());
+            uploadAvatar(avatar, user);
+        }
     }
 
     private static boolean isCurrencyChangeRequested(RequestUpdateUserProfileDTO dto, User user) {
@@ -112,9 +115,11 @@ public class UserService {
         log.info("Deleting user: {} (id={})", user.getEmail(), userId);
 
         List<Long> transactionIds = jdbcTemplate.queryForList(
-                "SELECT t.id FROM transactions t " +
-                        "INNER JOIN accounts a ON a.id = t.account_id " +
-                        "WHERE a.user_id = ?",
+                """
+                        SELECT t.id FROM transactions t 
+                                                INNER JOIN accounts a ON a.id = t.account_id
+                                                WHERE a.user_id = ?
+                        """,
                 Long.class,
                 userId
         );
