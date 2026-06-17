@@ -54,7 +54,10 @@ class UserServiceTest {
     void shouldUpdateProfileAndReuseExistingAvatarId() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
         user.setAvatarId("existing-avatar-id");
-        RequestUpdateUserProfileDTO dto = new RequestUpdateUserProfileDTO("Updated User", CurrencyCode.EUR);
+        RequestUpdateUserProfileDTO dto = new RequestUpdateUserProfileDTO(
+                "Updated User",
+                CurrencyCode.EUR,
+                false);
         MockMultipartFile avatar = new MockMultipartFile("avatar", "avatar.jpg", "image/jpeg", "avatar".getBytes());
         ResponseUserDTO response = new ResponseUserDTO(
                 1L,
@@ -87,6 +90,63 @@ class UserServiceTest {
     }
 
     @Test
+    void shouldReplaceAvatarWhenNewAvatarUploadedAndOldExists() {
+        // Given
+        Long userId = 1L;
+        User user = EntityTestFactory.user(userId, "user@example.com", true);
+        user.setAvatarId("old-avatar-id");
+
+        RequestUpdateUserProfileDTO dto = new RequestUpdateUserProfileDTO(
+                "Updated User",
+                CurrencyCode.EUR,
+                false
+        );
+
+        MockMultipartFile newAvatar = new MockMultipartFile(
+                "avatar",
+                "new-avatar.jpg",
+                "image/jpeg",
+                "new-avatar".getBytes()
+        );
+
+        String newAvatarKey = "new-avatar-key";
+        String newAvatarUrl = "https://test-bucket.local/" + newAvatarKey;
+
+        ResponseUserDTO response = new ResponseUserDTO(
+                userId,
+                user.getEmail(),
+                "Updated User",
+                CurrencyCode.EUR,
+                newAvatarUrl,
+                true,
+                LocalDateTime.now()
+        );
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        doAnswer(invocation -> {
+            RequestUpdateUserProfileDTO updateDto = invocation.getArgument(0);
+            User target = invocation.getArgument(1);
+            target.setFullName(updateDto.fullName());
+            target.setCurrencyCode(updateDto.currencyCode());
+            return null;
+        }).when(userMapper).updateEntityFromDto(dto, user);
+
+        doNothing().when(s3Service).deleteFile("old-avatar-id");
+
+        when(s3Service.generatePresignedUrl(anyString())).thenReturn(newAvatarUrl);
+        when(userMapper.toDto(user, newAvatarUrl)).thenReturn(response);
+
+        // When
+        ResponseUserDTO result = userService.updateProfile(dto, newAvatar, userId);
+
+        // Then
+        assertThat(result).isEqualTo(response);
+        verify(s3Service).deleteFile("old-avatar-id");
+        verify(s3Service).saveFile(anyString(), eq(newAvatar));
+        verify(userRepository).save(user);
+    }
+
+    @Test
     void shouldReturnUserProfileWithGeneratedAvatarUrl() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
         user.setAvatarId("avatar-id");
@@ -109,11 +169,144 @@ class UserServiceTest {
         assertThat(result).isEqualTo(response);
     }
 
+    @Test
+    void shouldDeleteAvatarWhenDeleteAvatarFlagIsTrueAndAvatarExists() {
+        // Given
+        Long userId = 1L;
+        User user = EntityTestFactory.user(userId, "user@example.com", true);
+        user.setAvatarId("existing-avatar-id");
+
+        RequestUpdateUserProfileDTO dto = new RequestUpdateUserProfileDTO(
+                "Updated User",
+                CurrencyCode.EUR,
+                true  // deleteAvatar = true
+        );
+
+        ResponseUserDTO response = new ResponseUserDTO(
+                userId,
+                user.getEmail(),
+                "Updated User",
+                CurrencyCode.EUR,
+                null,  // avatarUrl = null, так как аватар удален
+                true,
+                LocalDateTime.now()
+        );
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        doAnswer(invocation -> {
+            RequestUpdateUserProfileDTO updateDto = invocation.getArgument(0);
+            User target = invocation.getArgument(1);
+            target.setFullName(updateDto.fullName());
+            target.setCurrencyCode(updateDto.currencyCode());
+            return null;
+        }).when(userMapper).updateEntityFromDto(dto, user);
+        when(userMapper.toDto(user, null)).thenReturn(response);
+
+        // When
+        ResponseUserDTO result = userService.updateProfile(dto, null, userId);
+
+        // Then
+        assertThat(result).isEqualTo(response);
+        assertThat(user.getAvatarId()).isNull();
+        verify(s3Service).deleteFile("existing-avatar-id");
+        verify(s3Service, never()).saveFile(anyString(), any());
+        verify(userRepository).save(user);
+    }
+
+
+    @Test
+    void shouldDoNothingWhenDeleteAvatarFlagIsTrueButNoAvatarExists() {
+        // Given
+        Long userId = 1L;
+        User user = EntityTestFactory.user(userId, "user@example.com", true);
+        user.setAvatarId(null);
+
+        RequestUpdateUserProfileDTO dto = new RequestUpdateUserProfileDTO(
+                "Updated User",
+                CurrencyCode.EUR,
+                true
+        );
+
+        ResponseUserDTO response = new ResponseUserDTO(
+                userId,
+                user.getEmail(),
+                "Updated User",
+                CurrencyCode.EUR,
+                null,
+                true,
+                LocalDateTime.now()
+        );
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        doAnswer(invocation -> {
+            RequestUpdateUserProfileDTO updateDto = invocation.getArgument(0);
+            User target = invocation.getArgument(1);
+            target.setFullName(updateDto.fullName());
+            target.setCurrencyCode(updateDto.currencyCode());
+            return null;
+        }).when(userMapper).updateEntityFromDto(dto, user);
+        when(userMapper.toDto(user, null)).thenReturn(response);
+
+        // When
+        ResponseUserDTO result = userService.updateProfile(dto, null, userId);
+
+        // Then
+        assertThat(result).isEqualTo(response);
+        assertThat(user.getAvatarId()).isNull();
+        verify(s3Service, never()).deleteFile(anyString());
+        verify(s3Service, never()).saveFile(anyString(), any());
+        verify(userRepository).save(user);
+    }
+
+    @Test
+    void shouldUpdateProfileWithoutChangingAvatarWhenDeleteAvatarFalseAndNoNewAvatar() {
+        // Given
+        Long userId = 1L;
+        User user = EntityTestFactory.user(userId, "user@example.com", true);
+        user.setAvatarId("existing-avatar-id");
+
+        RequestUpdateUserProfileDTO dto = new RequestUpdateUserProfileDTO(
+                "Updated User",
+                CurrencyCode.EUR,
+                false
+        );
+
+        ResponseUserDTO response = new ResponseUserDTO(
+                userId,
+                user.getEmail(),
+                "Updated User",
+                CurrencyCode.EUR,
+                "https://test-bucket.local/existing-avatar-id",
+                true,
+                LocalDateTime.now()
+        );
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        doAnswer(invocation -> {
+            RequestUpdateUserProfileDTO updateDto = invocation.getArgument(0);
+            User target = invocation.getArgument(1);
+            target.setFullName(updateDto.fullName());
+            target.setCurrencyCode(updateDto.currencyCode());
+            return null;
+        }).when(userMapper).updateEntityFromDto(dto, user);
+        when(s3Service.generatePresignedUrl("existing-avatar-id")).thenReturn("https://test-bucket.local/existing-avatar-id");
+        when(userMapper.toDto(user, "https://test-bucket.local/existing-avatar-id")).thenReturn(response);
+
+        // When
+        ResponseUserDTO result = userService.updateProfile(dto, null, userId);
+
+        // Then
+        assertThat(result).isEqualTo(response);
+        assertThat(user.getAvatarId()).isEqualTo("existing-avatar-id");
+        verify(s3Service, never()).deleteFile("existing-avatar-id");
+        verify(s3Service, never()).saveFile(anyString(), any());
+        verify(userRepository).save(user);
+    }
 
     @Test
     void shouldThrowWhenChangingCurrencyWithExistingTransaction() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
-        RequestUpdateUserProfileDTO dto = new RequestUpdateUserProfileDTO(null, CurrencyCode.EUR);
+        RequestUpdateUserProfileDTO dto = new RequestUpdateUserProfileDTO(null, CurrencyCode.EUR, false);
 
         when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
         when(transactionRepository.existsByUserIdAndDeletedAtIsNull(user.getId())).thenReturn(true);
@@ -129,7 +322,7 @@ class UserServiceTest {
     @Test
     void shouldThrowWhenChangingCurrencyWithExistingRecurringTransaction() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
-        RequestUpdateUserProfileDTO dto = new RequestUpdateUserProfileDTO(null, CurrencyCode.EUR);
+        RequestUpdateUserProfileDTO dto = new RequestUpdateUserProfileDTO(null, CurrencyCode.EUR, false);
 
         when(userRepository.findById(user.getId())).thenReturn(Optional.of(user));
         when(transactionRepository.existsByUserIdAndDeletedAtIsNull(user.getId())).thenReturn(false);
@@ -146,7 +339,10 @@ class UserServiceTest {
     @Test
     void shouldAllowFullNameUpdateWhenCurrencyIsUnchangedAndUserHasTransactions() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
-        RequestUpdateUserProfileDTO dto = new RequestUpdateUserProfileDTO("Updated User", CurrencyCode.USD);
+        RequestUpdateUserProfileDTO dto = new RequestUpdateUserProfileDTO(
+                "Updated User",
+                CurrencyCode.USD,
+                false);
         ResponseUserDTO response = new ResponseUserDTO(
                 1L,
                 user.getEmail(),
