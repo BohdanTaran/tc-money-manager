@@ -62,10 +62,9 @@ public class UserCleanupService {
 
         jdbcTemplate.update(
                 """
-                        DELETE FROM transactions
-                        USING transactions t
-                        INNER JOIN accounts a ON a.id = t.account_id
-                        WHERE a.user_id = ?
+                        DELETE t FROM transactions t
+                                    INNER JOIN accounts a ON a.id = t.account_id
+                                    WHERE a.user_id = ?
                         """,
                 userId
         );
