@@ -7,6 +7,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.tc.mtracker.security.CustomUserDetails;
+import org.tc.mtracker.user.UserCleanupService;
 import org.tc.mtracker.user.UserService;
 import org.tc.mtracker.user.dto.RequestUpdateUserProfileDTO;
 import org.tc.mtracker.user.dto.ResponseUserDTO;
@@ -17,6 +18,7 @@ import org.tc.mtracker.user.dto.ResponseUserDTO;
 public class UserController implements UserApi {
 
     private final UserService userService;
+    private final UserCleanupService userCleanupService;
 
     @Override
     public ResponseEntity<ResponseUserDTO> updateMe(
@@ -38,7 +40,7 @@ public class UserController implements UserApi {
     @Override
     public ResponseEntity<Void> deleteUser(
             CustomUserDetails principal) {
-        userService.deleteUserWithAllData(principal.getId());
+        userCleanupService.deleteUserWithAllData(principal.getId());
         return ResponseEntity.noContent().build();
     }
 }

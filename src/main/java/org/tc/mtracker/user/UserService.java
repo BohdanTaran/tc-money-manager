@@ -2,7 +2,7 @@ package org.tc.mtracker.user;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,8 +18,8 @@ import org.tc.mtracker.utils.S3Service;
 import org.tc.mtracker.utils.exceptions.UserNotFoundException;
 import org.tc.mtracker.utils.exceptions.UserUpdateProfileException;
 
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -28,9 +28,10 @@ public class UserService {
     private final UserMapper userMapper;
     private final UserRepository userRepository;
     private final S3Service s3Service;
-    private final JdbcTemplate jdbcTemplate;
     private final TransactionRepository transactionRepository;
     private final RecurringTransactionRepository recurringTransactionRepository;
+    private final UserCleanupService userCleanupService;
+
 
     public User getCurrentAuthenticatedUser(Authentication auth) {
         return getCurrentAuthenticatedUser(auth.getName());
@@ -109,78 +110,16 @@ public class UserService {
                         )));
     }
 
+    @Scheduled(fixedRate = 15000)
     @Transactional
-    public void deleteUserWithAllData(Long userId) {
-        User user = getUserById(userId);
-        log.info("Deleting user: {} (id={})", user.getEmail(), userId);
-
-        List<Long> transactionIds = jdbcTemplate.queryForList(
-                """
-                        SELECT t.id FROM transactions t 
-                                                INNER JOIN accounts a ON a.id = t.account_id
-                                                WHERE a.user_id = ?
-                        """,
-                Long.class,
-                userId
-        );
-
-        if (!transactionIds.isEmpty()) {
-            String placeholders = transactionIds.stream()
-                    .map(id -> "?")
-                    .collect(Collectors.joining(","));
-
-            jdbcTemplate.update(
-                    "DELETE FROM receipt_images WHERE transaction_id IN (" + placeholders + ")",
-                    transactionIds.toArray()
-            );
+    public void cleanFromExpiredRegistrations() {
+        List<User> notActiveUsers = userRepository.findByActivatedFalse();
+        LocalDateTime expireTime = LocalDateTime.now().minusMinutes(15);
+        for (User user : notActiveUsers) {
+            if (user.getCreatedAt().isBefore(expireTime)) {
+                userCleanupService.deleteUserWithAllData(user.getId());
+            }
         }
-
-        jdbcTemplate.update(
-                "UPDATE transactions SET recurring_transaction_id = NULL WHERE user_id = ?",
-                userId
-        );
-
-        jdbcTemplate.update(
-                "DELETE FROM recurring_transactions WHERE user_id = ?",
-                userId
-        );
-
-        jdbcTemplate.update(
-                "UPDATE users SET default_account_id = NULL WHERE id = ?",
-                userId
-        );
-
-        jdbcTemplate.update(
-                "DELETE t FROM transactions t " +
-                        "INNER JOIN accounts a ON a.id = t.account_id " +
-                        "WHERE a.user_id = ?",
-                userId
-        );
-
-        jdbcTemplate.update(
-                "DELETE FROM accounts WHERE user_id = ?",
-                userId
-        );
-
-        jdbcTemplate.update(
-                "DELETE FROM categories WHERE user_id = ?",
-                userId
-        );
-
-        jdbcTemplate.update(
-                "DELETE FROM refresh_tokens WHERE user_id = ?",
-                userId
-        );
-
-        int deleted = jdbcTemplate.update(
-                "DELETE FROM users WHERE id = ?",
-                userId
-        );
-
-        if (deleted == 0) {
-            throw new UserNotFoundException("User not found with id: " + userId);
-        }
-        log.info("User {} successfully deleted", userId);
     }
 
     private boolean userHasFinancialActivity(long userId) {

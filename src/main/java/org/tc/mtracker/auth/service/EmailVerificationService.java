@@ -7,7 +7,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.servlet.HandlerExceptionResolver;
 import org.tc.mtracker.auth.dto.UpdateEmailRequestDto;
 import org.tc.mtracker.auth.mail.AuthEmailService;
 import org.tc.mtracker.auth.model.RefreshToken;
@@ -15,8 +14,8 @@ import org.tc.mtracker.security.CustomUserDetails;
 import org.tc.mtracker.security.JwtResponseDTO;
 import org.tc.mtracker.security.JwtService;
 import org.tc.mtracker.user.User;
+import org.tc.mtracker.user.UserCleanupService;
 import org.tc.mtracker.user.UserRepository;
-import org.tc.mtracker.user.UserService;
 import org.tc.mtracker.utils.exceptions.*;
 
 import java.util.Map;
@@ -33,7 +32,7 @@ public class EmailVerificationService {
     private final RefreshTokenService refreshTokenService;
     private final UserRepository userRepository;
     private final AuthEmailService authEmailService;
-    private final UserService userService;
+    private final UserCleanupService userCleanupService;
 
     public JwtResponseDTO verifyToken(String token) {
         if (token == null || token.isBlank()) {
@@ -52,7 +51,7 @@ public class EmailVerificationService {
             log.debug("JWT processing error: {}", e.getMessage());
             String email = e.getClaims().getSubject();
             User user = findUserByEmail(email);
-            userService.deleteUserWithAllData(user.getId());
+            userCleanupService.deleteUserWithAllData(user.getId());
             SecurityContextHolder.clearContext();
             throw new JwtAuthenticationException("Registration token expired: " + e.getMessage(), "invalid_token", e);
         }
