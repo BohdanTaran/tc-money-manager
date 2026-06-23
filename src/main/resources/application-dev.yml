@@ -68,3 +68,6 @@ management:
     health:
       show-details: never
 
+security:
+  jwt:
+    access-token-expiration: 15000  # in milliseconds
