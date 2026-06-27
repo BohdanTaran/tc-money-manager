@@ -70,7 +70,6 @@ class RecurringTransactionServiceTest {
                 IntervalUnit.MONTHLY
         );
         RecurringTransaction recurringTransaction = RecurringTransaction.builder()
-                .user(user)
                 .type(requestDTO.type())
                 .amount(requestDTO.amount())
                 .description(requestDTO.description())
@@ -79,7 +78,6 @@ class RecurringTransactionServiceTest {
                 .build();
         RecurringTransaction savedRecurringTransaction = RecurringTransaction.builder()
                 .id(10L)
-                .user(user)
                 .account(account)
                 .category(category)
                 .type(requestDTO.type())
@@ -90,7 +88,7 @@ class RecurringTransactionServiceTest {
                 .intervalUnit(requestDTO.intervalUnit())
                 .build();
         when(transactionValidationService.today()).thenReturn(LocalDate.of(2026, 4, 17));
-        when(recurringTransactionMapper.toEntity(requestDTO, user, category, account)).thenReturn(recurringTransaction);
+        when(recurringTransactionMapper.toEntity(requestDTO, category, account)).thenReturn(recurringTransaction);
         when(recurringTransactionRepository.save(recurringTransaction)).thenReturn(savedRecurringTransaction);
 
         RecurringTransaction result = recurringTransactionService.createRecurringTransaction(user, account, category, requestDTO);
@@ -115,7 +113,6 @@ class RecurringTransactionServiceTest {
                 IntervalUnit.MONTHLY
         );
         RecurringTransaction recurringTransaction = RecurringTransaction.builder()
-                .user(user)
                 .type(requestDTO.type())
                 .amount(requestDTO.amount())
                 .description(requestDTO.description())
@@ -124,7 +121,6 @@ class RecurringTransactionServiceTest {
                 .build();
         RecurringTransaction savedRecurringTransaction = RecurringTransaction.builder()
                 .id(10L)
-                .user(user)
                 .account(account)
                 .category(category)
                 .type(requestDTO.type())
@@ -136,7 +132,7 @@ class RecurringTransactionServiceTest {
                 .build();
 
         when(transactionValidationService.today()).thenReturn(LocalDate.of(2026, 4, 17));
-        when(recurringTransactionMapper.toEntity(requestDTO, user, category, account)).thenReturn(recurringTransaction);
+        when(recurringTransactionMapper.toEntity(requestDTO, category, account)).thenReturn(recurringTransaction);
         when(recurringTransactionRepository.save(recurringTransaction)).thenReturn(savedRecurringTransaction);
 
         RecurringTransaction result = recurringTransactionService.createRecurringTransaction(user, account, category, requestDTO);
@@ -154,7 +150,6 @@ class RecurringTransactionServiceTest {
         Category bonusCategory = EntityTestFactory.category(5L, user, "Bonus", TransactionType.INCOME, CategoryStatus.ACTIVE);
         RecurringTransaction recurringTransaction = RecurringTransaction.builder()
                 .id(10L)
-                .user(user)
                 .account(account)
                 .category(salaryCategory)
                 .type(TransactionType.INCOME)
@@ -166,7 +161,6 @@ class RecurringTransactionServiceTest {
                 .build();
         Transaction selectedOccurrence = EntityTestFactory.transaction(
                 11L,
-                user,
                 account,
                 salaryCategory,
                 TransactionType.INCOME,
@@ -223,7 +217,6 @@ class RecurringTransactionServiceTest {
         Category category = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
         Transaction transaction = EntityTestFactory.transaction(
                 11L,
-                user,
                 account,
                 category,
                 TransactionType.INCOME,
@@ -244,7 +237,6 @@ class RecurringTransactionServiceTest {
         Category category = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
         RecurringTransaction recurringTransaction = RecurringTransaction.builder()
                 .id(10L)
-                .user(user)
                 .account(account)
                 .category(category)
                 .type(TransactionType.INCOME)
@@ -256,7 +248,6 @@ class RecurringTransactionServiceTest {
                 .build();
         Transaction selectedOccurrence = EntityTestFactory.transaction(
                 11L,
-                user,
                 account,
                 category,
                 TransactionType.INCOME,
@@ -266,7 +257,6 @@ class RecurringTransactionServiceTest {
         selectedOccurrence.setRecurringTransaction(recurringTransaction);
         Transaction futureOccurrence = EntityTestFactory.transaction(
                 12L,
-                user,
                 account,
                 category,
                 TransactionType.INCOME,

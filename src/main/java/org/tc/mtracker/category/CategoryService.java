@@ -133,16 +133,16 @@ public class CategoryService {
     public void deleteCategory(Long categoryId, Long replacementCategoryId, long userId) {
         User currentUser = userService.getUserById(userId);
         Category category = findOwnedById(categoryId, currentUser);
-        long linkedTransactions = transactionRepository.countByUserAndCategory(currentUser, category);
-        long linkedRecurringTransactions = recurringTransactionRepository.countByUserAndCategory(currentUser, category);
+        long linkedTransactions = transactionRepository.countByUserAndCategory(currentUser.getId(), category);
+        long linkedRecurringTransactions = recurringTransactionRepository.countByUserAndCategory(currentUser.getId(), category);
         boolean replacementRequired = linkedTransactions > 0 || linkedRecurringTransactions > 0;
         Category replacementCategory = resolveReplacementCategory(category, replacementCategoryId, currentUser, replacementRequired);
 
         if (linkedTransactions > 0) {
-            transactionRepository.reassignCategory(currentUser, category, replacementCategory);
+            transactionRepository.reassignCategory(currentUser.getId(), category, replacementCategory);
         }
         if (linkedRecurringTransactions > 0) {
-            recurringTransactionRepository.reassignCategory(currentUser, category, replacementCategory);
+            recurringTransactionRepository.reassignCategory(currentUser.getId(), category, replacementCategory);
         }
 
         categoryRepository.delete(category);

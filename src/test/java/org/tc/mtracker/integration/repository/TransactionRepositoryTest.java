@@ -51,13 +51,37 @@ class TransactionRepositoryTest extends BaseRepositoryIntegrationTest {
         Category incomeCategory = persistCategory(currentUser, "Salary", TransactionType.INCOME);
         Category expenseCategory = persistCategory(currentUser, "Groceries", TransactionType.EXPENSE);
 
-        persistTransaction(currentUser, primaryAccount, incomeCategory, new BigDecimal("200.00"), TransactionType.INCOME, LocalDate.of(2026, 3, 10), null);
-        Transaction filtered = persistTransaction(currentUser, savingsAccount, expenseCategory, new BigDecimal("40.00"), TransactionType.EXPENSE, LocalDate.of(2026, 4, 10), null);
-        persistTransaction(otherUser, otherUser.getDefaultAccount(), incomeCategory, new BigDecimal("100.00"), TransactionType.INCOME, LocalDate.of(2026, 4, 11), null);
-        persistTransaction(currentUser, primaryAccount, expenseCategory, new BigDecimal("15.00"), TransactionType.EXPENSE, LocalDate.of(2026, 4, 9), LocalDateTime.now());
+        persistTransaction(
+                primaryAccount,
+                incomeCategory,
+                new BigDecimal("200.00"),
+                TransactionType.INCOME,
+                LocalDate.of(2026, 3, 10),
+                null);
+        Transaction filtered = persistTransaction(
+                savingsAccount,
+                expenseCategory,
+                new BigDecimal("40.00"),
+                TransactionType.EXPENSE,
+                LocalDate.of(2026, 4, 10),
+                null);
+        persistTransaction(
+                otherUser.getDefaultAccount(),
+                incomeCategory,
+                new BigDecimal("100.00"),
+                TransactionType.INCOME,
+                LocalDate.of(2026, 4, 11),
+                null);
+        persistTransaction(
+                primaryAccount,
+                expenseCategory,
+                new BigDecimal("15.00"),
+                TransactionType.EXPENSE,
+                LocalDate.of(2026, 4, 9),
+                LocalDateTime.now());
 
         List<Transaction> allTransactions = transactionRepository.findAllByUserAndFilters(
-                currentUser,
+                currentUser.getId(),
                 null,
                 null,
                 null,
@@ -66,7 +90,7 @@ class TransactionRepositoryTest extends BaseRepositoryIntegrationTest {
         );
 
         List<Transaction> filteredTransactions = transactionRepository.findAllByUserAndFilters(
-                currentUser,
+                currentUser.getId(),
                 savingsAccount.getId(),
                 expenseCategory.getId(),
                 TransactionType.EXPENSE,
@@ -88,13 +112,31 @@ class TransactionRepositoryTest extends BaseRepositoryIntegrationTest {
         User otherUser = persistUser("other@example.com");
         Category incomeCategory = persistCategory(currentUser, "Salary", TransactionType.INCOME);
 
-        Transaction active = persistTransaction(currentUser, currentUser.getDefaultAccount(), incomeCategory, new BigDecimal("100.00"), TransactionType.INCOME, LocalDate.of(2026, 4, 1), null);
-        Transaction deleted = persistTransaction(currentUser, currentUser.getDefaultAccount(), incomeCategory, new BigDecimal("10.00"), TransactionType.INCOME, LocalDate.of(2026, 4, 2), LocalDateTime.now());
-        Transaction foreign = persistTransaction(otherUser, otherUser.getDefaultAccount(), incomeCategory, new BigDecimal("15.00"), TransactionType.INCOME, LocalDate.of(2026, 4, 3), null);
+        Transaction active = persistTransaction(
+                currentUser.getDefaultAccount(),
+                incomeCategory,
+                new BigDecimal("100.00"),
+                TransactionType.INCOME,
+                LocalDate.of(2026, 4, 1)
+                , null);
+        Transaction deleted = persistTransaction(
+                currentUser.getDefaultAccount(),
+                incomeCategory,
+                new BigDecimal("10.00"),
+                TransactionType.INCOME,
+                LocalDate.of(2026, 4, 2),
+                LocalDateTime.now());
+        Transaction foreign = persistTransaction(
+                otherUser.getDefaultAccount(),
+                incomeCategory,
+                new BigDecimal("15.00"),
+                TransactionType.INCOME,
+                LocalDate.of(2026, 4, 3),
+                null);
 
-        assertThat(transactionRepository.findActiveByIdAndUser(active.getId(), currentUser)).isPresent();
-        assertThat(transactionRepository.findActiveByIdAndUser(deleted.getId(), currentUser)).isEmpty();
-        assertThat(transactionRepository.findActiveByIdAndUser(foreign.getId(), currentUser)).isEmpty();
+        assertThat(transactionRepository.findActiveByIdAndUser(active.getId(), currentUser.getId())).isPresent();
+        assertThat(transactionRepository.findActiveByIdAndUser(deleted.getId(), currentUser.getId())).isEmpty();
+        assertThat(transactionRepository.findActiveByIdAndUser(foreign.getId(), currentUser.getId())).isEmpty();
     }
 
     private User persistUser(String email) {
@@ -127,7 +169,6 @@ class TransactionRepositoryTest extends BaseRepositoryIntegrationTest {
     }
 
     private Transaction persistTransaction(
-            User user,
             Account account,
             Category category,
             BigDecimal amount,
@@ -136,7 +177,6 @@ class TransactionRepositoryTest extends BaseRepositoryIntegrationTest {
             LocalDateTime deletedAt
     ) {
         return transactionRepository.saveAndFlush(Transaction.builder()
-                .user(user)
                 .account(account)
                 .category(category)
                 .amount(amount)

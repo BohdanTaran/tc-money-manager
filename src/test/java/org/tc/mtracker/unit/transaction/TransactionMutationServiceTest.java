@@ -59,7 +59,6 @@ class TransactionMutationServiceTest {
         Category category = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
         Transaction transaction = EntityTestFactory.transaction(
                 null,
-                user,
                 account,
                 category,
                 TransactionType.INCOME,
@@ -84,7 +83,6 @@ class TransactionMutationServiceTest {
         Category category = EntityTestFactory.category(4L, user, "Groceries", TransactionType.EXPENSE, CategoryStatus.ACTIVE);
         Transaction transaction = EntityTestFactory.transaction(
                 9L,
-                user,
                 sourceAccount,
                 category,
                 TransactionType.EXPENSE,
@@ -123,7 +121,6 @@ class TransactionMutationServiceTest {
         Category category = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
         Transaction transaction = EntityTestFactory.transaction(
                 9L,
-                user,
                 account,
                 category,
                 TransactionType.INCOME,
@@ -147,7 +144,6 @@ class TransactionMutationServiceTest {
         Category category = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
         Transaction transaction = EntityTestFactory.transaction(
                 9L,
-                user,
                 account,
                 category,
                 TransactionType.INCOME,

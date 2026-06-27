@@ -1,7 +1,5 @@
 package org.tc.mtracker.unit.transaction;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,7 +24,6 @@ import org.tc.mtracker.transaction.recurring.enums.IntervalUnit;
 import org.tc.mtracker.transaction.recurring.enums.RecurringTransactionChangeScope;
 import org.tc.mtracker.user.User;
 import org.tc.mtracker.user.UserService;
-import org.tc.mtracker.utils.S3Service;
 import org.tc.mtracker.utils.exceptions.CategoryIsNotActiveException;
 import org.tc.mtracker.utils.exceptions.MoneyFlowTypeMismatchException;
 import org.tc.mtracker.utils.exceptions.TransactionNotFoundException;
@@ -56,9 +53,6 @@ class TransactionServiceTest {
     private UserService userService;
 
     @Mock
-    private S3Service s3Service;
-
-    @Mock
     private TransactionValidationService transactionValidationService;
 
     @Mock
@@ -73,51 +67,40 @@ class TransactionServiceTest {
     @InjectMocks
     private TransactionService transactionService;
 
-    @PersistenceContext
-    private EntityManager entityManager;
-
     private static TransactionCreateRequestDTO createRequest(
             BigDecimal amount,
             TransactionType type,
-            Long categoryId,
             LocalDate date,
-            String description,
-            Long accountId
+            String description
     ) {
         return new TransactionCreateRequestDTO(
                 amount,
                 type,
-                categoryId,
+                4L,
                 date,
                 description,
-                accountId,
+                null,
                 IntervalUnit.ONCE
         );
     }
 
     private static TransactionCreateRequestDTO createRequest(
             BigDecimal amount,
-            TransactionType type,
-            Long categoryId,
-            LocalDate date,
-            String description,
-            Long accountId,
-            IntervalUnit intervalUnit
+            LocalDate date
     ) {
         return new TransactionCreateRequestDTO(
                 amount,
-                type,
-                categoryId,
+                TransactionType.INCOME,
+                4L,
                 date,
-                description,
-                accountId,
-                intervalUnit
+                "Salary",
+                null,
+                IntervalUnit.MONTHLY
         );
     }
 
     private static TransactionUpdateRequestDTO createUpdateRequest(
             BigDecimal amount,
-            Long categoryId,
             LocalDate date,
             String description,
             Long accountId,
@@ -125,7 +108,7 @@ class TransactionServiceTest {
     ) {
         return new TransactionUpdateRequestDTO(
                 amount,
-                categoryId,
+                4L,
                 date,
                 description,
                 accountId,
@@ -141,14 +124,11 @@ class TransactionServiceTest {
         TransactionCreateRequestDTO dto = createRequest(
                 new BigDecimal("15.50"),
                 TransactionType.INCOME,
-                4L,
                 LocalDate.of(2026, 4, 1),
-                "Salary",
-                null
+                "Salary"
         );
         Transaction transaction = EntityTestFactory.transaction(
                 null,
-                user,
                 defaultAccount,
                 category,
                 dto.type(),
@@ -173,14 +153,14 @@ class TransactionServiceTest {
         when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
         when(transactionValidationService.resolveAccount(user, dto.accountId())).thenReturn(defaultAccount);
         when(transactionValidationService.resolveActiveCategory(dto.categoryId(), user)).thenReturn(category);
-        when(transactionMapper.toEntity(dto, user, defaultAccount, category)).thenReturn(transaction);
+        when(transactionMapper.toEntity(dto, defaultAccount, category)).thenReturn(transaction);
         when(transactionMutationService.persistTransaction(transaction)).thenReturn(transaction);
         when(transactionMutationService.toResponseDto(transaction)).thenReturn(response);
 
         TransactionResponseDTO result = transactionService.createTransaction(authentication, dto, List.of());
 
         assertThat(result).isEqualTo(response);
-        assertThat(transaction.getUser()).isEqualTo(user);
+        assertThat(transaction.getAccount().getUser()).isEqualTo(user);
         assertThat(transaction.getAccount()).isEqualTo(defaultAccount);
         assertThat(transaction.getCategory()).isEqualTo(category);
         verify(transactionValidationService).validateOneTimeTransactionDate(dto.date(), user);
@@ -198,12 +178,16 @@ class TransactionServiceTest {
         TransactionCreateRequestDTO dto = createRequest(
                 new BigDecimal("15.50"),
                 TransactionType.INCOME,
-                4L,
                 LocalDate.of(2026, 4, 1),
-                "Salary",
-                null
+                "Salary"
         );
-        Transaction transaction = EntityTestFactory.transaction(null, user, null, null, dto.type(), dto.amount(), dto.date());
+        Transaction transaction = EntityTestFactory.transaction(
+                null,
+                null,
+                null,
+                dto.type(),
+                dto.amount(),
+                dto.date());
         MockMultipartFile receipt = new MockMultipartFile("receipts", "receipt.jpg", "image/jpeg", "receipt".getBytes());
         TransactionResponseDTO response = new TransactionResponseDTO(
                 10L,
@@ -223,7 +207,7 @@ class TransactionServiceTest {
         when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
         when(transactionValidationService.resolveAccount(user, dto.accountId())).thenReturn(defaultAccount);
         when(transactionValidationService.resolveActiveCategory(dto.categoryId(), user)).thenReturn(category);
-        when(transactionMapper.toEntity(dto, user, defaultAccount, category)).thenReturn(transaction);
+        when(transactionMapper.toEntity(dto, defaultAccount, category)).thenReturn(transaction);
         when(transactionMutationService.persistTransaction(transaction)).thenReturn(transaction);
         when(transactionMutationService.toResponseDto(transaction)).thenReturn(response);
 
@@ -240,16 +224,10 @@ class TransactionServiceTest {
         Category category = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
         TransactionCreateRequestDTO dto = createRequest(
                 new BigDecimal("2000.00"),
-                TransactionType.INCOME,
-                4L,
-                LocalDate.of(2026, 4, 17),
-                "Salary",
-                null,
-                IntervalUnit.MONTHLY
+                LocalDate.of(2026, 4, 17)
         );
         RecurringTransaction recurringTransaction = RecurringTransaction.builder()
                 .id(10L)
-                .user(user)
                 .account(defaultAccount)
                 .category(category)
                 .amount(dto.amount())
@@ -298,7 +276,7 @@ class TransactionServiceTest {
                         && transaction.getAmount().compareTo(dto.amount()) == 0
                         && transaction.getType() == dto.type()
         ));
-        verify(transactionMapper, never()).toEntity(any(), any(), any(), any());
+        verify(transactionMapper, never()).toEntity(any(), any(), any());
     }
 
     @Test
@@ -307,10 +285,8 @@ class TransactionServiceTest {
         TransactionCreateRequestDTO dto = createRequest(
                 BigDecimal.ONE,
                 TransactionType.EXPENSE,
-                4L,
                 LocalDate.of(2026, 4, 1),
-                "Expense",
-                null
+                "Expense"
         );
 
         when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
@@ -331,10 +307,8 @@ class TransactionServiceTest {
         TransactionCreateRequestDTO dto = createRequest(
                 BigDecimal.ONE,
                 TransactionType.EXPENSE,
-                4L,
                 LocalDate.of(2026, 4, 1),
-                "Expense",
-                null
+                "Expense"
         );
 
         when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
@@ -357,7 +331,6 @@ class TransactionServiceTest {
         Category expenseCategory = EntityTestFactory.category(4L, user, "Groceries", TransactionType.EXPENSE, CategoryStatus.ACTIVE);
         Transaction existingTransaction = EntityTestFactory.transaction(
                 9L,
-                user,
                 sourceAccount,
                 expenseCategory,
                 TransactionType.EXPENSE,
@@ -366,7 +339,6 @@ class TransactionServiceTest {
         );
         TransactionUpdateRequestDTO updateDto = createUpdateRequest(
                 new BigDecimal("50.00"),
-                4L,
                 LocalDate.of(2026, 4, 2),
                 "Updated expense",
                 2L,
@@ -387,7 +359,7 @@ class TransactionServiceTest {
         );
 
         when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
-        when(transactionRepository.findActiveByIdAndUser(9L, user)).thenReturn(Optional.of(existingTransaction));
+        when(transactionRepository.findActiveByIdAndUser(9L, user.getId())).thenReturn(Optional.of(existingTransaction));
         when(transactionValidationService.resolveAccount(user, 2L)).thenReturn(targetAccount);
         when(transactionValidationService.resolveActiveCategory(4L, user)).thenReturn(expenseCategory);
         when(transactionMutationService.toResponseDto(existingTransaction)).thenReturn(response);
@@ -411,7 +383,6 @@ class TransactionServiceTest {
         Category salaryCategory = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
         RecurringTransaction recurringTransaction = RecurringTransaction.builder()
                 .id(10L)
-                .user(user)
                 .account(account)
                 .category(salaryCategory)
                 .type(TransactionType.INCOME)
@@ -423,7 +394,6 @@ class TransactionServiceTest {
                 .build();
         Transaction transaction = EntityTestFactory.transaction(
                 9L,
-                user,
                 account,
                 salaryCategory,
                 TransactionType.INCOME,
@@ -433,7 +403,6 @@ class TransactionServiceTest {
         transaction.setRecurringTransaction(recurringTransaction);
         TransactionUpdateRequestDTO updateDto = createUpdateRequest(
                 new BigDecimal("150.00"),
-                4L,
                 LocalDate.of(2026, 4, 2),
                 "Updated salary",
                 1L,
@@ -454,7 +423,7 @@ class TransactionServiceTest {
         );
 
         when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
-        when(transactionRepository.findActiveByIdAndUser(9L, user)).thenReturn(Optional.of(transaction));
+        when(transactionRepository.findActiveByIdAndUser(9L, user.getId())).thenReturn(Optional.of(transaction));
         when(transactionValidationService.resolveAccount(user, 1L)).thenReturn(account);
         when(transactionValidationService.resolveActiveCategory(4L, user)).thenReturn(salaryCategory);
         when(transactionRepository.findById(9L)).thenReturn(Optional.of(transaction));
@@ -478,7 +447,6 @@ class TransactionServiceTest {
         Category category = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
         Transaction transaction = EntityTestFactory.transaction(
                 9L,
-                user,
                 account,
                 category,
                 TransactionType.INCOME,
@@ -489,7 +457,7 @@ class TransactionServiceTest {
         EntityTestFactory.attachReceipts(transaction, new org.tc.mtracker.transaction.ReceiptImage(receiptId, transaction));
 
         when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
-        when(transactionRepository.findActiveByIdAndUser(9L, user)).thenReturn(Optional.of(transaction));
+        when(transactionRepository.findActiveByIdAndUser(9L, user.getId())).thenReturn(Optional.of(transaction));
 
         transactionService.deleteTransaction(9L, authentication, RecurringTransactionChangeScope.ONLY_THIS);
 
@@ -500,10 +468,14 @@ class TransactionServiceTest {
     void shouldDelegateRecurringCurrentAndFutureDeleteToRecurringService() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
         Account account = EntityTestFactory.account(1L, user, new BigDecimal("30.00"));
-        Category category = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
+        Category category = EntityTestFactory.category(
+                4L,
+                user,
+                "Salary",
+                TransactionType.INCOME,
+                CategoryStatus.ACTIVE);
         Transaction transaction = EntityTestFactory.transaction(
                 9L,
-                user,
                 account,
                 category,
                 TransactionType.INCOME,
@@ -512,7 +484,7 @@ class TransactionServiceTest {
         );
 
         when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
-        when(transactionRepository.findActiveByIdAndUser(9L, user)).thenReturn(Optional.of(transaction));
+        when(transactionRepository.findActiveByIdAndUser(9L, user.getId())).thenReturn(Optional.of(transaction));
 
         transactionService.deleteTransaction(
                 9L,
@@ -529,7 +501,7 @@ class TransactionServiceTest {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
 
         when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
-        when(transactionRepository.findActiveByIdAndUser(99L, user)).thenReturn(Optional.empty());
+        when(transactionRepository.findActiveByIdAndUser(99L, user.getId())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> transactionService.getTransactionById(99L, authentication))
                 .isInstanceOf(TransactionNotFoundException.class);

@@ -203,7 +203,6 @@ class CategoryApiTest extends BaseApiIntegrationTest {
         User user = fixtures.createUser("delete-used-category@example.com");
         var category = fixtures.createUserCategory(user, "Travel", TransactionType.EXPENSE);
         fixtures.createTransaction(
-                user,
                 user.getDefaultAccount(),
                 category,
                 java.math.BigDecimal.TEN,
@@ -227,7 +226,6 @@ class CategoryApiTest extends BaseApiIntegrationTest {
         var sourceCategory = fixtures.createUserCategory(user, "Travel", TransactionType.EXPENSE);
         var replacementCategory = fixtures.createUserCategory(user, "Vacation", TransactionType.EXPENSE);
         var transaction = fixtures.createTransaction(
-                user,
                 user.getDefaultAccount(),
                 sourceCategory,
                 java.math.BigDecimal.TEN,

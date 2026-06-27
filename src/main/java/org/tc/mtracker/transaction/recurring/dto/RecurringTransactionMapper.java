@@ -9,7 +9,6 @@ import org.tc.mtracker.category.Category;
 import org.tc.mtracker.category.CategoryMapper;
 import org.tc.mtracker.transaction.dto.TransactionCreateRequestDTO;
 import org.tc.mtracker.transaction.recurring.RecurringTransaction;
-import org.tc.mtracker.user.User;
 
 import java.util.List;
 
@@ -21,7 +20,6 @@ import java.util.List;
 public interface RecurringTransactionMapper {
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "user", source = "user")
     @Mapping(target = "account", source = "account")
     @Mapping(target = "category", source = "category")
     @Mapping(target = "type", source = "dto.type")
@@ -29,7 +27,7 @@ public interface RecurringTransactionMapper {
     @Mapping(target = "nextExecutionDate", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
-    RecurringTransaction toEntity(TransactionCreateRequestDTO dto, User user, Category category, Account account);
+    RecurringTransaction toEntity(TransactionCreateRequestDTO dto, Category category, Account account);
 
     @Mapping(target = "accountId", source = "recurringTransaction.account.id")
     RecurringTransactionResponseDTO toDto(RecurringTransaction recurringTransaction);

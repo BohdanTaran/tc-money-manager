@@ -114,7 +114,6 @@ public class DatabaseTestDataFactory {
     }
 
     public Transaction createTransaction(
-            User user,
             Account account,
             Category category,
             BigDecimal amount,
@@ -123,7 +122,6 @@ public class DatabaseTestDataFactory {
             String description
     ) {
         Transaction transaction = transactionRepository.saveAndFlush(Transaction.builder()
-                .user(user)
                 .account(account)
                 .category(category)
                 .amount(amount)
@@ -139,13 +137,13 @@ public class DatabaseTestDataFactory {
         return transaction;
     }
 
-    public RefreshToken createRefreshToken(User user, String token) {
-        return createRefreshToken(user, token, LocalDateTime.now().plusDays(1));
+    public void createRefreshToken(User user, String token) {
+        createRefreshToken(user, token, LocalDateTime.now().plusDays(1));
     }
 
-    public RefreshToken createRefreshToken(User user, String token, LocalDateTime expiryDate) {
+    public void createRefreshToken(User user, String token, LocalDateTime expiryDate) {
         refreshTokenRepository.deleteByUser(user);
-        return refreshTokenRepository.saveAndFlush(RefreshToken.builder()
+        refreshTokenRepository.saveAndFlush(RefreshToken.builder()
                 .user(user)
                 .token(token)
                 .expiryDate(expiryDate)

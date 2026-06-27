@@ -9,7 +9,6 @@ import org.tc.mtracker.category.Category;
 import org.tc.mtracker.common.enums.TransactionType;
 import org.tc.mtracker.transaction.Transaction;
 import org.tc.mtracker.transaction.recurring.enums.IntervalUnit;
-import org.tc.mtracker.user.User;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -28,17 +27,13 @@ public class RecurringTransaction {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
-
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "account_id", nullable = false)
     private Account account;
 
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal amount;
 
-    @Column(length = 255)
+    @Column
     private String description;
 
     @Enumerated(EnumType.STRING)
@@ -67,7 +62,6 @@ public class RecurringTransaction {
 
     public Transaction toTransaction(LocalDate transactionDate) {
         return Transaction.builder()
-                .user(user)
                 .account(account)
                 .category(category)
                 .recurringTransaction(this)

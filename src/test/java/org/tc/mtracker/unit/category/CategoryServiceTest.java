@@ -190,8 +190,8 @@ class CategoryServiceTest {
 
         when(userService.getUserById(1L)).thenReturn(user);
         when(categoryRepository.findOwnedById(3L, user)).thenReturn(Optional.of(category));
-        when(transactionRepository.countByUserAndCategory(user, category)).thenReturn(0L);
-        when(recurringTransactionRepository.countByUserAndCategory(user, category)).thenReturn(0L);
+        when(transactionRepository.countByUserAndCategory(user.getId(), category)).thenReturn(0L);
+        when(recurringTransactionRepository.countByUserAndCategory(user.getId(), category)).thenReturn(0L);
 
         categoryService.deleteCategory(3L, null,1L);
 
@@ -207,8 +207,8 @@ class CategoryServiceTest {
 
         when(userService.getUserById(1L)).thenReturn(user);
         when(categoryRepository.findOwnedById(3L, user)).thenReturn(Optional.of(category));
-        when(transactionRepository.countByUserAndCategory(user, category)).thenReturn(2L);
-        when(recurringTransactionRepository.countByUserAndCategory(user, category)).thenReturn(0L);
+        when(transactionRepository.countByUserAndCategory(user.getId(), category)).thenReturn(2L);
+        when(recurringTransactionRepository.countByUserAndCategory(user.getId(), category)).thenReturn(0L);
 
         assertThatThrownBy(() -> categoryService.deleteCategory(3L, null, 1L))
                 .isInstanceOf(CategoryReplacementRequiredException.class)
@@ -226,13 +226,13 @@ class CategoryServiceTest {
         when(userService.getUserById(1L)).thenReturn(user);
         when(categoryRepository.findOwnedById(3L, user)).thenReturn(Optional.of(sourceCategory));
         when(categoryRepository.findAccessibleById(5L, user)).thenReturn(Optional.of(replacementCategory));
-        when(transactionRepository.countByUserAndCategory(user, sourceCategory)).thenReturn(2L);
-        when(recurringTransactionRepository.countByUserAndCategory(user, sourceCategory)).thenReturn(1L);
+        when(transactionRepository.countByUserAndCategory(user.getId(), sourceCategory)).thenReturn(2L);
+        when(recurringTransactionRepository.countByUserAndCategory(user.getId(), sourceCategory)).thenReturn(1L);
 
         categoryService.deleteCategory(3L, 5L, 1L);
 
-        verify(transactionRepository).reassignCategory(user, sourceCategory, replacementCategory);
-        verify(recurringTransactionRepository).reassignCategory(user, sourceCategory, replacementCategory);
+        verify(transactionRepository).reassignCategory(user.getId(), sourceCategory, replacementCategory);
+        verify(recurringTransactionRepository).reassignCategory(user.getId(), sourceCategory, replacementCategory);
         verify(categoryRepository).delete(sourceCategory);
     }
 
@@ -244,8 +244,8 @@ class CategoryServiceTest {
 
         when(userService.getUserById(1L)).thenReturn(user);
         when(categoryRepository.findOwnedById(3L, user)).thenReturn(Optional.of(sourceCategory));
-        when(transactionRepository.countByUserAndCategory(user, sourceCategory)).thenReturn(1L);
-        when(recurringTransactionRepository.countByUserAndCategory(user, sourceCategory)).thenReturn(0L);
+        when(transactionRepository.countByUserAndCategory(user.getId(), sourceCategory)).thenReturn(1L);
+        when(recurringTransactionRepository.countByUserAndCategory(user.getId(), sourceCategory)).thenReturn(0L);
         when(categoryRepository.findAccessibleById(5L, user)).thenReturn(Optional.of(replacementCategory));
 
         assertThatThrownBy(() -> categoryService.deleteCategory(3L, 5L, 1L))

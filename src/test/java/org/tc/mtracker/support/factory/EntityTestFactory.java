@@ -53,7 +53,6 @@ public final class EntityTestFactory {
 
     public static Transaction transaction(
             Long id,
-            User user,
             Account account,
             Category category,
             TransactionType type,
@@ -62,7 +61,6 @@ public final class EntityTestFactory {
     ) {
         return Transaction.builder()
                 .id(id)
-                .user(user)
                 .account(account)
                 .category(category)
                 .type(type)

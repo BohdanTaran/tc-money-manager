@@ -7,9 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.tc.mtracker.category.Category;
 import org.tc.mtracker.common.enums.TransactionType;
-import org.tc.mtracker.transaction.dto.TransactionQueryParams;
 import org.tc.mtracker.transaction.recurring.RecurringTransaction;
-import org.tc.mtracker.user.User;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -19,14 +17,14 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     @Query("""
                 SELECT t FROM Transaction t
                 WHERE t.id = :id
-                AND t.user = :user
+                AND t.account.user.id = :userId
                 AND t.deletedAt IS NULL
             """)
-    Optional<Transaction> findActiveByIdAndUser(@Param("id") Long id, @Param("user") User user);
+    Optional<Transaction> findActiveByIdAndUser(@Param("id") Long id, @Param("userId") Long userId);
 
     @Query("""
                 SELECT t FROM Transaction t
-                WHERE t.user = :user
+                WHERE t.account.user.id = :userId
                 AND t.deletedAt IS NULL
                 AND (:accountId IS NULL OR t.account.id = :accountId)
                 AND (:categoryId IS NULL OR t.category.id = :categoryId)
@@ -36,7 +34,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
                 ORDER BY t.date DESC, t.createdAt DESC, t.id DESC
             """)
     List<Transaction> findAllByUserAndFilters(
-            @Param("user") User user,
+            @Param("userId") Long userId,
             @Param("accountId") Long accountId,
             @Param("categoryId") Long categoryId,
             @Param("type") TransactionType type,
@@ -44,7 +42,9 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
             @Param("dateTo") LocalDate dateTo
     );
 
-    long countByUserAndCategory(User user, Category category);
+
+    @Query("SELECT COUNT(t) FROM Transaction t WHERE t.account.user.id = :userId AND t.category = :category")
+    long countByUserAndCategory(@Param("userId") Long userId, @Param("category") Category category);
 
     List<Transaction> findAllByRecurringTransactionAndDateGreaterThanEqualOrderByDateAscIdAsc(
             RecurringTransaction recurringTransaction,
@@ -55,33 +55,45 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     @Query("""
                 UPDATE Transaction t
                 SET t.category = :replacementCategory
-                WHERE t.user = :user
+                WHERE t.account.user.id = :userId
                 AND t.category = :sourceCategory
             """)
-    int reassignCategory(
-            @Param("user") User user,
+    void reassignCategory(
+            @Param("userId") Long userId,
             @Param("sourceCategory") Category sourceCategory,
             @Param("replacementCategory") Category replacementCategory
     );
 
     @Query(value = """
-        SELECT t.id
-        FROM transactions t
-        WHERE t.user_id = :#{#params.userId}
-            AND (:#{#params.accountId} IS NULL OR t.account_id = :#{#params.accountId})
-            AND (:#{#params.categoryId} IS NULL OR t.category_id = :#{#params.categoryId})
-            AND (:#{#params.type} IS NULL OR t.type = :#{#params.type})
-            AND (:#{#params.dateFrom} IS NULL OR t.date >= :#{#params.dateFrom})
-            AND (:#{#params.dateTo} IS NULL OR t.date <= :#{#params.dateTo})
-            AND (
-                :#{#params.cursorDate} IS NULL
-                OR t.date < :#{#params.cursorDate}
-                OR (t.date = :#{#params.cursorDate} AND t.id < :#{#params.cursorId})
+            SELECT t.id
+            FROM transactions t
+            WHERE t.account_id IN (
+                SELECT a.id FROM accounts a WHERE a.user_id = :userId
             )
-        ORDER BY t.date DESC, t.id DESC
-        LIMIT :#{#params.limit}
-        """, nativeQuery = true)
-    List<Long> findTransactionIdsWithCursor(@Param("params") TransactionQueryParams params);
+            AND (:accountId IS NULL OR t.account_id = :accountId)
+            AND (:categoryId IS NULL OR t.category_id = :categoryId)
+            AND (:type IS NULL OR t.type = :type)
+            AND (:dateFrom IS NULL OR t.date >= :dateFrom)
+            AND (:dateTo IS NULL OR t.date <= :dateTo)
+            AND (
+                :cursorDate IS NULL
+                OR t.date < :cursorDate
+                OR (t.date = :cursorDate AND t.id < :cursorId)
+            )
+            ORDER BY t.date DESC, t.id DESC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<Long> findTransactionIdsWithCursor(
+            @Param("userId") Long userId,
+            @Param("accountId") Long accountId,
+            @Param("categoryId") Long categoryId,
+            @Param("type") String type,
+            @Param("dateFrom") LocalDate dateFrom,
+            @Param("dateTo") LocalDate dateTo,
+            @Param("cursorDate") LocalDate cursorDate,
+            @Param("cursorId") Long cursorId,
+            @Param("limit") Integer limit
+    );
 
     @EntityGraph(attributePaths = {"category", "receipts"})
     @Query("""
@@ -91,5 +103,10 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
             """)
     List<Transaction> findAllByIdInOrderByDateDescIdDesc(@Param("ids") List<Long> ids);
 
-    boolean existsByUserIdAndDeletedAtIsNull(Long userId);
+
+    @Query("""
+            SELECT COUNT(t) > 0 FROM Transaction t
+                        WHERE t.account.user.id = :userId AND t.deletedAt IS NULL
+            """)
+    boolean existsByUserIdAndDeletedAtIsNull(@Param("userId") Long userId);
 }

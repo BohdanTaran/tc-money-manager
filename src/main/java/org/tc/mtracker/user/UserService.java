@@ -19,7 +19,6 @@ import org.tc.mtracker.utils.exceptions.UserNotFoundException;
 import org.tc.mtracker.utils.exceptions.UserUpdateProfileException;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Slf4j
 @Service
@@ -30,7 +29,6 @@ public class UserService {
     private final S3Service s3Service;
     private final TransactionRepository transactionRepository;
     private final RecurringTransactionRepository recurringTransactionRepository;
-    private final UserCleanupService userCleanupService;
 
 
     public User getCurrentAuthenticatedUser(Authentication auth) {
@@ -113,18 +111,20 @@ public class UserService {
     @Scheduled(fixedRate = 15000)
     @Transactional
     public void cleanFromExpiredRegistrations() {
-        List<User> notActiveUsers = userRepository.findByActivatedFalse();
         LocalDateTime expireTime = LocalDateTime.now().minusMinutes(15);
-        for (User user : notActiveUsers) {
-            if (user.getCreatedAt().isBefore(expireTime)) {
-                userCleanupService.deleteUserWithAllData(user.getId());
-            }
+        int deletedCount = userRepository.deleteExpiredNotActiveEntities(expireTime);
+        if (deletedCount > 0) {
+            log.info("Deleted {} expired not activated users", deletedCount);
         }
     }
 
     private boolean userHasFinancialActivity(long userId) {
         return transactionRepository.existsByUserIdAndDeletedAtIsNull(userId)
                 || recurringTransactionRepository.existsByUserId(userId);
+    }
+
+    public void deleteUser(Long userId) {
+        userRepository.deleteById(userId);
     }
 
 }

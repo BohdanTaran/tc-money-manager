@@ -84,7 +84,6 @@ class UserApiTest extends BaseApiIntegrationTest {
         User user = fixtures.createUser("currency-restricted@example.com");
         Category category = fixtures.createUserCategory(user, "Groceries", TransactionType.EXPENSE);
         fixtures.createTransaction(
-                user,
                 user.getDefaultAccount(),
                 category,
                 new BigDecimal("10.00"),
@@ -119,7 +118,6 @@ class UserApiTest extends BaseApiIntegrationTest {
         User user = fixtures.createUser("unchanged-currency@example.com");
         Category category = fixtures.createUserCategory(user, "Groceries", TransactionType.EXPENSE);
         fixtures.createTransaction(
-                user,
                 user.getDefaultAccount(),
                 category,
                 new BigDecimal("10.00"),

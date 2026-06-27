@@ -41,16 +41,13 @@ class RecurringTransactionExecutionServiceTest {
     private RecurringTransactionExecutionService recurringTransactionExecutionService;
 
     private static RecurringTransaction recurringTransaction(
-            User user,
             Account account,
             Category category,
             LocalDate startDate,
-            LocalDate nextExecutionDate,
-            IntervalUnit intervalUnit
+            LocalDate nextExecutionDate
     ) {
         return RecurringTransaction.builder()
                 .id(10L)
-                .user(user)
                 .account(account)
                 .category(category)
                 .type(TransactionType.INCOME)
@@ -58,7 +55,7 @@ class RecurringTransactionExecutionServiceTest {
                 .description("Salary")
                 .startDate(startDate)
                 .nextExecutionDate(nextExecutionDate)
-                .intervalUnit(intervalUnit)
+                .intervalUnit(IntervalUnit.MONTHLY)
                 .build();
     }
 
@@ -68,12 +65,10 @@ class RecurringTransactionExecutionServiceTest {
         Account account = EntityTestFactory.account(1L, user, BigDecimal.ZERO);
         Category category = EntityTestFactory.category(2L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
         RecurringTransaction recurringTransaction = recurringTransaction(
-                user,
                 account,
                 category,
                 LocalDate.of(2026, 1, 1),
-                LocalDate.of(2026, 2, 1),
-                IntervalUnit.MONTHLY
+                LocalDate.of(2026, 2, 1)
         );
 
         when(recurringTransactionRepository.findDueTransactions(LocalDate.of(2026, 4, 15), CategoryStatus.ACTIVE))
