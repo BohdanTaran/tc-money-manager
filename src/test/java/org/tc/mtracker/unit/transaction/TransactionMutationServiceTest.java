@@ -11,6 +11,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.tc.mtracker.account.Account;
 import org.tc.mtracker.account.AccountRepository;
 import org.tc.mtracker.category.Category;
+import org.tc.mtracker.category.enums.CategoryScope;
 import org.tc.mtracker.category.enums.CategoryStatus;
 import org.tc.mtracker.common.enums.TransactionType;
 import org.tc.mtracker.support.factory.EntityTestFactory;
@@ -56,7 +57,13 @@ class TransactionMutationServiceTest {
     void shouldPersistTransactionAndApplyIncomeBalanceDelta() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
         Account account = EntityTestFactory.account(1L, user, new BigDecimal("10.00"));
-        Category category = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
+        Category category = EntityTestFactory.category(
+                4L,
+                user,
+                "Salary",
+                TransactionType.INCOME,
+                CategoryStatus.ACTIVE,
+                CategoryScope.USER);
         Transaction transaction = EntityTestFactory.transaction(
                 null,
                 account,
@@ -80,7 +87,13 @@ class TransactionMutationServiceTest {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
         Account sourceAccount = EntityTestFactory.account(1L, user, new BigDecimal("70.00"));
         Account targetAccount = EntityTestFactory.account(2L, user, new BigDecimal("20.00"));
-        Category category = EntityTestFactory.category(4L, user, "Groceries", TransactionType.EXPENSE, CategoryStatus.ACTIVE);
+        Category category = EntityTestFactory.category(
+                4L,
+                user,
+                "Groceries",
+                TransactionType.EXPENSE,
+                CategoryStatus.ACTIVE,
+                CategoryScope.USER);
         Transaction transaction = EntityTestFactory.transaction(
                 9L,
                 sourceAccount,
@@ -104,7 +117,7 @@ class TransactionMutationServiceTest {
             target.setDescription(dto.description());
             target.setDate(dto.date());
             return null;
-        }).when(transactionMapper).updateEntity(eq(updateDto), eq(transaction));
+        }).when(transactionMapper).updateEntity(updateDto, transaction);
 
         transactionMutationService.updateTransactionValues(transaction, updateDto, targetAccount, category);
 
@@ -118,7 +131,14 @@ class TransactionMutationServiceTest {
     void shouldDeleteTransactionRollbackBalanceAndDeleteReceiptObjects() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
         Account account = EntityTestFactory.account(1L, user, new BigDecimal("30.00"));
-        Category category = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
+        Category category = EntityTestFactory.category(
+                4L,
+                user,
+                "Salary",
+                TransactionType.INCOME,
+                CategoryStatus.ACTIVE,
+                CategoryScope.USER
+        );
         Transaction transaction = EntityTestFactory.transaction(
                 9L,
                 account,
@@ -141,7 +161,14 @@ class TransactionMutationServiceTest {
     void shouldAddReceiptObjectsWhenReceiptsAreProvided() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
         Account account = EntityTestFactory.account(1L, user, BigDecimal.ZERO);
-        Category category = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
+        Category category = EntityTestFactory.category(
+                4L,
+                user,
+                "Salary",
+                TransactionType.INCOME,
+                CategoryStatus.ACTIVE,
+                CategoryScope.USER
+        );
         Transaction transaction = EntityTestFactory.transaction(
                 9L,
                 account,

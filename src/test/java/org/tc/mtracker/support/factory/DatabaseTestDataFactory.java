@@ -10,6 +10,7 @@ import org.tc.mtracker.auth.repository.RefreshTokenRepository;
 import org.tc.mtracker.category.Category;
 import org.tc.mtracker.category.CategoryRepository;
 import org.tc.mtracker.category.enums.CategoryIcon;
+import org.tc.mtracker.category.enums.CategoryScope;
 import org.tc.mtracker.category.enums.CategoryStatus;
 import org.tc.mtracker.common.enums.TransactionType;
 import org.tc.mtracker.currency.CurrencyCode;
@@ -103,12 +104,18 @@ public class DatabaseTestDataFactory {
         return createCategory(user, name, type, CategoryStatus.ACTIVE, CategoryIcon.DATABASE);
     }
 
-    public Category createCategory(User user, String name, TransactionType type, CategoryStatus status, CategoryIcon icon) {
+    public Category createCategory(
+            User user,
+            String name,
+            TransactionType type,
+            CategoryStatus status,
+            CategoryIcon icon) {
         return categoryRepository.saveAndFlush(Category.builder()
                 .user(user)
                 .name(name)
                 .type(type)
                 .status(status)
+                .scope(CategoryScope.USER)
                 .icon(icon)
                 .build());
     }

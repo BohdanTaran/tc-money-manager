@@ -8,6 +8,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.tc.mtracker.account.Account;
 import org.tc.mtracker.category.Category;
+import org.tc.mtracker.category.enums.CategoryScope;
 import org.tc.mtracker.category.enums.CategoryStatus;
 import org.tc.mtracker.common.enums.TransactionType;
 import org.tc.mtracker.support.factory.EntityTestFactory;
@@ -59,7 +60,13 @@ class RecurringTransactionServiceTest {
     void shouldCreateRecurringTransactionForTodayAndScheduleNextExecution() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
         Account account = EntityTestFactory.account(1L, user, BigDecimal.ZERO);
-        Category category = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
+        Category category = EntityTestFactory.category(
+                4L,
+                user,
+                "Salary",
+                TransactionType.INCOME,
+                CategoryStatus.ACTIVE,
+                CategoryScope.USER);
         TransactionCreateRequestDTO requestDTO = new TransactionCreateRequestDTO(
                 new BigDecimal("2000.00"),
                 TransactionType.INCOME,
@@ -102,7 +109,13 @@ class RecurringTransactionServiceTest {
     void shouldCreateRecurringTransactionForFutureWithoutImmediateExecution() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
         Account account = EntityTestFactory.account(1L, user, BigDecimal.ZERO);
-        Category category = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
+        Category category = EntityTestFactory.category(
+                4L,
+                user,
+                "Salary",
+                TransactionType.INCOME,
+                CategoryStatus.ACTIVE,
+                CategoryScope.USER);
         TransactionCreateRequestDTO requestDTO = new TransactionCreateRequestDTO(
                 new BigDecimal("2000.00"),
                 TransactionType.INCOME,
@@ -146,8 +159,20 @@ class RecurringTransactionServiceTest {
     void shouldUpdateSelectedOccurrenceAndRecurringRuleWhenScopeIsCurrentAndFuture() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
         Account account = EntityTestFactory.account(1L, user, new BigDecimal("200.00"));
-        Category salaryCategory = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
-        Category bonusCategory = EntityTestFactory.category(5L, user, "Bonus", TransactionType.INCOME, CategoryStatus.ACTIVE);
+        Category salaryCategory = EntityTestFactory.category(
+                4L,
+                user,
+                "Salary",
+                TransactionType.INCOME,
+                CategoryStatus.ACTIVE,
+                CategoryScope.USER);
+        Category bonusCategory = EntityTestFactory.category(
+                5L,
+                user,
+                "Bonus",
+                TransactionType.INCOME,
+                CategoryStatus.ACTIVE,
+                CategoryScope.USER);
         RecurringTransaction recurringTransaction = RecurringTransaction.builder()
                 .id(10L)
                 .account(account)
@@ -214,7 +239,13 @@ class RecurringTransactionServiceTest {
     void shouldRejectCurrentAndFutureScopeForTransactionWithoutRecurringRule() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
         Account account = EntityTestFactory.account(1L, user, BigDecimal.ZERO);
-        Category category = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
+        Category category = EntityTestFactory.category(
+                4L,
+                user,
+                "Salary",
+                TransactionType.INCOME,
+                CategoryStatus.ACTIVE,
+                CategoryScope.USER);
         Transaction transaction = EntityTestFactory.transaction(
                 11L,
                 account,
@@ -234,7 +265,13 @@ class RecurringTransactionServiceTest {
     void shouldDeleteCurrentAndFutureOccurrences() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
         Account account = EntityTestFactory.account(1L, user, BigDecimal.ZERO);
-        Category category = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
+        Category category = EntityTestFactory.category(
+                4L,
+                user,
+                "Salary",
+                TransactionType.INCOME,
+                CategoryStatus.ACTIVE,
+                CategoryScope.USER);
         RecurringTransaction recurringTransaction = RecurringTransaction.builder()
                 .id(10L)
                 .account(account)

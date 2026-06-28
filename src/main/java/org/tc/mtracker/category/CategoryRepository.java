@@ -14,9 +14,9 @@ import java.util.Optional;
 @Repository
 public interface CategoryRepository extends JpaRepository<Category, Long> {
     @Query("""
-        SELECT c FROM Category c 
-        WHERE (c.user IS NULL OR c.user = :user) 
-        AND (:name IS NULL OR LOWER(c.name) LIKE LOWER(CONCAT('%', :name, '%'))) 
+        SELECT c FROM Category c
+        WHERE (c.user IS NULL OR c.user = :user)
+        AND (:name IS NULL OR LOWER(c.name) LIKE LOWER(CONCAT('%', :name, '%')))
         AND (c.type IN :types)
                 AND c.status = :status
     """)
