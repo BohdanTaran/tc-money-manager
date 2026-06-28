@@ -30,9 +30,9 @@ CREATE TABLE categories
 (
     id         BIGINT AUTO_INCREMENT PRIMARY KEY,
     name       VARCHAR(255) NOT NULL,
-    type       VARCHAR(255) NOT NULL,
+    type       VARCHAR(32) NOT NULL,
     icon       VARCHAR(255) NOT NULL,
-    status     VARCHAR(255) NOT NULL,
+    status     VARCHAR(16) NOT NULL,
     user_id    BIGINT       NULL,
     created_at TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

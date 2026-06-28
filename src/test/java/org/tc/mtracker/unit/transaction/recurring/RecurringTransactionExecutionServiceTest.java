@@ -9,6 +9,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.tc.mtracker.account.Account;
 import org.tc.mtracker.category.Category;
+import org.tc.mtracker.category.enums.CategoryScope;
 import org.tc.mtracker.category.enums.CategoryStatus;
 import org.tc.mtracker.common.enums.TransactionType;
 import org.tc.mtracker.support.factory.EntityTestFactory;
@@ -63,7 +64,13 @@ class RecurringTransactionExecutionServiceTest {
     void shouldCreateTransactionsForAllMissedExecutionDates() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
         Account account = EntityTestFactory.account(1L, user, BigDecimal.ZERO);
-        Category category = EntityTestFactory.category(2L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
+        Category category = EntityTestFactory.category(
+                4L,
+                user,
+                "Random Income",
+                TransactionType.INCOME,
+                CategoryStatus.ACTIVE,
+                CategoryScope.USER);
         RecurringTransaction recurringTransaction = recurringTransaction(
                 account,
                 category,

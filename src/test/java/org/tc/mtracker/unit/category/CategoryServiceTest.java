@@ -16,6 +16,7 @@ import org.tc.mtracker.category.dto.CategoryResponseDTO;
 import org.tc.mtracker.category.dto.CreateCategoryDTO;
 import org.tc.mtracker.category.dto.UpdateCategoryDTO;
 import org.tc.mtracker.category.enums.CategoryIcon;
+import org.tc.mtracker.category.enums.CategoryScope;
 import org.tc.mtracker.category.enums.CategoryStatus;
 import org.tc.mtracker.common.enums.TransactionType;
 import org.tc.mtracker.support.factory.EntityTestFactory;
@@ -24,6 +25,7 @@ import org.tc.mtracker.transaction.recurring.RecurringTransactionRepository;
 import org.tc.mtracker.user.User;
 import org.tc.mtracker.user.UserService;
 import org.tc.mtracker.utils.exceptions.CategoryAlreadyExistsException;
+import org.tc.mtracker.utils.exceptions.CategoryIsImmutableException;
 import org.tc.mtracker.utils.exceptions.CategoryReplacementRequiredException;
 import org.tc.mtracker.utils.exceptions.InvalidCategoryReplacementException;
 
@@ -63,10 +65,21 @@ class CategoryServiceTest {
     void shouldNormalizeBlankFiltersAndLoadAccessibleCategories() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
         List<Category> categories = List.of(
-                EntityTestFactory.category(1L, null, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE)
+                EntityTestFactory.category(
+                        1L,
+                        null,
+                        "Random Income",
+                        TransactionType.INCOME,
+                        CategoryStatus.ACTIVE,
+                        CategoryScope.USER)
         );
         List<CategoryResponseDTO> response = List.of(
-                new CategoryResponseDTO(1L, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE, "icon")
+                new CategoryResponseDTO(1L,
+                        "Random Income",
+                        TransactionType.INCOME,
+                        CategoryStatus.ACTIVE,
+                        CategoryScope.USER,
+                        "icon")
         );
 
         when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
@@ -86,9 +99,24 @@ class CategoryServiceTest {
     @Test
     void shouldCreateCategoryWhenNameAndTypeAreUnique() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
-        CreateCategoryDTO dto = new CreateCategoryDTO("Health", TransactionType.EXPENSE, CategoryIcon.DATABASE);
-        Category saved = EntityTestFactory.category(3L, user, "Health", TransactionType.EXPENSE, CategoryStatus.ACTIVE);
-        CategoryResponseDTO response = new CategoryResponseDTO(3L, "Health", TransactionType.EXPENSE, CategoryStatus.ACTIVE, "heart");
+        CreateCategoryDTO dto = new CreateCategoryDTO(
+                "Education",
+                TransactionType.EXPENSE,
+                CategoryIcon.DATABASE);
+        Category saved = EntityTestFactory.category(
+                3L,
+                user,
+                "Education",
+                TransactionType.EXPENSE,
+                CategoryStatus.ACTIVE,
+                CategoryScope.USER);
+        CategoryResponseDTO response = new CategoryResponseDTO(
+                3L,
+                "Education",
+                TransactionType.EXPENSE,
+                CategoryStatus.ACTIVE,
+                CategoryScope.GLOBAL,
+                "TREND_UP");
 
         when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
         when(categoryRepository.findAllByNameAndUser(dto.name(), user)).thenReturn(List.of());
@@ -101,7 +129,7 @@ class CategoryServiceTest {
         verify(categoryRepository).save(captor.capture());
 
         assertThat(result).isEqualTo(response);
-        assertThat(captor.getValue().getName()).isEqualTo("Health");
+        assertThat(captor.getValue().getName()).isEqualTo("Education");
         assertThat(captor.getValue().getStatus()).isEqualTo(CategoryStatus.ACTIVE);
         assertThat(captor.getValue().getUser()).isEqualTo(user);
     }
@@ -109,8 +137,17 @@ class CategoryServiceTest {
     @Test
     void shouldRejectDuplicateCategoryDuringCreate() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
-        CreateCategoryDTO dto = new CreateCategoryDTO("Salary", TransactionType.INCOME, CategoryIcon.COINS);
-        Category existing = EntityTestFactory.category(1L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
+        CreateCategoryDTO dto = new CreateCategoryDTO(
+                "Random Income",
+                TransactionType.INCOME,
+                CategoryIcon.COINS);
+        Category existing = EntityTestFactory.category(
+                1L,
+                user,
+                "Random Income",
+                TransactionType.INCOME,
+                CategoryStatus.ACTIVE,
+                CategoryScope.USER);
 
         when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
         when(categoryRepository.findAllByNameAndUser(dto.name(), user)).thenReturn(List.of(existing));
@@ -124,9 +161,21 @@ class CategoryServiceTest {
     @Test
     void shouldUpdateOwnedCategory() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
-        Category category = EntityTestFactory.category(3L, user, "Side Project", TransactionType.INCOME, CategoryStatus.ACTIVE);
-        UpdateCategoryDTO dto = new UpdateCategoryDTO("Freelance", CategoryIcon.BRIEFCASE);
-        CategoryResponseDTO response = new CategoryResponseDTO(3L, "Freelance", TransactionType.INCOME, CategoryStatus.ACTIVE, "briefcase");
+        Category category = EntityTestFactory.category(
+                3L,
+                user,
+                "Side Project",
+                TransactionType.INCOME,
+                CategoryStatus.ACTIVE,
+                CategoryScope.USER);
+        UpdateCategoryDTO dto = new UpdateCategoryDTO("Own Project", CategoryIcon.BRIEFCASE);
+        CategoryResponseDTO response = new CategoryResponseDTO(
+                3L,
+                "Own Project",
+                TransactionType.INCOME,
+                CategoryStatus.ACTIVE,
+                CategoryScope.USER,
+                "briefcase");
 
         when(userService.getUserById(1L)).thenReturn(user);
         when(categoryRepository.findOwnedById(3L, user)).thenReturn(Optional.of(category));
@@ -137,7 +186,7 @@ class CategoryServiceTest {
         CategoryResponseDTO result = categoryService.updateCategory(3L, dto, 1L);
 
         assertThat(result).isEqualTo(response);
-        assertThat(category.getName()).isEqualTo("Freelance");
+        assertThat(category.getName()).isEqualTo("Own Project");
         assertThat(category.getType()).isEqualTo(TransactionType.INCOME);
         assertThat(category.getStatus()).isEqualTo(CategoryStatus.ACTIVE);
     }
@@ -145,7 +194,13 @@ class CategoryServiceTest {
     @Test
     void shouldArchiveCategoryOnlyWhenItIsActive() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
-        Category activeCategory = EntityTestFactory.category(3L, user, "Rent", TransactionType.EXPENSE, CategoryStatus.ACTIVE);
+        Category activeCategory = EntityTestFactory.category(
+                3L,
+                user,
+                "Rent",
+                TransactionType.EXPENSE,
+                CategoryStatus.ACTIVE,
+                CategoryScope.USER);
 
         when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
         when(categoryRepository.findOwnedById(3L, user)).thenReturn(Optional.of(activeCategory));
@@ -159,7 +214,14 @@ class CategoryServiceTest {
     @Test
     void shouldSkipSavingAlreadyArchivedCategory() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
-        Category archivedCategory = EntityTestFactory.category(3L, user, "Rent", TransactionType.EXPENSE, CategoryStatus.ARCHIVED);
+        Category archivedCategory = EntityTestFactory.category(
+                3L,
+                user,
+                "Rent",
+                TransactionType.EXPENSE,
+                CategoryStatus.ARCHIVED,
+                CategoryScope.USER
+        );
 
         when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
         when(categoryRepository.findOwnedById(3L, user)).thenReturn(Optional.of(archivedCategory));
@@ -172,7 +234,13 @@ class CategoryServiceTest {
     @Test
     void shouldUnarchiveCategoryOnlyWhenItIsArchived() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
-        Category archivedCategory = EntityTestFactory.category(3L, user, "Rent", TransactionType.EXPENSE, CategoryStatus.ARCHIVED);
+        Category archivedCategory = EntityTestFactory.category(
+                3L,
+                user,
+                "Rent",
+                TransactionType.EXPENSE,
+                CategoryStatus.ARCHIVED,
+                CategoryScope.USER);
 
         when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
         when(categoryRepository.findOwnedById(3L, user)).thenReturn(Optional.of(archivedCategory));
@@ -186,14 +254,20 @@ class CategoryServiceTest {
     @Test
     void shouldDeleteUnusedCategoryWithoutReplacement() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
-        Category category = EntityTestFactory.category(3L, user, "Rent", TransactionType.EXPENSE, CategoryStatus.ACTIVE);
+        Category category = EntityTestFactory.category(
+                3L,
+                user,
+                "Rent",
+                TransactionType.EXPENSE,
+                CategoryStatus.ACTIVE,
+                CategoryScope.USER);
 
         when(userService.getUserById(1L)).thenReturn(user);
         when(categoryRepository.findOwnedById(3L, user)).thenReturn(Optional.of(category));
         when(transactionRepository.countByUserAndCategory(user.getId(), category)).thenReturn(0L);
         when(recurringTransactionRepository.countByUserAndCategory(user.getId(), category)).thenReturn(0L);
 
-        categoryService.deleteCategory(3L, null,1L);
+        categoryService.deleteCategory(3L, null, 1L);
 
         verify(transactionRepository, never()).reassignCategory(any(), any(), any());
         verify(recurringTransactionRepository, never()).reassignCategory(any(), any(), any());
@@ -203,7 +277,13 @@ class CategoryServiceTest {
     @Test
     void shouldRequireReplacementWhenDeletingUsedCategory() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
-        Category category = EntityTestFactory.category(3L, user, "Rent", TransactionType.EXPENSE, CategoryStatus.ACTIVE);
+        Category category = EntityTestFactory.category(
+                3L,
+                user,
+                "Rent",
+                TransactionType.EXPENSE,
+                CategoryStatus.ACTIVE,
+                CategoryScope.USER);
 
         when(userService.getUserById(1L)).thenReturn(user);
         when(categoryRepository.findOwnedById(3L, user)).thenReturn(Optional.of(category));
@@ -220,8 +300,20 @@ class CategoryServiceTest {
     @Test
     void shouldReassignTransactionsAndRecurringTransactionsBeforeDelete() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
-        Category sourceCategory = EntityTestFactory.category(3L, user, "Rent", TransactionType.EXPENSE, CategoryStatus.ACTIVE);
-        Category replacementCategory = EntityTestFactory.category(5L, null, "Housing", TransactionType.EXPENSE, CategoryStatus.ACTIVE);
+        Category sourceCategory = EntityTestFactory.category(
+                3L,
+                user,
+                "Rent",
+                TransactionType.EXPENSE,
+                CategoryStatus.ACTIVE,
+                CategoryScope.USER);
+        Category replacementCategory = EntityTestFactory.category(
+                5L,
+                null,
+                "Housing",
+                TransactionType.EXPENSE,
+                CategoryStatus.ACTIVE,
+                CategoryScope.USER);
 
         when(userService.getUserById(1L)).thenReturn(user);
         when(categoryRepository.findOwnedById(3L, user)).thenReturn(Optional.of(sourceCategory));
@@ -239,8 +331,20 @@ class CategoryServiceTest {
     @Test
     void shouldRejectArchivedReplacementCategoryDuringDelete() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
-        Category sourceCategory = EntityTestFactory.category(3L, user, "Rent", TransactionType.EXPENSE, CategoryStatus.ACTIVE);
-        Category replacementCategory = EntityTestFactory.category(5L, null, "Housing", TransactionType.EXPENSE, CategoryStatus.ARCHIVED);
+        Category sourceCategory = EntityTestFactory.category(
+                3L,
+                user,
+                "Rent",
+                TransactionType.EXPENSE,
+                CategoryStatus.ACTIVE,
+                CategoryScope.USER);
+        Category replacementCategory = EntityTestFactory.category(
+                5L,
+                null,
+                "Housing",
+                TransactionType.EXPENSE,
+                CategoryStatus.ARCHIVED,
+                CategoryScope.USER);
 
         when(userService.getUserById(1L)).thenReturn(user);
         when(categoryRepository.findOwnedById(3L, user)).thenReturn(Optional.of(sourceCategory));
@@ -253,5 +357,139 @@ class CategoryServiceTest {
                 .hasMessage("Replacement category must be active.");
 
         verify(categoryRepository, never()).delete(any(Category.class));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenUpdatingGlobalCategory() {
+        // given
+        User user = EntityTestFactory.user(1L, "user@example.com", true);
+        Category globalCategory = EntityTestFactory.category(
+                1L,
+                null,
+                "SALARY",
+                TransactionType.INCOME,
+                CategoryStatus.ACTIVE,
+                CategoryScope.GLOBAL
+        );
+        UpdateCategoryDTO dto = new UpdateCategoryDTO("Updated Salary", CategoryIcon.DOLLAR);
+
+        when(userService.getUserById(1L)).thenReturn(user);
+        when(categoryRepository.findOwnedById(1L, user)).thenReturn(Optional.of(globalCategory));
+
+        // when & then
+        assertThatThrownBy(() -> categoryService.updateCategory(1L, dto, 1L))
+                .isInstanceOf(CategoryIsImmutableException.class)
+                .hasMessageContaining("Category SALARY has GLOBAL scope and can not be changed");
+
+        verify(categoryRepository, never()).save(any(Category.class));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenArchivingGlobalCategory() {
+        // given
+        User user = EntityTestFactory.user(1L, "user@example.com", true);
+        Category globalCategory = EntityTestFactory.category(
+                1L,
+                null,
+                "SALARY",
+                TransactionType.INCOME,
+                CategoryStatus.ACTIVE,
+                CategoryScope.GLOBAL
+        );
+
+        when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
+        when(categoryRepository.findOwnedById(1L, user)).thenReturn(Optional.of(globalCategory));
+
+        // when & then
+        assertThatThrownBy(() -> categoryService.archiveCategory(1L, authentication))
+                .isInstanceOf(CategoryIsImmutableException.class)
+                .hasMessageContaining("Category SALARY has GLOBAL scope and can not be changed");
+
+        verify(categoryRepository, never()).save(any(Category.class));
+    }
+
+    @Test
+    void shouldThrowExceptionWhenDeletingGlobalCategory() {
+        // given
+        User user = EntityTestFactory.user(1L, "user@example.com", true);
+        Category globalCategory = EntityTestFactory.category(
+                1L,
+                null,
+                "SALARY",
+                TransactionType.INCOME,
+                CategoryStatus.ACTIVE,
+                CategoryScope.GLOBAL
+        );
+
+        when(userService.getUserById(1L)).thenReturn(user);
+        when(categoryRepository.findOwnedById(1L, user)).thenReturn(Optional.of(globalCategory));
+
+        // when & then
+        assertThatThrownBy(() -> categoryService.deleteCategory(
+                1L,
+                null,
+                1L))
+                .isInstanceOf(CategoryIsImmutableException.class)
+                .hasMessageContaining("Category SALARY has GLOBAL scope and can not be changed");
+
+        verify(categoryRepository, never()).delete(any(Category.class));
+        verify(transactionRepository, never()).reassignCategory(any(), any(), any());
+        verify(recurringTransactionRepository, never()).reassignCategory(any(), any(), any());
+    }
+
+    @Test
+    void shouldReturnGlobalAndUserCategories() {
+        // given
+        User user = EntityTestFactory.user(1L, "user@example.com", true);
+        Category globalCategory = EntityTestFactory.category(
+                1L,
+                null,
+                "SALARY",
+                TransactionType.INCOME,
+                CategoryStatus.ACTIVE,
+                CategoryScope.GLOBAL
+        );
+        Category userCategory = EntityTestFactory.category(
+                2L,
+                user,
+                "Freelance",
+                TransactionType.INCOME,
+                CategoryStatus.ACTIVE,
+                CategoryScope.USER
+        );
+        List<Category> categories = List.of(globalCategory, userCategory);
+        List<CategoryResponseDTO> response = List.of(
+                new CategoryResponseDTO(
+                        1L,
+                        "SALARY",
+                        TransactionType.INCOME,
+                        CategoryStatus.ACTIVE,
+                        CategoryScope.GLOBAL,
+                        "icon"),
+                new CategoryResponseDTO(
+                        2L,
+                        "Freelance",
+                        TransactionType.INCOME,
+                        CategoryStatus.ACTIVE,
+                        CategoryScope.USER,
+                        "icon")
+        );
+
+        when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
+        when(categoryRepository.findGlobalAndUserCategories(
+                eq(user),
+                isNull(),
+                eq(List.of(TransactionType.values())),
+                eq(CategoryStatus.ACTIVE)
+        )).thenReturn(categories);
+        when(categoryMapper.toListDto(categories)).thenReturn(response);
+
+        // when
+        List<CategoryResponseDTO> result =
+                categoryService.getCategories(null, null, false, authentication);
+
+        // then
+        assertThat(result).hasSize(2);
+        assertThat(result).extracting("scope").containsExactly(CategoryScope.GLOBAL, CategoryScope.USER);
     }
 }

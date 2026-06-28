@@ -10,6 +10,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.core.Authentication;
 import org.tc.mtracker.account.Account;
 import org.tc.mtracker.category.Category;
+import org.tc.mtracker.category.enums.CategoryScope;
 import org.tc.mtracker.category.enums.CategoryStatus;
 import org.tc.mtracker.common.enums.TransactionType;
 import org.tc.mtracker.support.factory.EntityTestFactory;
@@ -93,7 +94,7 @@ class TransactionServiceTest {
                 TransactionType.INCOME,
                 4L,
                 date,
-                "Salary",
+                "Random Income",
                 null,
                 IntervalUnit.MONTHLY
         );
@@ -120,12 +121,18 @@ class TransactionServiceTest {
     void shouldUseDefaultAccountAndIncreaseBalanceForOneTimeIncomeTransaction() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
         Account defaultAccount = EntityTestFactory.account(1L, user, new BigDecimal("10.00"));
-        Category category = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
+        Category category = EntityTestFactory.category(
+                4L,
+                user,
+                "Random Income",
+                TransactionType.INCOME,
+                CategoryStatus.ACTIVE,
+                CategoryScope.USER);
         TransactionCreateRequestDTO dto = createRequest(
                 new BigDecimal("15.50"),
                 TransactionType.INCOME,
                 LocalDate.of(2026, 4, 1),
-                "Salary"
+                "Random Income"
         );
         Transaction transaction = EntityTestFactory.transaction(
                 null,
@@ -174,12 +181,18 @@ class TransactionServiceTest {
     void shouldUploadReceiptsAndReturnPresignedUrlsDuringCreate() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
         Account defaultAccount = EntityTestFactory.account(1L, user, BigDecimal.ZERO);
-        Category category = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
+        Category category = EntityTestFactory.category(
+                4L,
+                user,
+                "Random Income",
+                TransactionType.INCOME,
+                CategoryStatus.ACTIVE,
+                CategoryScope.USER);
         TransactionCreateRequestDTO dto = createRequest(
                 new BigDecimal("15.50"),
                 TransactionType.INCOME,
                 LocalDate.of(2026, 4, 1),
-                "Salary"
+                "Random Income"
         );
         Transaction transaction = EntityTestFactory.transaction(
                 null,
@@ -221,7 +234,13 @@ class TransactionServiceTest {
     void shouldCreateRecurringTransactionForTodayAndReturnGeneratedOccurrence() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
         Account defaultAccount = EntityTestFactory.account(1L, user, BigDecimal.ZERO);
-        Category category = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
+        Category category = EntityTestFactory.category(
+                4L,
+                user,
+                "Random Income",
+                TransactionType.INCOME,
+                CategoryStatus.ACTIVE,
+                CategoryScope.USER);
         TransactionCreateRequestDTO dto = createRequest(
                 new BigDecimal("2000.00"),
                 LocalDate.of(2026, 4, 17)
@@ -294,7 +313,8 @@ class TransactionServiceTest {
                 .when(transactionValidationService).resolveActiveCategory(dto.categoryId(), user);
 
         assertThatThrownBy(() -> transactionService.createTransaction(authentication, dto, List.of()))
-                .isInstanceOf(CategoryIsNotActiveException.class);
+                .isInstanceOf(CategoryIsNotActiveException.class)
+                .hasMessage("Category is not active.");
 
         verify(transactionRepository, never()).save(any(Transaction.class));
     }
@@ -303,7 +323,13 @@ class TransactionServiceTest {
     void shouldPropagateTypeMismatchValidationDuringCreate() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
         Account defaultAccount = EntityTestFactory.account(1L, user, BigDecimal.ZERO);
-        Category category = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
+        Category category = EntityTestFactory.category(
+                4L,
+                user,
+                "Random Income",
+                TransactionType.INCOME,
+                CategoryStatus.ACTIVE,
+                CategoryScope.USER);
         TransactionCreateRequestDTO dto = createRequest(
                 BigDecimal.ONE,
                 TransactionType.EXPENSE,
@@ -328,7 +354,13 @@ class TransactionServiceTest {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
         Account sourceAccount = EntityTestFactory.account(1L, user, new BigDecimal("70.00"));
         Account targetAccount = EntityTestFactory.account(2L, user, new BigDecimal("20.00"));
-        Category expenseCategory = EntityTestFactory.category(4L, user, "Groceries", TransactionType.EXPENSE, CategoryStatus.ACTIVE);
+        Category expenseCategory = EntityTestFactory.category(
+                4L,
+                user,
+                "Groceries",
+                TransactionType.EXPENSE,
+                CategoryStatus.ACTIVE,
+                CategoryScope.USER);
         Transaction existingTransaction = EntityTestFactory.transaction(
                 9L,
                 sourceAccount,
@@ -380,14 +412,20 @@ class TransactionServiceTest {
     void shouldDelegateRecurringCurrentAndFutureUpdateToRecurringService() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
         Account account = EntityTestFactory.account(1L, user, BigDecimal.ZERO);
-        Category salaryCategory = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
+        Category category = EntityTestFactory.category(
+                4L,
+                user,
+                "Random Income",
+                TransactionType.INCOME,
+                CategoryStatus.ACTIVE,
+                CategoryScope.USER);
         RecurringTransaction recurringTransaction = RecurringTransaction.builder()
                 .id(10L)
                 .account(account)
-                .category(salaryCategory)
+                .category(category)
                 .type(TransactionType.INCOME)
                 .amount(new BigDecimal("100.00"))
-                .description("Salary")
+                .description("Random Income")
                 .startDate(LocalDate.of(2026, 4, 1))
                 .nextExecutionDate(LocalDate.of(2026, 5, 1))
                 .intervalUnit(IntervalUnit.MONTHLY)
@@ -395,7 +433,7 @@ class TransactionServiceTest {
         Transaction transaction = EntityTestFactory.transaction(
                 9L,
                 account,
-                salaryCategory,
+                category,
                 TransactionType.INCOME,
                 new BigDecimal("100.00"),
                 LocalDate.of(2026, 4, 1)
@@ -404,7 +442,7 @@ class TransactionServiceTest {
         TransactionUpdateRequestDTO updateDto = createUpdateRequest(
                 new BigDecimal("150.00"),
                 LocalDate.of(2026, 4, 2),
-                "Updated salary",
+                "Updated Random Income",
                 1L,
                 RecurringTransactionChangeScope.THIS_AND_FUTURE
         );
@@ -425,7 +463,7 @@ class TransactionServiceTest {
         when(userService.getCurrentAuthenticatedUser(authentication)).thenReturn(user);
         when(transactionRepository.findActiveByIdAndUser(9L, user.getId())).thenReturn(Optional.of(transaction));
         when(transactionValidationService.resolveAccount(user, 1L)).thenReturn(account);
-        when(transactionValidationService.resolveActiveCategory(4L, user)).thenReturn(salaryCategory);
+        when(transactionValidationService.resolveActiveCategory(4L, user)).thenReturn(category);
         when(transactionRepository.findById(9L)).thenReturn(Optional.of(transaction));
         when(transactionMutationService.toResponseDto(transaction)).thenReturn(response);
 
@@ -436,7 +474,12 @@ class TransactionServiceTest {
         );
 
         assertThat(result).isEqualTo(response);
-        verify(recurringTransactionService).updateCurrentAndFutureOccurrences(transaction, updateDto, account, salaryCategory, user);
+        verify(recurringTransactionService).updateCurrentAndFutureOccurrences(
+                transaction,
+                updateDto,
+                account,
+                category,
+                user);
         verify(transactionMutationService, never()).updateTransactionValues(any(), any(), any(), any());
     }
 
@@ -444,7 +487,13 @@ class TransactionServiceTest {
     void shouldDeleteTransactionAndRollbackBalance() {
         User user = EntityTestFactory.user(1L, "user@example.com", true);
         Account account = EntityTestFactory.account(1L, user, new BigDecimal("30.00"));
-        Category category = EntityTestFactory.category(4L, user, "Salary", TransactionType.INCOME, CategoryStatus.ACTIVE);
+        Category category = EntityTestFactory.category(
+                4L,
+                user,
+                "Random Income",
+                TransactionType.INCOME,
+                CategoryStatus.ACTIVE,
+                CategoryScope.USER);
         Transaction transaction = EntityTestFactory.transaction(
                 9L,
                 account,
@@ -471,9 +520,10 @@ class TransactionServiceTest {
         Category category = EntityTestFactory.category(
                 4L,
                 user,
-                "Salary",
+                "Random Income",
                 TransactionType.INCOME,
-                CategoryStatus.ACTIVE);
+                CategoryStatus.ACTIVE,
+                CategoryScope.USER);
         Transaction transaction = EntityTestFactory.transaction(
                 9L,
                 account,

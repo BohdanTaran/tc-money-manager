@@ -1,6 +1,7 @@
 package org.tc.mtracker.category.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import org.tc.mtracker.category.enums.CategoryScope;
 import org.tc.mtracker.category.enums.CategoryStatus;
 import org.tc.mtracker.common.enums.TransactionType;
 
@@ -15,8 +16,11 @@ public record CategoryResponseDTO(
         @Schema(description = "Type", example = "Income")
         TransactionType type,
 
-        @Schema(description = "Status", example = "Active")
+        @Schema(description = "Status", example = "ACTIVE")
         CategoryStatus status,
+
+        @Schema(description = "Scope", example = "GLOBAL")
+        CategoryScope scope,
 
         @Schema(description = "Icon", example = "coin")
         String icon
