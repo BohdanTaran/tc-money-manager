@@ -8,16 +8,14 @@ import org.springframework.transaction.annotation.Transactional;
 import org.tc.mtracker.category.dto.CategoryResponseDTO;
 import org.tc.mtracker.category.dto.CreateCategoryDTO;
 import org.tc.mtracker.category.dto.UpdateCategoryDTO;
+import org.tc.mtracker.category.enums.CategoryScope;
 import org.tc.mtracker.category.enums.CategoryStatus;
 import org.tc.mtracker.common.enums.TransactionType;
 import org.tc.mtracker.transaction.TransactionRepository;
 import org.tc.mtracker.transaction.recurring.RecurringTransactionRepository;
 import org.tc.mtracker.user.User;
 import org.tc.mtracker.user.UserService;
-import org.tc.mtracker.utils.exceptions.CategoryAlreadyExistsException;
-import org.tc.mtracker.utils.exceptions.CategoryNotFoundException;
-import org.tc.mtracker.utils.exceptions.CategoryReplacementRequiredException;
-import org.tc.mtracker.utils.exceptions.InvalidCategoryReplacementException;
+import org.tc.mtracker.utils.exceptions.*;
 
 import java.util.List;
 
@@ -79,6 +77,7 @@ public class CategoryService {
                 .type(dto.type())
                 .icon(dto.icon())
                 .status(CategoryStatus.ACTIVE)
+                .scope(CategoryScope.USER)
                 .user(currentUser)
                 .build();
 
@@ -92,23 +91,32 @@ public class CategoryService {
     public CategoryResponseDTO updateCategory(Long categoryId, UpdateCategoryDTO dto, Long userId) {
         User currentUser = userService.getUserById(userId);
         Category category = findOwnedById(categoryId, currentUser);
-
+        validateCategoryMutability(category);
         validateDuplicateCategory(dto.name(), category.getType(), currentUser, categoryId);
-
         category.setName(dto.name());
         category.setIcon(dto.icon());
-
         Category savedCategory = categoryRepository.save(category);
         log.info("Category updated userId={} categoryId={} type={}",
                 currentUser.getId(), savedCategory.getId(), savedCategory.getType());
-
         return categoryMapper.toDto(savedCategory);
+    }
+
+    private void validateCategoryMutability(Category category) {
+        if (category.getScope() == CategoryScope.GLOBAL) {
+            throw new CategoryIsImmutableException(
+                    String.format(
+                            "Category %s has %s scope and can not be changed",
+                            category.getName(),
+                            category.getScope()));
+
+        }
     }
 
     @Transactional
     public void archiveCategory(Long categoryId, Authentication auth) {
         User currentUser = userService.getCurrentAuthenticatedUser(auth);
         Category category = findOwnedById(categoryId, currentUser);
+        validateCategoryMutability(category);
 
         if (category.getStatus() != CategoryStatus.ARCHIVED) {
             category.setStatus(CategoryStatus.ARCHIVED);
@@ -121,6 +129,7 @@ public class CategoryService {
     public void unarchiveCategory(Long categoryId, Authentication auth) {
         User currentUser = userService.getCurrentAuthenticatedUser(auth);
         Category category = findOwnedById(categoryId, currentUser);
+        validateCategoryMutability(category);
 
         if (category.getStatus() != CategoryStatus.ACTIVE) {
             category.setStatus(CategoryStatus.ACTIVE);
@@ -133,16 +142,17 @@ public class CategoryService {
     public void deleteCategory(Long categoryId, Long replacementCategoryId, long userId) {
         User currentUser = userService.getUserById(userId);
         Category category = findOwnedById(categoryId, currentUser);
-        long linkedTransactions = transactionRepository.countByUserAndCategory(currentUser, category);
-        long linkedRecurringTransactions = recurringTransactionRepository.countByUserAndCategory(currentUser, category);
+        validateCategoryMutability(category);
+        long linkedTransactions = transactionRepository.countByUserAndCategory(currentUser.getId(), category);
+        long linkedRecurringTransactions = recurringTransactionRepository.countByUserAndCategory(currentUser.getId(), category);
         boolean replacementRequired = linkedTransactions > 0 || linkedRecurringTransactions > 0;
         Category replacementCategory = resolveReplacementCategory(category, replacementCategoryId, currentUser, replacementRequired);
 
         if (linkedTransactions > 0) {
-            transactionRepository.reassignCategory(currentUser, category, replacementCategory);
+            transactionRepository.reassignCategory(currentUser.getId(), category, replacementCategory);
         }
         if (linkedRecurringTransactions > 0) {
-            recurringTransactionRepository.reassignCategory(currentUser, category, replacementCategory);
+            recurringTransactionRepository.reassignCategory(currentUser.getId(), category, replacementCategory);
         }
 
         categoryRepository.delete(category);
@@ -183,6 +193,8 @@ public class CategoryService {
         }
 
         Category replacementCategory = findAccessibleById(replacementCategoryId, currentUser);
+        validateCategoryMutability(category);
+
         if (replacementCategory.getType() != category.getType()) {
             throw new InvalidCategoryReplacementException("Replacement category type must match the deleted category type.");
         }

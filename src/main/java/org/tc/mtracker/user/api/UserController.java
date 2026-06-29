@@ -38,7 +38,7 @@ public class UserController implements UserApi {
     @Override
     public ResponseEntity<Void> deleteUser(
             CustomUserDetails principal) {
-        userService.deleteUserWithAllData(principal.getId());
+        userService.deleteUser(principal.getId());
         return ResponseEntity.noContent().build();
     }
 }

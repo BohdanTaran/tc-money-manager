@@ -6,7 +6,6 @@ import org.tc.mtracker.category.Category;
 import org.tc.mtracker.category.CategoryMapper;
 import org.tc.mtracker.category.CategoryService;
 import org.tc.mtracker.transaction.Transaction;
-import org.tc.mtracker.user.User;
 
 import java.util.List;
 
@@ -16,7 +15,6 @@ import java.util.List;
 public interface TransactionMapper {
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "user", source = "user")
     @Mapping(target = "account", source = "account")
     @Mapping(target = "category", source = "category")
     @Mapping(target = "type", source = "dto.type")
@@ -25,10 +23,9 @@ public interface TransactionMapper {
     @Mapping(target = "deletedAt", ignore = true)
     @Mapping(target = "receipts", ignore = true)
     @Mapping(target = "recurringTransaction", ignore = true)
-    Transaction toEntity(TransactionCreateRequestDTO dto, User user, Account account, Category category);
+    Transaction toEntity(TransactionCreateRequestDTO dto, Account account, Category category);
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "user", ignore = true)
     @Mapping(target = "account", ignore = true)
     @Mapping(target = "category", ignore = true)
     @Mapping(target = "createdAt", ignore = true)

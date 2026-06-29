@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
+import org.tc.mtracker.category.Category;
 import org.tc.mtracker.common.enums.TransactionType;
 import org.tc.mtracker.support.base.BaseApiIntegrationTest;
 import org.tc.mtracker.transaction.Transaction;
@@ -28,7 +29,6 @@ class TransactionPaginationApiTest extends BaseApiIntegrationTest {
         // Create 20 transactions
         for (int i = 1; i <= 20; i++) {
             fixtures.createTransaction(
-                    user,
                     user.getDefaultAccount(),
                     fixtures.createUserCategory(user, "Test " + i, TransactionType.EXPENSE),
                     new BigDecimal("10.00"),
@@ -57,13 +57,17 @@ class TransactionPaginationApiTest extends BaseApiIntegrationTest {
     void shouldReturnSecondPageWithCursor() {
         User user = fixtures.createUser("second-page@example.com");
 
+        Category category = fixtures.createUserCategory(user, "Test", TransactionType.EXPENSE);
+
         // Make 15 transactions
         for (int i = 1; i <= 15; i++) {
             fixtures.createTransaction(
-                    user, user.getDefaultAccount(),
-                    fixtures.createUserCategory(user, "Test", TransactionType.EXPENSE),
-                    new BigDecimal("10.00"), TransactionType.EXPENSE,
-                    LocalDate.now().minusDays(i), "Transaction " + i
+                    user.getDefaultAccount(),
+                    category,
+                    new BigDecimal("10.00"),
+                    TransactionType.EXPENSE,
+                    LocalDate.now().minusDays(i),
+                    "Transaction " + i
             );
         }
 
@@ -101,14 +105,17 @@ class TransactionPaginationApiTest extends BaseApiIntegrationTest {
     @Test
     void shouldReturnLastPageWithLessThanLimit() {
         User user = fixtures.createUser("last-page@example.com");
+        Category category = fixtures.createUserCategory(user, "Test", TransactionType.EXPENSE);
 
         // Make 8 transactions (8 < limit)
         for (int i = 1; i <= 8; i++) {
             fixtures.createTransaction(
-                    user, user.getDefaultAccount(),
-                    fixtures.createUserCategory(user, "Test", TransactionType.EXPENSE),
-                    new BigDecimal("10.00"), TransactionType.EXPENSE,
-                    LocalDate.now().minusDays(i), "Transaction " + i
+                    user.getDefaultAccount(),
+                    category,
+                    new BigDecimal("10.00"),
+                    TransactionType.EXPENSE,
+                    LocalDate.now().minusDays(i),
+                    "Transaction " + i
             );
         }
 
@@ -132,12 +139,16 @@ class TransactionPaginationApiTest extends BaseApiIntegrationTest {
         User user = fixtures.createUser("filter-pagination@example.com");
         var groceries = fixtures.createUserCategory(user, "Groceries", TransactionType.EXPENSE);
 
+
         // // Make 25 transactions for Groceries
         for (int i = 1; i <= 25; i++) {
             fixtures.createTransaction(
-                    user, user.getDefaultAccount(), groceries,
-                    new BigDecimal("10.00"), TransactionType.EXPENSE,
-                    LocalDate.now().minusDays(i), "Groceries " + i
+                    user.getDefaultAccount(),
+                    groceries,
+                    new BigDecimal("10.00"),
+                    TransactionType.EXPENSE,
+                    LocalDate.now().minusDays(i),
+                    "Groceries " + i
             );
         }
 
@@ -182,10 +193,12 @@ class TransactionPaginationApiTest extends BaseApiIntegrationTest {
         User user = fixtures.createUser("invalid-cursor@example.com");
 
         fixtures.createTransaction(
-                user, user.getDefaultAccount(),
+                user.getDefaultAccount(),
                 fixtures.createUserCategory(user, "Test", TransactionType.EXPENSE),
-                new BigDecimal("10.00"), TransactionType.EXPENSE,
-                LocalDate.now(), "Transaction"
+                new BigDecimal("10.00"),
+                TransactionType.EXPENSE,
+                LocalDate.now(),
+                "Transaction"
         );
 
         restTestClient.get()
@@ -210,7 +223,6 @@ class TransactionPaginationApiTest extends BaseApiIntegrationTest {
         // Make 30 transactions
         for (int i = 1; i <= 30; i++) {
             fixtures.createTransaction(
-                    user,
                     user.getDefaultAccount(),
                     category,
                     new BigDecimal("10.00"),
@@ -261,24 +273,32 @@ class TransactionPaginationApiTest extends BaseApiIntegrationTest {
     void shouldReturnTransactionsSortedByDateDescending() {
         User user = fixtures.createUser("sorting@example.com");
 
+        Category category = fixtures.createUserCategory(user, "Test", TransactionType.EXPENSE);
+
         LocalDate today = LocalDate.now();
         Transaction t1 = fixtures.createTransaction(
-                user, user.getDefaultAccount(),
-                fixtures.createUserCategory(user, "Test", TransactionType.EXPENSE),
-                new BigDecimal("10.00"), TransactionType.EXPENSE,
-                today.minusDays(1), "Yesterday"
+                user.getDefaultAccount(),
+                category,
+                new BigDecimal("10.00"),
+                TransactionType.EXPENSE,
+                today.minusDays(1),
+                "Yesterday"
         );
         Transaction t2 = fixtures.createTransaction(
-                user, user.getDefaultAccount(),
-                fixtures.createUserCategory(user, "Test", TransactionType.EXPENSE),
-                new BigDecimal("20.00"), TransactionType.EXPENSE,
-                today, "Today"
+                user.getDefaultAccount(),
+                category,
+                new BigDecimal("20.00"),
+                TransactionType.EXPENSE,
+                today,
+                "Today"
         );
         Transaction t3 = fixtures.createTransaction(
-                user, user.getDefaultAccount(),
-                fixtures.createUserCategory(user, "Test", TransactionType.EXPENSE),
-                new BigDecimal("30.00"), TransactionType.EXPENSE,
-                today.minusDays(2), "Two days ago"
+                user.getDefaultAccount(),
+                category,
+                new BigDecimal("30.00"),
+                TransactionType.EXPENSE,
+                today.minusDays(2),
+                "Two days ago"
         );
 
         restTestClient.get()
@@ -299,16 +319,20 @@ class TransactionPaginationApiTest extends BaseApiIntegrationTest {
     }
 
     @Test
-    void shouldHandleLargePagination()  {
+    void shouldHandleLargePagination() {
         User user = fixtures.createUser("large-pagination@example.com");
 
-        // // Make 200 transactions
+        Category category = fixtures.createUserCategory(user, "Test", TransactionType.EXPENSE);
+
+        // Make 200 transactions
         for (int i = 1; i <= 200; i++) {
             fixtures.createTransaction(
-                    user, user.getDefaultAccount(),
-                    fixtures.createUserCategory(user, "Test", TransactionType.EXPENSE),
-                    new BigDecimal("10.00"), TransactionType.EXPENSE,
-                    LocalDate.now().minusDays(i % 365), "Transaction " + i
+                    user.getDefaultAccount(),
+                    category,
+                    new BigDecimal("10.00"),
+                    TransactionType.EXPENSE,
+                    LocalDate.now().minusDays(i % 365),
+                    "Transaction " + i
             );
         }
 

@@ -10,6 +10,7 @@ import org.tc.mtracker.auth.repository.RefreshTokenRepository;
 import org.tc.mtracker.category.Category;
 import org.tc.mtracker.category.CategoryRepository;
 import org.tc.mtracker.category.enums.CategoryIcon;
+import org.tc.mtracker.category.enums.CategoryScope;
 import org.tc.mtracker.category.enums.CategoryStatus;
 import org.tc.mtracker.common.enums.TransactionType;
 import org.tc.mtracker.currency.CurrencyCode;
@@ -103,18 +104,23 @@ public class DatabaseTestDataFactory {
         return createCategory(user, name, type, CategoryStatus.ACTIVE, CategoryIcon.DATABASE);
     }
 
-    public Category createCategory(User user, String name, TransactionType type, CategoryStatus status, CategoryIcon icon) {
+    public Category createCategory(
+            User user,
+            String name,
+            TransactionType type,
+            CategoryStatus status,
+            CategoryIcon icon) {
         return categoryRepository.saveAndFlush(Category.builder()
                 .user(user)
                 .name(name)
                 .type(type)
                 .status(status)
+                .scope(CategoryScope.USER)
                 .icon(icon)
                 .build());
     }
 
     public Transaction createTransaction(
-            User user,
             Account account,
             Category category,
             BigDecimal amount,
@@ -123,7 +129,6 @@ public class DatabaseTestDataFactory {
             String description
     ) {
         Transaction transaction = transactionRepository.saveAndFlush(Transaction.builder()
-                .user(user)
                 .account(account)
                 .category(category)
                 .amount(amount)
@@ -139,13 +144,13 @@ public class DatabaseTestDataFactory {
         return transaction;
     }
 
-    public RefreshToken createRefreshToken(User user, String token) {
-        return createRefreshToken(user, token, LocalDateTime.now().plusDays(1));
+    public void createRefreshToken(User user, String token) {
+        createRefreshToken(user, token, LocalDateTime.now().plusDays(1));
     }
 
-    public RefreshToken createRefreshToken(User user, String token, LocalDateTime expiryDate) {
+    public void createRefreshToken(User user, String token, LocalDateTime expiryDate) {
         refreshTokenRepository.deleteByUser(user);
-        return refreshTokenRepository.saveAndFlush(RefreshToken.builder()
+        refreshTokenRepository.saveAndFlush(RefreshToken.builder()
                 .user(user)
                 .token(token)
                 .expiryDate(expiryDate)
