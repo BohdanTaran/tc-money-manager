@@ -4,6 +4,7 @@ import org.tc.mtracker.account.Account;
 import org.tc.mtracker.auth.model.RefreshToken;
 import org.tc.mtracker.category.Category;
 import org.tc.mtracker.category.enums.CategoryIcon;
+import org.tc.mtracker.category.enums.CategoryScope;
 import org.tc.mtracker.category.enums.CategoryStatus;
 import org.tc.mtracker.common.enums.TransactionType;
 import org.tc.mtracker.currency.CurrencyCode;
@@ -40,20 +41,27 @@ public final class EntityTestFactory {
                 .build();
     }
 
-    public static Category category(Long id, User user, String name, TransactionType type, CategoryStatus status) {
+    public static Category category(
+            Long id,
+            User user,
+            String name,
+            TransactionType type,
+            CategoryStatus status,
+            CategoryScope scope
+    ) {
         return Category.builder()
                 .id(id)
                 .user(user)
                 .name(name)
                 .type(type)
                 .status(status)
+                .scope(scope)
                 .icon(CategoryIcon.DATABASE)
                 .build();
     }
 
     public static Transaction transaction(
             Long id,
-            User user,
             Account account,
             Category category,
             TransactionType type,
@@ -62,7 +70,6 @@ public final class EntityTestFactory {
     ) {
         return Transaction.builder()
                 .id(id)
-                .user(user)
                 .account(account)
                 .category(category)
                 .type(type)

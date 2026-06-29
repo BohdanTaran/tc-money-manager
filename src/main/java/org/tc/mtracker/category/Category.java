@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.tc.mtracker.category.enums.CategoryScope;
 import org.tc.mtracker.category.enums.CategoryStatus;
 import org.tc.mtracker.category.enums.CategoryIcon;
 import org.tc.mtracker.common.enums.TransactionType;
@@ -38,6 +39,12 @@ public class Category {
     @Column(name = "status", nullable = false)
     @Enumerated(EnumType.STRING)
     private CategoryStatus status;
+
+    @Column(name = "scope", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private CategoryScope scope;
+
+
 
     @ManyToOne
     @JoinColumn(name = "user_id", referencedColumnName = "id")

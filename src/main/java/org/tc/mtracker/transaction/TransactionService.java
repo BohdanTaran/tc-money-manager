@@ -1,8 +1,6 @@
 package org.tc.mtracker.transaction;
 
-import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
@@ -60,22 +58,28 @@ public class TransactionService {
             TransactionCursorRequest request,
             Long userId
     ) {
+        TransactionCursor cursor = null;
+        if (request.cursor() != null && !request.cursor().isBlank()) {
+            try {
+                cursor = TransactionCursor.decode(request.cursor());
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid cursor format: {}, ignoring cursor", request.cursor());
+            }
+        }
 
-        TransactionCursor cursor = TransactionCursor.decode(request.cursor());
+        String type = request.type() != null ? request.type().name() : null;
 
-        TransactionQueryParams params = TransactionQueryParams.builder()
-                .userId(userId)
-                .accountId(request.accountId())
-                .categoryId(request.categoryId())
-                .type(request.type() != null ? request.type().name() : null)
-                .dateFrom(request.dateFrom())
-                .dateTo(request.dateTo())
-                .cursorDate(cursor != null ? cursor.getDate() : null)
-                .cursorId(cursor != null ? cursor.getId() : null)
-                .limit(request.limit() + 1)
-                .build();
-
-        List<Long> transactionIds = transactionRepository.findTransactionIdsWithCursor(params);
+        List<Long> transactionIds = transactionRepository.findTransactionIdsWithCursor(
+                userId,
+                request.accountId(),
+                request.categoryId(),
+                type,
+                request.dateFrom(),
+                request.dateTo(),
+                cursor != null ? cursor.getDate() : null,
+                cursor != null ? cursor.getId() : null,
+                request.limit() + 1
+        );
 
         boolean hasNext = transactionIds.size() > request.limit();
         if (hasNext) {
@@ -176,7 +180,7 @@ public class TransactionService {
                                                           User user,
                                                           Account account,
                                                           Category category) {
-        Transaction transaction = transactionMapper.toEntity(createRequestDTO, user, account, category);
+        Transaction transaction = transactionMapper.toEntity(createRequestDTO, account, category);
         transactionValidationService.validateTransactionType(createRequestDTO.type(), category, user);
         transactionValidationService.validateOneTimeTransactionDate(createRequestDTO.date(), user);
         transactionMutationService.addReceiptsToTransaction(receipts, transaction);
@@ -214,7 +218,7 @@ public class TransactionService {
     }
 
     private Transaction findActiveOwnedTransaction(Long transactionId, User user) {
-        return transactionRepository.findActiveByIdAndUser(transactionId, user)
+        return transactionRepository.findActiveByIdAndUser(transactionId, user.getId())
                 .orElseThrow(() -> {
                     log.warn("Transaction not found userId={} transactionId={}", user.getId(), transactionId);
                     return new TransactionNotFoundException("Transaction with id %d not found".formatted(transactionId));

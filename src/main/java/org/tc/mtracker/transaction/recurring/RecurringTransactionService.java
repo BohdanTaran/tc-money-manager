@@ -40,7 +40,7 @@ public class RecurringTransactionService {
     public List<RecurringTransactionResponseDTO> getRecurringTransactions(Authentication auth) {
         User user = userService.getCurrentAuthenticatedUser(auth);
         log.debug("Loading recurring transactions for userId={}", user.getId());
-        return recurringTransactionMapper.toDtos(recurringTransactionRepository.findAllByUserOrderBySchedule(user));
+        return recurringTransactionMapper.toDtos(recurringTransactionRepository.findAllByUserOrderBySchedule(user.getId()));
     }
 
     @Transactional(readOnly = true)
@@ -60,7 +60,7 @@ public class RecurringTransactionService {
         LocalDate today = transactionValidationService.today();
         transactionValidationService.validateTransactionType(requestDTO.type(), category, user);
         RecurringTransaction recurringTransaction = recurringTransactionMapper
-                .toEntity(requestDTO, user, category, account);
+                .toEntity(requestDTO, category, account);
 
         boolean startToday = requestDTO.date().isEqual(today);
         recurringTransaction.setNextExecutionDate(startToday
@@ -127,7 +127,7 @@ public class RecurringTransactionService {
     public void createAutomatedTransaction(Transaction transaction) {
         Transaction saved = transactionMutationService.persistTransaction(transaction);
         log.info("Automated transaction created userId={} transactionId={} accountId={} amount={} type={} date={}",
-                saved.getUser().getId(),
+                saved.getAccount().getUser().getId(),
                 saved.getId(),
                 saved.getAccount().getId(),
                 saved.getAmount(),
@@ -136,7 +136,7 @@ public class RecurringTransactionService {
     }
 
     private RecurringTransaction findOwnedRecurringTransaction(Long recurringTransactionId, User user) {
-        return recurringTransactionRepository.findByIdAndUser(recurringTransactionId, user)
+        return recurringTransactionRepository.findByIdAndUserId(recurringTransactionId, user.getId())
                 .orElseThrow(() -> {
                     log.warn("Recurring transaction not found userId={} recurringTransactionId={}", user.getId(), recurringTransactionId);
                     return new RecurringTransactionNotFoundException(

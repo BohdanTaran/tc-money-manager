@@ -6,7 +6,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.tc.mtracker.category.Category;
 import org.tc.mtracker.category.enums.CategoryStatus;
-import org.tc.mtracker.user.User;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -28,30 +27,42 @@ public interface RecurringTransactionRepository extends JpaRepository<RecurringT
     @Query("""
             SELECT rt FROM RecurringTransaction rt
             WHERE rt.id = :id
-            AND rt.user = :user
+            AND rt.account.user.id = :userId
             """)
-    Optional<RecurringTransaction> findByIdAndUser(@Param("id") Long id, @Param("user") User user);
+    Optional<RecurringTransaction> findByIdAndUserId(
+            @Param("id") Long id,
+            @Param("userId") Long userId);
 
     @Query("""
             SELECT rt FROM RecurringTransaction rt
-            WHERE rt.user = :user
+            WHERE rt.account.user.id = :userId
             ORDER BY rt.nextExecutionDate ASC, rt.createdAt ASC, rt.id ASC
             """)
-    List<RecurringTransaction> findAllByUserOrderBySchedule(@Param("user") User user);
+    List<RecurringTransaction> findAllByUserOrderBySchedule(@Param("userId") Long userId);
 
-    long countByUserAndCategory(User user, Category category);
+    @Query("""
+            SELECT COUNT(rt) FROM RecurringTransaction rt
+            WHERE rt.account.user.id = :userId AND rt.category = :category
+            """)
+    long countByUserAndCategory(
+            @Param("userId") Long userId,
+            @Param("category") Category category);
 
-    boolean existsByUserId(Long userId);
+    @Query("""
+            SELECT COUNT(rt) > 0 FROM RecurringTransaction rt
+            WHERE rt.account.user.id = :userId
+            """)
+    boolean existsByUserId(@Param("userId") Long userId);
 
     @Modifying
     @Query("""
             UPDATE RecurringTransaction rt
             SET rt.category = :replacementCategory
-            WHERE rt.user = :user
+            WHERE rt.account.user.id = :userId
             AND rt.category = :sourceCategory
             """)
-    int reassignCategory(
-            @Param("user") User user,
+    void reassignCategory(
+            @Param("userId") Long userId,
             @Param("sourceCategory") Category sourceCategory,
             @Param("replacementCategory") Category replacementCategory
     );

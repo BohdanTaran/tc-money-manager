@@ -68,21 +68,17 @@ class TransactionApiTest extends BaseApiIntegrationTest {
 
     private static TransactionCreateRequestDTO createRecurringRequest(
             BigDecimal amount,
-            TransactionType type,
             Long categoryId,
-            LocalDate date,
-            String description,
-            Long accountId,
-            IntervalUnit intervalUnit
+            LocalDate date
     ) {
         return new TransactionCreateRequestDTO(
                 amount,
-                type,
+                TransactionType.INCOME,
                 categoryId,
                 date,
-                description,
-                accountId,
-                intervalUnit
+                "Salary",
+                1L,
+                IntervalUnit.MONTHLY
         );
     }
 
@@ -105,17 +101,12 @@ class TransactionApiTest extends BaseApiIntegrationTest {
     private Transaction createRecurringIncomeForToday(
             User user,
             Category category,
-            BigDecimal amount,
-            String description
+            BigDecimal amount
     ) {
         TransactionCreateRequestDTO recurringRequest = createRecurringRequest(
                 amount,
-                TransactionType.INCOME,
                 category.getId(),
-                LocalDate.now(),
-                description,
-                1L,
-                IntervalUnit.MONTHLY
+                LocalDate.now()
         );
         MultipartBodyBuilder multipartRequest = createMultipartRequest(recurringRequest);
         restTestClient.post()
@@ -135,7 +126,6 @@ class TransactionApiTest extends BaseApiIntegrationTest {
     ) {
         var account = accountRepository.findById(user.getDefaultAccount().getId()).orElseThrow();
         Transaction occurrence = fixtures.createTransaction(
-                user,
                 account,
                 seedTransaction.getCategory(),
                 seedTransaction.getAmount(),
@@ -303,8 +293,20 @@ class TransactionApiTest extends BaseApiIntegrationTest {
         var groceries = fixtures.createUserCategory(user, "Groceries", TransactionType.EXPENSE);
         var savings = fixtures.createAccount(user, BigDecimal.ZERO);
 
-        fixtures.createTransaction(user, user.getDefaultAccount(), salary, new BigDecimal("200.00"), TransactionType.INCOME, LocalDate.of(2026, 3, 10), "Salary");
-        Transaction expected = fixtures.createTransaction(user, savings, groceries, new BigDecimal("40.00"), TransactionType.EXPENSE, LocalDate.of(2026, 4, 10), "Groceries");
+        fixtures.createTransaction(
+                user.getDefaultAccount(),
+                salary,
+                new BigDecimal("200.00"),
+                TransactionType.INCOME,
+                LocalDate.of(2026, 3, 10),
+                "Salary");
+        Transaction expected = fixtures.createTransaction(
+                savings,
+                groceries,
+                new BigDecimal("40.00"),
+                TransactionType.EXPENSE,
+                LocalDate.of(2026, 4, 10),
+                "Groceries");
 
         restTestClient.get()
                 .uri(uriBuilder -> uriBuilder
@@ -329,7 +331,6 @@ class TransactionApiTest extends BaseApiIntegrationTest {
         User user = fixtures.createUser("single-day-filter@example.com");
         var groceries = fixtures.createUserCategory(user, "Groceries", TransactionType.EXPENSE);
         Transaction expected = fixtures.createTransaction(
-                user,
                 user.getDefaultAccount(),
                 groceries,
                 new BigDecimal("40.00"),
@@ -338,7 +339,6 @@ class TransactionApiTest extends BaseApiIntegrationTest {
                 "Groceries"
         );
         fixtures.createTransaction(
-                user,
                 user.getDefaultAccount(),
                 groceries,
                 new BigDecimal("15.00"),
@@ -389,7 +389,6 @@ class TransactionApiTest extends BaseApiIntegrationTest {
                 CategoryStatus.ARCHIVED,
                 CategoryIcon.DATABASE);
         Transaction expected = fixtures.createTransaction(
-                user,
                 user.getDefaultAccount(),
                 archivedCategory,
                 new BigDecimal("25.00"),
@@ -460,7 +459,6 @@ class TransactionApiTest extends BaseApiIntegrationTest {
         User user = fixtures.createUser("update-future-transaction@example.com", true, new BigDecimal("100.00"));
         var category = fixtures.createUserCategory(user, "Groceries", TransactionType.EXPENSE);
         Transaction transaction = fixtures.createTransaction(
-                user,
                 user.getDefaultAccount(),
                 category,
                 new BigDecimal("30.00"),
@@ -492,7 +490,6 @@ class TransactionApiTest extends BaseApiIntegrationTest {
         var category = fixtures.createUserCategory(user, "Groceries", TransactionType.EXPENSE);
         var savings = fixtures.createAccount(user, new BigDecimal("20.00"));
         Transaction transaction = fixtures.createTransaction(
-                user,
                 user.getDefaultAccount(),
                 category,
                 new BigDecimal("30.00"),
@@ -529,7 +526,7 @@ class TransactionApiTest extends BaseApiIntegrationTest {
         User user = fixtures.createUser("update-recurring-transaction@example.com");
         var salary = fixtures.createUserCategory(user, "Salary", TransactionType.INCOME);
         var bonus = fixtures.createUserCategory(user, "Bonus", TransactionType.INCOME);
-        Transaction transaction = createRecurringIncomeForToday(user, salary, new BigDecimal("100.00"), "Salary");
+        Transaction transaction = createRecurringIncomeForToday(user, salary, new BigDecimal("100.00"));
         LocalDate updatedDate = LocalDate.now().minusDays(1);
 
         Long recurringTransactionId = transaction.getRecurringTransaction().getId();
@@ -568,7 +565,7 @@ class TransactionApiTest extends BaseApiIntegrationTest {
     void shouldUpdateOnlyCurrentRecurringTransactionOccurrenceByDefault() {
         User user = fixtures.createUser("update-recurring-current-only@example.com");
         var salary = fixtures.createUserCategory(user, "Salary", TransactionType.INCOME);
-        Transaction transaction = createRecurringIncomeForToday(user, salary, new BigDecimal("100.00"), "Salary");
+        Transaction transaction = createRecurringIncomeForToday(user, salary, new BigDecimal("100.00"));
         RecurringTransaction transactionOccurrence = transaction.getRecurringTransaction();
         Long recurringTransactionId = transactionOccurrence.getId();
 
@@ -602,7 +599,7 @@ class TransactionApiTest extends BaseApiIntegrationTest {
     void shouldDeleteOnlyCurrentRecurringTransactionOccurrenceByDefault() {
         User user = fixtures.createUser("delete-recurring-current-only@example.com");
         var salary = fixtures.createUserCategory(user, "Salary", TransactionType.INCOME);
-        Transaction transaction = createRecurringIncomeForToday(user, salary, new BigDecimal("100.00"), "Salary");
+        Transaction transaction = createRecurringIncomeForToday(user, salary, new BigDecimal("100.00"));
 
         restTestClient.delete()
                 .uri("/api/v1/transactions/{id}", transaction.getId())
@@ -620,7 +617,7 @@ class TransactionApiTest extends BaseApiIntegrationTest {
     void shouldDeleteRecurringTransactionCurrentAndFutureScope() {
         User user = fixtures.createUser("delete-recurring-future@example.com");
         var salary = fixtures.createUserCategory(user, "Salary", TransactionType.INCOME);
-        Transaction transaction = createRecurringIncomeForToday(user, salary, new BigDecimal("100.00"), "Salary");
+        Transaction transaction = createRecurringIncomeForToday(user, salary, new BigDecimal("100.00"));
         Transaction pastOccurrence = createLinkedOccurrence(user, transaction, LocalDate.now().minusMonths(1));
 
         restTestClient.delete()
@@ -647,7 +644,6 @@ class TransactionApiTest extends BaseApiIntegrationTest {
         User user = fixtures.createUser("delete-transaction@example.com");
         var category = fixtures.createUserCategory(user, "Salary", TransactionType.INCOME);
         Transaction transaction = fixtures.createTransaction(
-                user,
                 user.getDefaultAccount(),
                 category,
                 new BigDecimal("30.00"),

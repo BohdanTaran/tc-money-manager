@@ -1,9 +1,12 @@
 package org.tc.mtracker.user;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Repository
@@ -12,5 +15,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByEmail(String email);
 
-    List<User> findByActivatedFalse();
+    @Modifying
+    @Query("DELETE FROM User u WHERE u.activated = false AND u.createdAt < :expireTime")
+    int deleteExpiredNotActiveEntities(@Param("expireTime") LocalDateTime expireTime);
 }

@@ -137,6 +137,12 @@ public interface CategoryApi {
             content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
                     schema = @Schema(implementation = ProblemDetail.class))
     )
+    @ApiResponse(
+            responseCode = "409",
+            description = "Category %s has GLOBAL scope and can not be changed",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                    schema = @Schema(implementation = ProblemDetail.class))
+    )
     @PatchMapping("/{categoryId}")
     ResponseEntity<CategoryResponseDTO> updateCategory(
             @PathVariable Long categoryId,
@@ -155,6 +161,12 @@ public interface CategoryApi {
             content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
                     schema = @Schema(implementation = ProblemDetail.class))
     )
+    @ApiResponse(
+            responseCode = "409",
+            description = "Category %s has GLOBAL scope and can not be changed",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                    schema = @Schema(implementation = ProblemDetail.class))
+    )
     @PatchMapping("/{categoryId}/archive")
     ResponseEntity<Void> archiveCategory(
             @PathVariable("categoryId") Long categoryId,
@@ -169,6 +181,12 @@ public interface CategoryApi {
     @ApiResponse(
             responseCode = "404",
             description = "Category not found",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                    schema = @Schema(implementation = ProblemDetail.class))
+    )
+    @ApiResponse(
+            responseCode = "409",
+            description = "Category %s has GLOBAL scope and can not be changed",
             content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
                     schema = @Schema(implementation = ProblemDetail.class))
     )
@@ -193,6 +211,12 @@ public interface CategoryApi {
             @ApiResponse(
                     responseCode = "404",
                     description = "Category not found",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ProblemDetail.class))
+            ),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "Category %s has GLOBAL scope and can not be changed",
                     content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ProblemDetail.class))
             )

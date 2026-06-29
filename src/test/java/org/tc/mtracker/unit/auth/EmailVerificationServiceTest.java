@@ -18,8 +18,8 @@ import org.tc.mtracker.security.JwtResponseDTO;
 import org.tc.mtracker.security.JwtService;
 import org.tc.mtracker.support.factory.EntityTestFactory;
 import org.tc.mtracker.user.User;
-import org.tc.mtracker.user.UserCleanupService;
 import org.tc.mtracker.user.UserRepository;
+import org.tc.mtracker.user.UserService;
 import org.tc.mtracker.utils.exceptions.EmailVerificationException;
 import org.tc.mtracker.utils.exceptions.JwtAuthenticationException;
 import org.tc.mtracker.utils.exceptions.UserAlreadyActivatedException;
@@ -50,7 +50,7 @@ class EmailVerificationServiceTest {
     private AuthEmailService authEmailService;
 
     @Mock
-    private UserCleanupService userCleanupService;
+    private UserService userService;
 
     @InjectMocks
     private EmailVerificationService emailVerificationService;
@@ -106,7 +106,7 @@ class EmailVerificationServiceTest {
                 .isInstanceOf(JwtAuthenticationException.class)
                 .hasMessageContaining("expired");
 
-        verify(userCleanupService).deleteUserWithAllData(user.getId());
+        verify(userService).deleteUser(user.getId());
     }
 
 
