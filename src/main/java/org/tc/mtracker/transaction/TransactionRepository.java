@@ -70,9 +70,11 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
             WHERE t.account_id IN (
                 SELECT a.id FROM accounts a WHERE a.user_id = :userId
             )
+            AND t.deleted_at IS NULL
             AND (:accountId IS NULL OR t.account_id = :accountId)
             AND (:categoryId IS NULL OR t.category_id = :categoryId)
             AND (:type IS NULL OR t.type = :type)
+            AND (:description IS NULL OR LOWER(COALESCE(t.description, '')) LIKE CONCAT('%', LOWER(:description), '%') ESCAPE '\\\\')
             AND (:dateFrom IS NULL OR t.date >= :dateFrom)
             AND (:dateTo IS NULL OR t.date <= :dateTo)
             AND (
@@ -88,6 +90,7 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
             @Param("accountId") Long accountId,
             @Param("categoryId") Long categoryId,
             @Param("type") String type,
+            @Param("description") String description,
             @Param("dateFrom") LocalDate dateFrom,
             @Param("dateTo") LocalDate dateTo,
             @Param("cursorDate") LocalDate cursorDate,
