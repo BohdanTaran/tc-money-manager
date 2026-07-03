@@ -68,12 +68,14 @@ public class TransactionService {
         }
 
         String type = request.type() != null ? request.type().name() : null;
+        String description = normalizeDescriptionSearch(request.description());
 
         List<Long> transactionIds = transactionRepository.findTransactionIdsWithCursor(
                 userId,
                 request.accountId(),
                 request.categoryId(),
                 type,
+                description,
                 request.dateFrom(),
                 request.dateTo(),
                 cursor != null ? cursor.getDate() : null,
@@ -173,6 +175,22 @@ public class TransactionService {
 
     private static boolean isOneTimeTransaction(IntervalUnit intervalUnit) {
         return intervalUnit == null || intervalUnit == IntervalUnit.ONCE;
+    }
+
+    private static String normalizeDescriptionSearch(String description) {
+        if (description == null) {
+            return null;
+        }
+
+        String normalized = description.trim();
+        if (normalized.length() < 3) {
+            return null;
+        }
+
+        return normalized
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
     }
 
     private @NonNull Transaction createOneTimeTransaction(TransactionCreateRequestDTO createRequestDTO,

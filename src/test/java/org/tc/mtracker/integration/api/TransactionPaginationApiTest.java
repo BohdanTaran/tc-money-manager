@@ -170,6 +170,65 @@ class TransactionPaginationApiTest extends BaseApiIntegrationTest {
     }
 
     @Test
+    void shouldPaginateWithDescriptionSearch() {
+        User user = fixtures.createUser("description-pagination@example.com");
+        Category category = fixtures.createUserCategory(user, "Coffee", TransactionType.EXPENSE);
+
+        for (int i = 1; i <= 12; i++) {
+            fixtures.createTransaction(
+                    user.getDefaultAccount(),
+                    category,
+                    new BigDecimal("10.00"),
+                    TransactionType.EXPENSE,
+                    LocalDate.now().minusDays(i),
+                    "Coffee stop " + i
+            );
+        }
+        for (int i = 1; i <= 5; i++) {
+            fixtures.createTransaction(
+                    user.getDefaultAccount(),
+                    category,
+                    new BigDecimal("10.00"),
+                    TransactionType.EXPENSE,
+                    LocalDate.now().minusDays(20 + i),
+                    "Lunch " + i
+            );
+        }
+
+        String response = restTestClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/transactions")
+                        .queryParam("limit", 10)
+                        .queryParam("description", "coffee")
+                        .build())
+                .header(HttpHeaders.AUTHORIZATION, authHeader(user))
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class)
+                .returnResult()
+                .getResponseBody();
+
+        JsonNode jsonNode = objectMapper.readTree(response);
+        String nextCursor = jsonNode.get("nextCursor").asString();
+
+        restTestClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/transactions")
+                        .queryParam("limit", 10)
+                        .queryParam("description", "coffee")
+                        .queryParam("cursor", nextCursor)
+                        .build())
+                .header(HttpHeaders.AUTHORIZATION, authHeader(user))
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.data.length()").isEqualTo(2)
+                .jsonPath("$.hasNext").isEqualTo(false)
+                .jsonPath("$.nextCursor").isEqualTo(null)
+                .jsonPath("$.pageSize").isEqualTo(2);
+    }
+
+    @Test
     void shouldReturnEmptyPageWhenNoTransactions() {
         User user = fixtures.createUser("empty@example.com");
 
