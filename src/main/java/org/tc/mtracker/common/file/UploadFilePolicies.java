@@ -6,10 +6,12 @@ import java.util.Set;
 public final class UploadFilePolicies {
 
     public static final Set<SupportedUploadType> AVATAR_TYPES =
-            EnumSet.of(SupportedUploadType.JPEG, SupportedUploadType.PNG, SupportedUploadType.GIF, SupportedUploadType.WEBP);
+            EnumSet.of(SupportedUploadType.JPEG, SupportedUploadType.PNG, SupportedUploadType.GIF,
+                    SupportedUploadType.WEBP, SupportedUploadType.HEIC, SupportedUploadType.HEIF);
 
     public static final Set<SupportedUploadType> RECEIPT_TYPES =
-            EnumSet.of(SupportedUploadType.JPEG, SupportedUploadType.PNG, SupportedUploadType.WEBP, SupportedUploadType.PDF);
+            EnumSet.of(SupportedUploadType.JPEG, SupportedUploadType.PNG, SupportedUploadType.WEBP,
+                    SupportedUploadType.HEIC, SupportedUploadType.HEIF, SupportedUploadType.PDF);
 
     private UploadFilePolicies() {
     }

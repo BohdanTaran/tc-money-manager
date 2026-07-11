@@ -1,5 +1,6 @@
 package org.tc.mtracker.auth.service;
 
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -58,13 +59,21 @@ public class PasswordManagementService {
     public JwtResponseDTO resetPassword(String token, ResetPasswordRequestDto dto) {
         validateResetPasswordConfirmation(dto.password(), dto.confirmPassword());
 
-        String purpose = jwtService.extractClaim(token, claims -> claims.get(PURPOSE_CLAIM, String.class));
+        String purpose;
+        String email;
+        try {
+            purpose = jwtService.extractClaim(token, claims -> claims.get(PURPOSE_CLAIM, String.class));
+            email = jwtService.extractUsername(token);
+        } catch (ExpiredJwtException e) {
+            log.warn("Password reset rejected: token has expired");
+            throw new UserResetPasswordException("Password reset link has expired.");
+        }
+
         if (!PASSWORD_RESET_PURPOSE.equals(purpose)) {
             log.warn("Password reset rejected: invalid token purpose={}", purpose);
             throw new JwtException("Invalid token purpose");
         }
 
-        String email = jwtService.extractUsername(token);
         User user = findUserByEmail(email);
 
         updateEncodedPassword(user, dto.password());

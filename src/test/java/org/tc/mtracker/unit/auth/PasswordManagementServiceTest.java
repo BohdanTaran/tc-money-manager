@@ -1,5 +1,6 @@
 package org.tc.mtracker.unit.auth;
 
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -99,6 +100,19 @@ class PasswordManagementServiceTest {
         assertThatThrownBy(() -> passwordManagementService.resetPassword(RESET_TOKEN, dto))
                 .isInstanceOf(JwtException.class)
                 .hasMessage("Invalid token purpose");
+
+        verify(userRepository, never()).findByEmail(any());
+        verifyNoInteractions(passwordEncoder, refreshTokenService, authEmailService);
+    }
+
+    @Test
+    void shouldRejectResetPasswordWhenTokenIsExpired() {
+        ResetPasswordRequestDto dto = new ResetPasswordRequestDto(NEW_PASSWORD, NEW_PASSWORD);
+        when(jwtService.extractClaim(eq(RESET_TOKEN), any())).thenThrow(new ExpiredJwtException(null, null, "JWT expired"));
+
+        assertThatThrownBy(() -> passwordManagementService.resetPassword(RESET_TOKEN, dto))
+                .isInstanceOf(UserResetPasswordException.class)
+                .hasMessage("Password reset link has expired.");
 
         verify(userRepository, never()).findByEmail(any());
         verifyNoInteractions(passwordEncoder, refreshTokenService, authEmailService);
