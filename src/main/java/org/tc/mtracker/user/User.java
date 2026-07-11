@@ -60,6 +60,8 @@ public class User {
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    private LocalDateTime passwordChangedAt;
+
     @UpdateTimestamp
     @Column(nullable = false)
     private LocalDateTime updatedAt;

@@ -24,6 +24,7 @@ import org.tc.mtracker.utils.exceptions.InvalidPasswordException;
 import org.tc.mtracker.utils.exceptions.UserResetPasswordException;
 
 import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -116,6 +117,26 @@ class PasswordManagementServiceTest {
 
         verify(userRepository, never()).findByEmail(any());
         verifyNoInteractions(passwordEncoder, refreshTokenService, authEmailService);
+    }
+
+    @Test
+    void shouldRejectResetPasswordWhenTokenHasAlreadyBeenUsed() {
+        User user = user();
+        user.setPasswordChangedAt(LocalDateTime.now());
+        ResetPasswordRequestDto dto = new ResetPasswordRequestDto(NEW_PASSWORD, NEW_PASSWORD);
+
+        mockResetToken(RESET_TOKEN, user);
+        // Token was issued 1 hour ago, but password was changed after that
+        when(jwtService.extractIssuedAt(RESET_TOKEN)).thenReturn(
+                new Date(System.currentTimeMillis() - 3600_000)
+        );
+
+        assertThatThrownBy(() -> passwordManagementService.resetPassword(RESET_TOKEN, dto))
+                .isInstanceOf(UserResetPasswordException.class)
+                .hasMessage("Password reset link has already been used.");
+
+        verify(passwordEncoder, never()).encode(any());
+        verify(userRepository, never()).save(any());
     }
 
     @Test

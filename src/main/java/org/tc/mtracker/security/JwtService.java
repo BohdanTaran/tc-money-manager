@@ -39,6 +39,10 @@ public class JwtService {
         return buildToken(extraClaims, userDetails, jwtProperties.accessTokenExpiration());
     }
 
+    public String generateResetToken(Map<String, Object> extraClaims, UserDetails userDetails) {
+        return buildToken(extraClaims, userDetails, jwtProperties.resetTokenExpiration());
+    }
+
     public long getRefreshExpiration() {
         return jwtProperties.refreshTokenExpiration();
     }
@@ -69,6 +73,10 @@ public class JwtService {
 
     private Date extractExpiration(String token) {//todo воно не працює. Падає на extractClaim, якщо токен expired
         return extractClaim(token, Claims::getExpiration);
+    }
+
+    public Date extractIssuedAt(String token) {
+        return extractClaim(token, Claims::getIssuedAt);
     }
 
     private Claims extractAllClaims(String token) {

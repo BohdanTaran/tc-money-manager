@@ -71,3 +71,4 @@ management:
 security:
   jwt:
     access-token-expiration: 900000  # in milliseconds
+    reset-token-expiration: 86400000  # 24 hours in milliseconds
