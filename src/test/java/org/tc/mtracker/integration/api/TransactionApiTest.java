@@ -327,6 +327,183 @@ class TransactionApiTest extends BaseApiIntegrationTest {
     }
 
     @Test
+    void shouldFilterTransactionsByDescriptionIgnoringCaseAndMatchingPartially() {
+        User user = fixtures.createUser("description-search@example.com");
+        var groceries = fixtures.createUserCategory(user, "Groceries", TransactionType.EXPENSE);
+        Transaction expected = fixtures.createTransaction(
+                user.getDefaultAccount(),
+                groceries,
+                new BigDecimal("40.00"),
+                TransactionType.EXPENSE,
+                LocalDate.of(2026, 4, 10),
+                "Weekly Coffee Beans"
+        );
+        fixtures.createTransaction(
+                user.getDefaultAccount(),
+                groceries,
+                new BigDecimal("15.00"),
+                TransactionType.EXPENSE,
+                LocalDate.of(2026, 4, 11),
+                "Lunch"
+        );
+
+        restTestClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/transactions")
+                        .queryParam("description", "coFf")
+                        .build())
+                .header(HttpHeaders.AUTHORIZATION, authHeader(user))
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.data.length()").isEqualTo(1)
+                .jsonPath("$.data[0].id").isEqualTo(expected.getId())
+                .jsonPath("$.data[0].description").isEqualTo("Weekly Coffee Beans");
+    }
+
+    @Test
+    void shouldReturnEmptyPageWhenDescriptionSearchHasNoMatches() {
+        User user = fixtures.createUser("description-search-empty@example.com");
+        var groceries = fixtures.createUserCategory(user, "Groceries", TransactionType.EXPENSE);
+        fixtures.createTransaction(
+                user.getDefaultAccount(),
+                groceries,
+                new BigDecimal("15.00"),
+                TransactionType.EXPENSE,
+                LocalDate.of(2026, 4, 11),
+                "Lunch"
+        );
+
+        restTestClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/transactions")
+                        .queryParam("description", "coffee")
+                        .build())
+                .header(HttpHeaders.AUTHORIZATION, authHeader(user))
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.data.length()").isEqualTo(0)
+                .jsonPath("$.hasNext").isEqualTo(false)
+                .jsonPath("$.nextCursor").isEqualTo(null)
+                .jsonPath("$.pageSize").isEqualTo(0);
+    }
+
+    @Test
+    void shouldTreatDescriptionSearchWildcardsAsText() {
+        User user = fixtures.createUser("description-search-wildcards@example.com");
+        var groceries = fixtures.createUserCategory(user, "Groceries", TransactionType.EXPENSE);
+        Transaction expected = fixtures.createTransaction(
+                user.getDefaultAccount(),
+                groceries,
+                new BigDecimal("15.00"),
+                TransactionType.EXPENSE,
+                LocalDate.of(2026, 4, 11),
+                "Discount 50% off"
+        );
+        fixtures.createTransaction(
+                user.getDefaultAccount(),
+                groceries,
+                new BigDecimal("20.00"),
+                TransactionType.EXPENSE,
+                LocalDate.of(2026, 4, 12),
+                "Discount 500 off"
+        );
+
+        restTestClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/transactions")
+                        .queryParam("description", "50%")
+                        .build())
+                .header(HttpHeaders.AUTHORIZATION, authHeader(user))
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.data.length()").isEqualTo(1)
+                .jsonPath("$.data[0].id").isEqualTo(expected.getId());
+    }
+
+    @Test
+    void shouldIgnoreBlankAndShortDescriptionSearch() {
+        User user = fixtures.createUser("description-search-short@example.com");
+
+        restTestClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/transactions")
+                        .queryParam("description", "co")
+                        .build())
+                .header(HttpHeaders.AUTHORIZATION, authHeader(user))
+                .exchange()
+                .expectStatus().isBadRequest();
+
+        restTestClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/transactions")
+                        .queryParam("description", "   ")
+                        .build())
+                .header(HttpHeaders.AUTHORIZATION, authHeader(user))
+                .exchange()
+                .expectStatus().isBadRequest();
+    }
+
+    @Test
+    void shouldFilterTransactionsByDescriptionWithDateRangeAndCategory() {
+        User user = fixtures.createUser("description-search-with-filters@example.com");
+        var groceries = fixtures.createUserCategory(user, "Groceries", TransactionType.EXPENSE);
+        var transport = fixtures.createUserCategory(user, "Transport", TransactionType.EXPENSE);
+        Transaction expected = fixtures.createTransaction(
+                user.getDefaultAccount(),
+                groceries,
+                new BigDecimal("40.00"),
+                TransactionType.EXPENSE,
+                LocalDate.of(2026, 4, 10),
+                "Coffee beans"
+        );
+        fixtures.createTransaction(
+                user.getDefaultAccount(),
+                groceries,
+                new BigDecimal("15.00"),
+                TransactionType.EXPENSE,
+                LocalDate.of(2026, 5, 10),
+                "Coffee beans"
+        );
+        fixtures.createTransaction(
+                user.getDefaultAccount(),
+                transport,
+                new BigDecimal("20.00"),
+                TransactionType.EXPENSE,
+                LocalDate.of(2026, 4, 10),
+                "Coffee taxi"
+        );
+
+        restTestClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/transactions")
+                        .queryParam("description", "coffee")
+                        .queryParam("categoryId", groceries.getId())
+                        .queryParam("dateFrom", "2026-04-01")
+                        .queryParam("dateTo", "2026-04-30")
+                        .build())
+                .header(HttpHeaders.AUTHORIZATION, authHeader(user))
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.data.length()").isEqualTo(1)
+                .jsonPath("$.data[0].id").isEqualTo(expected.getId());
+    }
+
+    @Test
+    void shouldRejectDescriptionSearchWithoutAuthentication() {
+        restTestClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/transactions")
+                        .queryParam("description", "coffee")
+                        .build())
+                .exchange()
+                .expectStatus().isUnauthorized();
+    }
+
+    @Test
     void shouldFilterTransactionsBySingleDayDateRange() {
         User user = fixtures.createUser("single-day-filter@example.com");
         var groceries = fixtures.createUserCategory(user, "Groceries", TransactionType.EXPENSE);

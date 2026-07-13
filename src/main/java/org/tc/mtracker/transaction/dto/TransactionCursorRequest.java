@@ -4,6 +4,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import org.hibernate.validator.constraints.Length;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.tc.mtracker.common.enums.TransactionType;
 
@@ -29,6 +31,15 @@ public record TransactionCursorRequest(
                 example = "EXPENSE"
         )
         TransactionType type,
+
+        @Schema(
+                description = """
+                        Search by transaction description. Case-insensitive partial match.
+                        Must be at least 3 characters long
+                        """,
+                example = "coffee"
+        )
+        String description,
 
         @Schema(
                 description = "Start date for filtering (inclusive). Format: YYYY-MM-DD",
@@ -76,5 +87,13 @@ public record TransactionCursorRequest(
     @AssertTrue(message = "dateFrom must be before or equal to dateTo")
     public boolean isDateRangeValid() {
         return dateFrom == null || dateTo == null || !dateFrom.isAfter(dateTo);
+    }
+
+    @AssertTrue(message = "Description must be at least 3 characters long if provided")
+    public boolean isDescriptionValid() {
+        if (description == null) {
+            return true;
+        }
+        return description.trim().length() >= 3;
     }
 }
