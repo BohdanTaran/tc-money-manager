@@ -19,12 +19,14 @@ public record RegistrationRequestDto(
                 example = "Example8!",
                 format = "password"
         )
-        @NotBlank @Length(min = 8, max = 72)
+        @NotBlank
+        @Length(min = 8, max = 72)
         @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-=\\[\\]{};':\\\\|,.<>/?~`])\\S{8,72}$")
         String password,
 
         @Schema(description = "User's full name", example = "Abraham Lincoln")
-        @NotBlank @Length(min = 3, max = 35)
+        @NotBlank
+        @Length(min = 3, max = 35)
         @Pattern(regexp = "^[A-Za-zА-ЯІЄЇҐа-яієїґ'’ʼ]([A-Za-zА-ЯІЄЇҐа-яієїґ'’ʼ\\s-]*[A-Za-zА-ЯІЄЇҐа-яієїґ'’ʼ])?$", message = "Invalid full name")
         String fullName,
 
