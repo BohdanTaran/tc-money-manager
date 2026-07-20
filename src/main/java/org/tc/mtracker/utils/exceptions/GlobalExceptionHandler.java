@@ -1,5 +1,6 @@
 package org.tc.mtracker.utils.exceptions;
 
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
@@ -49,6 +50,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BadCredentialsException.class)
     public ProblemDetail handleBadCredentials(HttpServletRequest request) {
         return buildProblem(HttpStatus.UNAUTHORIZED, "Invalid email or password.", "bad_credentials", request);
+    }
+
+    @ExceptionHandler(JwtException.class)
+    public ProblemDetail handleJwtException(JwtException ex, HttpServletRequest request) {
+        log.warn("JWT processing error: {}", ex.getMessage());
+        return buildProblem(HttpStatus.BAD_REQUEST, "Invalid or expired token.", "invalid_reset_token", request);
     }
 
     @ExceptionHandler(JwtAuthenticationException.class)
