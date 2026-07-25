@@ -20,6 +20,7 @@ import org.tc.mtracker.auth.dto.*;
 import org.tc.mtracker.common.image.ValidImage;
 import org.tc.mtracker.security.CustomUserDetails;
 import org.tc.mtracker.security.JwtResponseDTO;
+import org.tc.mtracker.utils.annotations.LoginEndpoint;
 
 @RequestMapping("/api/v1/auth")
 @Tag(name = "Authentication", description = "Authentication and email verification endpoints")
@@ -115,6 +116,7 @@ public interface AuthenticationApi {
             }
     )
     @PostMapping("/login")
+    @LoginEndpoint
     ResponseEntity<JwtResponseDTO> login(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "User login details",
