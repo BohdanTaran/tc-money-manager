@@ -1,5 +1,6 @@
 package org.tc.mtracker.utils.exceptions;
 
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
@@ -23,12 +24,14 @@ import org.springframework.web.bind.MissingPathVariableException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import org.tc.mtracker.utils.annotations.LoginEndpoint;
 
 import java.net.URI;
 import java.time.Instant;
@@ -36,10 +39,15 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final String AUTH_PATHS = "/login";
+    private static final String INVALID_CREDENTIALS_MESSAGE = "Invalid email or password.";
+    private static final String INVALID_CREDENTIALS_CODE = "bad_credentials";
 
     @ExceptionHandler(ApiException.class)
     public ProblemDetail handleApiException(ApiException ex, HttpServletRequest request) {
@@ -49,6 +57,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BadCredentialsException.class)
     public ProblemDetail handleBadCredentials(HttpServletRequest request) {
         return buildProblem(HttpStatus.UNAUTHORIZED, "Invalid email or password.", "bad_credentials", request);
+    }
+
+    @ExceptionHandler(JwtException.class)
+    public ProblemDetail handleJwtException(JwtException ex, HttpServletRequest request) {
+        log.warn("JWT processing error: {}", ex.getMessage());
+        return buildProblem(HttpStatus.BAD_REQUEST, "Invalid or expired token.", "invalid_reset_token", request);
     }
 
     @ExceptionHandler(JwtAuthenticationException.class)
@@ -68,7 +82,37 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ProblemDetail handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
+    public ProblemDetail handleValidation(
+            MethodArgumentNotValidException ex,
+            HttpServletRequest request,
+            HandlerMethod handlerMethod) {
+
+        boolean isAnnotatedLogin = handlerMethod != null &&
+                handlerMethod.getMethod().isAnnotationPresent(LoginEndpoint.class);
+
+        boolean isLoginRequest =  request.getRequestURI().contains(AUTH_PATHS) || isAnnotatedLogin;
+
+        boolean hasAuthFieldErrors = ex.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .anyMatch(error -> "email".equals(error.getField()) ||
+                        "password".equals(error.getField()));
+
+        if (isLoginRequest && hasAuthFieldErrors) {
+            log.debug("Validation failed for login request: {}",
+                    ex.getBindingResult().getFieldErrors().stream()
+                            .map(FieldError::getField)
+                            .collect(Collectors.joining(", ")));
+
+            return buildProblem(
+                    HttpStatus.UNAUTHORIZED,
+                    INVALID_CREDENTIALS_MESSAGE,
+                    INVALID_CREDENTIALS_CODE,
+                    request
+            );
+        }
+
+
         Map<String, String> errors = new LinkedHashMap<>();
         for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
             errors.put(fieldError.getField(), fieldError.getDefaultMessage());

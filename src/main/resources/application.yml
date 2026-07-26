@@ -61,6 +61,7 @@ security:
     secret-key: ${MT_JWT_SECRET_KEY}
     access-token-expiration: ${MT_JWT_ACCESS_EXPIRATION:900000} # 15 min in milliseconds
     refresh-token-expiration: ${MT_JWT_REFRESH_EXPIRATION:86400} # 24 hours in seconds
+    reset-token-expiration: ${MT_JWT_RESET_EXPIRATION:86400000} # 24 hours in milliseconds
 
 aws:
   region: ${MT_AWS_REGION:}

@@ -7,6 +7,8 @@ public enum SupportedUploadType {
     PNG("image/png", "png", Set.of("png"), Set.of("image/png")),
     GIF("image/gif", "gif", Set.of("gif"), Set.of("image/gif")),
     WEBP("image/webp", "webp", Set.of("webp"), Set.of("image/webp")),
+    HEIC("image/heic", "heic", Set.of("heic", "heif"), Set.of("image/heic", "image/heif")),
+    HEIF("image/heif", "heif", Set.of("heif", "heic"), Set.of("image/heif", "image/heic")),
     PDF("application/pdf", "pdf", Set.of("pdf"), Set.of("application/pdf"));
 
     private final String mimeType;

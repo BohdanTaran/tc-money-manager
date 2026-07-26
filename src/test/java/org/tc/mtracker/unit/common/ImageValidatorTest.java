@@ -36,6 +36,30 @@ class ImageValidatorTest {
     }
 
     @Test
+    void shouldAcceptHeicImages() {
+        MockMultipartFile file = new MockMultipartFile(
+                "avatar",
+                "avatar.heic",
+                "image/heic",
+                "image".getBytes()
+        );
+
+        assertThat(validator.isValid(file, null)).isTrue();
+    }
+
+    @Test
+    void shouldAcceptHeifImages() {
+        MockMultipartFile file = new MockMultipartFile(
+                "avatar",
+                "avatar.heif",
+                "image/heif",
+                "image".getBytes()
+        );
+
+        assertThat(validator.isValid(file, null)).isTrue();
+    }
+
+    @Test
     void shouldRejectUnsupportedExtensionEvenWhenMimeTypeLooksValid() {
         MockMultipartFile file = new MockMultipartFile(
                 "avatar",

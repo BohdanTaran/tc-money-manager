@@ -1,5 +1,6 @@
 package org.tc.mtracker.auth.service;
 
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +21,10 @@ import org.tc.mtracker.utils.exceptions.InvalidPasswordException;
 import org.tc.mtracker.utils.exceptions.UserNotFoundException;
 import org.tc.mtracker.utils.exceptions.UserResetPasswordException;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.Date;
 import java.util.Map;
 
 @Service
@@ -32,6 +37,7 @@ public class PasswordManagementService {
     private static final String PASSWORDS_DO_NOT_MATCH_MESSAGE = "Passwords do not match.";
     private static final String CURRENT_PASSWORD_INCORRECT_MESSAGE = "Current password is incorrect.";
     private static final String SAME_PASSWORD_RESET_MESSAGE = "New password cannot be the same as the current one.";
+    private static final String TOKEN_ALREADY_USED_MESSAGE = "Password reset link has already been used.";
 
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenService refreshTokenService;
@@ -48,7 +54,7 @@ public class PasswordManagementService {
         );
 
         CustomUserDetails userDetails = new CustomUserDetails(user);
-        String resetToken = jwtService.generateToken(Map.of(PURPOSE_CLAIM, PASSWORD_RESET_PURPOSE), userDetails);
+        String resetToken = jwtService.generateResetToken(Map.of(PURPOSE_CLAIM, PASSWORD_RESET_PURPOSE), userDetails);
 
         authEmailService.sendResetPassword(user.getEmail(), resetToken);
         log.info("Reset password token sent to user's email with id: {}", user.getId());
@@ -58,14 +64,24 @@ public class PasswordManagementService {
     public JwtResponseDTO resetPassword(String token, ResetPasswordRequestDto dto) {
         validateResetPasswordConfirmation(dto.password(), dto.confirmPassword());
 
-        String purpose = jwtService.extractClaim(token, claims -> claims.get(PURPOSE_CLAIM, String.class));
+        String purpose;
+        String email;
+        try {
+            purpose = jwtService.extractClaim(token, claims -> claims.get(PURPOSE_CLAIM, String.class));
+            email = jwtService.extractUsername(token);
+        } catch (ExpiredJwtException e) {
+            log.warn("Password reset rejected: token has expired");
+            throw new UserResetPasswordException("Password reset link has expired.");
+        }
+
         if (!PASSWORD_RESET_PURPOSE.equals(purpose)) {
             log.warn("Password reset rejected: invalid token purpose={}", purpose);
             throw new JwtException("Invalid token purpose");
         }
 
-        String email = jwtService.extractUsername(token);
         User user = findUserByEmail(email);
+
+        validateTokenNotUsed(token, user);
 
         updateEncodedPassword(user, dto.password());
 
@@ -121,8 +137,25 @@ public class PasswordManagementService {
         }
     }
 
+    private void validateTokenNotUsed(String token, User user) {
+        if (user.getPasswordChangedAt() == null) {
+            return;
+        }
+
+        Date issuedAt = jwtService.extractIssuedAt(token);
+        Instant tokenIssuedInstant = issuedAt.toInstant();
+        Instant passwordChangedInstant = user.getPasswordChangedAt()
+                .atZone(ZoneId.systemDefault()).toInstant();
+
+        if (!tokenIssuedInstant.isAfter(passwordChangedInstant)) {
+            log.warn("Password reset rejected: token was issued before the last password change for userId={}", user.getId());
+            throw new UserResetPasswordException(TOKEN_ALREADY_USED_MESSAGE);
+        }
+    }
+
     private void updateEncodedPassword(User user, String rawPassword) {
         user.setPassword(passwordEncoder.encode(rawPassword));
+        user.setPasswordChangedAt(LocalDateTime.now());
         userRepository.save(user);
     }
 
